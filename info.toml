@@ -1,8 +1,9 @@
 [meta]
-name     = "Media Refresher"
+name     = "Somewhat Better Records"
 author   = "XertroV"
 category = "Utilities"
-version  = "0.1.1"
+version  = "0.1.0"
 
 [script]
 #__DEFINES__
+dependencies = ["MLHook"]
