@@ -1,0 +1,8 @@
+[meta]
+name     = "Media Refresher"
+author   = "XertroV"
+category = "Utilities"
+version  = "0.1.1"
+
+[script]
+#__DEFINES__
