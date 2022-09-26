@@ -1,4 +1,5 @@
 void Main() {
+    MLHook::RequireVersionApi('0.1.4');
     startnew(InitCoro);
 }
 
@@ -11,10 +12,11 @@ void InitCoro() {
 bool g_windowVisible = false;
 uint lastRefresh = 0;
 void RenderInterface() {
+    if (!g_windowVisible) return;
     if (UI::Begin("Refresh Records Demo", g_windowVisible, UI::WindowFlags::AlwaysAutoResize | UI::WindowFlags::NoCollapse)) {
         if (MDisabledButton(lastRefresh + 5000 > Time::Now, "Refresh Records")) {
             lastRefresh = Time::Now;
-            MLHook::Queue_ToInjectedManialink("RefreshRecords", "Hook_RefreshRecords");
+            MLHook::Queue_MessageManialinkPlayground("RefreshRecords", "Hook_RefreshRecords");
         }
     }
     UI::End();
