@@ -1,5 +1,5 @@
 void Main() {
-    MLHook::RequireVersionApi('0.1.4');
+    MLHook::RequireVersionApi('0.2.0');
     startnew(InitCoro);
 }
 

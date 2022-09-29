@@ -1,5 +1,3 @@
-<script><!--
-
 #Struct ComponentMenuLibsGrid_K_GridColumn { Real Size; Integer Align; }
 #Struct ComponentMenuLibsGrid_K_GridConfig { Real Size; Real Padding; Real Gutter; Integer Direction; ComponentMenuLibsGrid_K_GridColumn[Integer] Columns; }
 
@@ -9,7 +7,7 @@
 #Struct LibCampaignStruct_K_Ranking { Text ZoneId; Text ZoneName; Integer Position; Integer Length; }
 #Struct LibCampaignStruct_K_MapTopRanking { Text ZoneName; LibCampaignStruct_K_TopScore[] Tops; }
 
-#Struct LibCommonTask_K_TaskOwner { Integer Type; CDataFileMgr DataFileMgr; CScoreMgr ScoreMgr; CTrackingMgr TrackingMgr; CUserV2Manager UserMgr; CPresenceMgr PresenceMgr; CRankingsZoneMgr ZoneMgr; CWSNotificationManager WSNotificationMgr; CMode Mode; }
+#Struct LibCommonTask_K_TaskOwner { Integer Type; CDataFileMgr DataFileMgr; CScoreMgr ScoreMgr; CTrackingMgr TrackingMgr; CUserV2Manager UserMgr; CPresenceMgr PresenceMgr; CRankingsZoneMgr ZoneMgr; CWSNotificationManager WSNotificationMgr; CMode Mode; CPrivilegeMgr PrivilegeMgr; }
 #Struct LibCommonTask_K_TaskError { Text Type; Text Code; Text Description; }
 #Struct LibCommonTask_K_Task { Ident SourceTaskId; LibCommonTask_K_TaskOwner Owner; Ident SystemDialogTaskId; CUserV2Manager SystemDialogManager; Boolean IsInitialized; Boolean IsProcessing; Boolean IsSuccess; LibCommonTask_K_TaskError Error; Text[Text] Metadata; }
 
@@ -23,32 +21,21 @@
 #Struct LibLeaderboardAPI_K_ResponseFromGetTopRankingsInClub { Integer ClubId; Integer Length; LibCampaignStruct_K_Top[] TopRankings; }
 
 #Struct LibLeaderboardAPI_K_ResponseFromGetMapTopRankings {
-	Text LeaderboardGroupUid;
-	LibCampaignStruct_K_MapTopRanking[] TopRankings;
+    Text LeaderboardGroupUid;
+    LibCampaignStruct_K_MapTopRanking[] TopRankings;
 }
 #Struct LibLeaderboardAPI_K_ResponseFromGetSurroundingRankings {
-	Text LeaderboardGroupUid;
-	LibCampaignStruct_K_TopScore[][Text] TopsByZone;
+    Text LeaderboardGroupUid;
+    LibCampaignStruct_K_TopScore[][Text] TopsByZone;
 }
 #Struct LibLeaderboardAPI_K_ResponseFromGetMapSurroundingRankingsInClub {
-	Text LeaderboardGroupUid;
-	LibCampaignStruct_K_TopScore[] Tops;
+    Text LeaderboardGroupUid;
+    LibCampaignStruct_K_TopScore[] Tops;
 }
 
 #Struct K_Celebration { Boolean IsActive; Integer PrevTime; Integer BestTime; Integer PrevMedal; Integer BestMedal; }
 #Struct K_TMxSM_Record_Record { Integer Rank; Text AccountId; Text DisplayName; Integer Time; }
 #Struct K_TMxSM_Record_Records { Text ZoneName; Integer WorstTime; Boolean IsFull; Integer Type; K_TMxSM_Record_Record[] Records; }
-
-#Struct RRK_State {
-	Boolean IsControllerNavigationEnabled;
-	Boolean IsLocalMode;
-	Boolean NewRecordsEnabled;
-	Integer CurrentMedal;
-	Integer SelectedZone;
-	ComponentMenuLibsGrid_K_GridConfig GridConfig_ControllerInfos;
-	K_TMxSM_Record_Records CurrentZoneRecords;
-	Text SpectatorTargetAccountId;
-}
 
 #Struct K_RecordGhost {
     Text AccountId;
@@ -56,6 +43,15 @@
     Ident GhostInstanceId;
     LibCommonTask_K_Task Task_RetrieveGhost;
     LibCommonTask_K_Task Task_RetrieveRecords;
+}
+
+#Struct K_PrivilegeCheck {
+	Integer Status;
+	CPrivilegeMgr PrivilegeMgr;
+	CPrivilegeMgr::EPrivilege Privilege;
+	Ident UserId;
+	Ident TaskId;
+	Text[] TargetedUsersAccountIds;
 }
 
 // /* use with declare RecordsClient_K_State Race_Record_State for UI; */
@@ -118,10 +114,12 @@
     K_RecordGhost[Text] LoadedRecordGhosts;
     K_RecordGhost SpectatorTargetRecordGhost;
     Boolean ManialinkIsInitialized;
+    Boolean CanViewLeaderboards;
+    K_PrivilegeCheck LeaderboardPrivilegeCheck;
 }
 
 Void CheckHookEvents() {
-    declare Text[] MLHook_Inbound_RefreshRecords for ClientUI;
+    declare Text[][] MLHook_Inbound_RefreshRecords for ClientUI;
     // if (MLHook_Inbound_RefreshRecords == Null) {
     //     MLHook_Inbound_RefreshRecords = [];
     // }
@@ -129,8 +127,8 @@ Void CheckHookEvents() {
         SendCustomEvent("MLHook_Debug_GotInboundEvents", ["Len: " ^ MLHook_Inbound_RefreshRecords.count]);
     }
     foreach (Event in MLHook_Inbound_RefreshRecords) {
-        SendCustomEvent("MLHook_Debug_GotEvent", [""^Event]);
-        if (Event == "Hook_RefreshRecords") {
+        SendCustomEvent("MLHook_Debug_GotEvent", [""^Event[0]]);
+        if (Event[0] == "Hook_RefreshRecords") {
             declare K_State Race_Record_State for UI;
             Race_Record_State.SetupUpdate = -1; // should trigger a refresh
             Race_Record_State.RecordsEnabled = False; // should trigger a refresh
@@ -151,5 +149,3 @@ main() {
         CheckHookEvents();
     }
 }
-
---></script>
