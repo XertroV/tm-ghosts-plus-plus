@@ -47,7 +47,10 @@ const string GenGhostRankString() {
     if (g_ghostRankOffset == 0)
         return "the top " + g_numGhosts + " ghosts";
     int startRank = g_ghostRankOffset + 1;
-    int endRank = startRank + g_numGhosts;
+    if (g_numGhosts == 1) {
+        return "the ghost ranked " + startRank;
+    }
+    int endRank = startRank + g_numGhosts - 1;
     return "ghosts ranked " + startRank + " to " + endRank;
 }
 
@@ -78,8 +81,8 @@ void RenderInterface() {
             startnew(HideAllGhosts);
         }
         AddSimpleTooltip("Useful if you reduce the number of ghosts and there are some left over.");
-        int lastRank = 1 + g_ghostRankOffset + g_numGhosts;
-        if (MDisabledButton(lastRefresh + disableTime > Time::Now, "Spectate ghost at rank " + lastRank + "\n(the last of " + grString + ")")) {
+        int lastRank = g_ghostRankOffset + g_numGhosts;
+        if (MDisabledButton(lastRefresh + disableTime > Time::Now, "Spectate ghost at rank " + lastRank + (g_numGhosts > 1 ? "\n(the last of " + grString + ")" : ""))) {
             lastRefresh = Time::Now;
             startnew(ToggleSpectator);
         }
