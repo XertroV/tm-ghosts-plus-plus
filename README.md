@@ -1,5 +1,7 @@
 # Too Many Ghosts
 
+**Requires MLHook** -- you must also have MLHook installed.
+
 Toggle lots of ghosts at once.
 By default, toggles the top 20.
 Up to 100 ghosts are toggle-able at once.
