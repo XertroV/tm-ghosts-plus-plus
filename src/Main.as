@@ -214,7 +214,6 @@ void log_trace(const string &in msg) {
     trace(msg);
 }
 
-// name is legacy
 class NadeoApi {
     string liveSvcUrl;
 
