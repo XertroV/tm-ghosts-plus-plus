@@ -25,19 +25,6 @@ HttpResponse@ RouteRequests(const string &in type, const string &in route, dicti
     if (route.StartsWith('/save_ghost/')) return HandleGhostUpload(type, route, headers, data);
     if (route.StartsWith('/get_ghost/')) return HandleGetGhost(type, route, headers, data);
     log_trace("Did not find route.");
-    return Handle404(type, route, headers, data);
-}
-
-HttpResponse@ Handle404(const string &in type, const string &in route, dictionary@ headers, const string &in data) {
-    // if (type != "POST") return HttpResponse(405, "Must be a POST request.");
-    // log_info("Data: " + data);
-    try {
-        // See K_RunResult in TM_Archivist_Local.Script.txt
-        // auto report = Json::Parse(data);
-        // LocalStats::IncrRuns(report['MapUid'], !bool(report['Partial']), report['DurationSec'], report['NbRespawns'], report['NbCheckpoints']);
-    } catch {
-        // log_warn("Exception processing report result: " + getExceptionInfo());
-    }
     return _404_Response;
 }
 
@@ -57,6 +44,7 @@ HttpResponse@ HandleGetGhost(const string &in type, const string &in route, dict
     return HttpResponse(500);
 }
 
+// todo
 HttpResponse@ HandleGhostUpload(const string &in type, const string &in route, dictionary@ headers, const string &in data) {
     if (type != "POST" && type != "GET") return HttpResponse(405, "Must be a POST or GET request.");
     if (!route.ToLower().EndsWith(".ghost.gbx")) {

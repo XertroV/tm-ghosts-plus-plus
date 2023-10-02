@@ -6,6 +6,7 @@ const string GHOSTS_DIR = IO::FromStorageFolder("ghosts/");
 
 namespace Cache {
     dictionary Logins;
+    dictionary LoginNames;
     Json::Value@[] LoginsArr;
     dictionary Favorites;
     Json::Value@[] FavoritesArr;
@@ -26,6 +27,7 @@ namespace Cache {
         PopulateFromFile(Favorites, FavoritesArr, CACHE_FAVORITES_FILE);
         PopulateFromFile(Ghosts, GhostsArr, INDEX_GHOSTS_FILE);
         PopulateFromFile(Maps, MapsArr, CACHE_MAPS_FILE);
+        PopulateLoginNames();
         StartHttpServer();
         isLoading = false;
     }
@@ -38,16 +40,84 @@ namespace Cache {
             if (l.Length == 0) continue;
             // trace('loading json: ' + l);
             auto j = Json::Parse(l);
-            d[string(j['key'])] = arr.Length;
-            arr.InsertLast(j);
+            string key = string(j['key']);
+            if (d.Exists(key)) {
+                int ix = int(d[key]);
+                @arr[ix] = j;
+            } else {
+                d[key] = arr.Length;
+                arr.InsertLast(j);
+            }
         }
     }
 
-    void AddName(const string &in wsid, const string &in login, const string &in name) {
+    void AddLogin(const string &in wsid, const string &in login, const string &in name) {
+        Json::Value@ j;
+        if (LoginNames.Exists(login + name)) return;
+        if (Logins.Exists(login)) {
+            @j = GetLogin(login);
+            if (j['names'].HasKey(name)) return;
+            j['names'][name] = 1;
+        } else {
+            @j = Json::Object();
+            j['names'] = Json::Object();
+            j['names'][name] = 1;
+            j['wsid'] = wsid;
+            j['key'] = login;
+            Logins[login] = LoginsArr.Length;
+            LoginsArr.InsertLast(login);
+            LoginNames[login+name] = true;
+        }
+        SaveToLoginCache(j);
+    }
+
+    void PopulateLoginNames() {
+        for (uint i = 0; i < LoginsArr.Length; i++) {
+            auto j = LoginsArr[i];
+            string login = j['key'];
+            auto names = j['names'].GetKeys();
+            for (uint n = 0; n < names.Length; n++) {
+                string name = names[n];
+                LoginNames[login+name] = true;
+            }
+        }
+    }
+
+    Json::Value@ GetLogin(const string &in login) {
+        int ix = int(Logins[login]);
+        return LoginsArr[ix];
+    }
+
+    void GetPlayersFromNameFilter(const string &in filter, Json::Value@[]@ arr) {
+        for (uint i = 0; i < LoginsArr.Length; i++) {
+            auto j = LoginsArr[i];
+            auto names = j['names'].GetKeys();
+            for (uint n = 0; n < names.Length; n++) {
+                if (MatchFilter(filter, string(names[n]))) {
+                    arr.InsertLast(j);
+                    break;
+                }
+            }
+        }
+    }
+
+    void DrawPlayerFavButton(const string &in login) {
+        if (Favorites.Exists(login)) {
+            if (UI::ButtonColored(Icons::Star, .3)) {
+                RemoveFromFavorites(login);
+            }
+        } else {
+            if (UI::Button(Icons::StarO)) {
+                AddToFavorites(login);
+            }
+        }
+    }
+
+    void RemoveFromFavorites(const string &in login) {
 
     }
 
-    void GetName(const string &in login) {
+    void AddToFavorites(const string &in login) {
 
     }
 
@@ -61,7 +131,7 @@ namespace Cache {
         }
     }
 
-    void AddRecord(CMapRecord@ rec, const string &in nickname) {
+    void AddRecord(CMapRecord@ rec, const string &in login, const string &in nickname) {
         auto RecId = CalcRecId(rec.WebServicesUserId, rec.MapUid.GetName(), rec.Time, rec.Timestamp);
         auto gs = Ghosts;
         auto time = Time::Format(rec.Time);
@@ -80,6 +150,7 @@ namespace Cache {
         j['replayUrl'] = rec.ReplayUrl;
         j['key'] = RecId;
         j['name'] = nickname;
+        AddLogin(rec.WebServicesUserId, login, nickname);
         SaveAndProcessRecord(j);
         NotifySuccess("Saved ghost: " + nickname + " / " + time);
         g_Saved.OnNewGhostSaved();
@@ -118,12 +189,6 @@ namespace Cache {
         f.Close();
     }
 
-    void SaveToGhostsCache(Json::Value@ j) {
-        IO::File f(INDEX_GHOSTS_FILE, IO::FileMode::Append);
-        f.WriteLine(Json::Write(j));
-        f.Close();
-    }
-
     void LoadGhost(const string &in key) {
         if (Ghosts.Exists(key)) {
             // Core::LoadGhost(GetGhostFilename(key));
@@ -148,4 +213,23 @@ namespace Cache {
     string GetGhostLocalURL(const string &in key) {
         return HTTP_BASE_URL + "get_ghost/" + key;
     }
+
+
+
+    void SaveToGhostsCache(Json::Value@ j) {
+        IO::File f(INDEX_GHOSTS_FILE, IO::FileMode::Append);
+        f.WriteLine(Json::Write(j));
+        f.Close();
+    }
+
+    void SaveToLoginCache(Json::Value@ j) {
+        IO::File f(CACHE_LOGINS_FILE, IO::FileMode::Append);
+        f.WriteLine(Json::Write(j));
+        f.Close();
+    }
+}
+
+
+bool MatchFilter(const string &in filter, const string &in text) {
+    return text.ToLower().Contains(filter);
 }

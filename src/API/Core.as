@@ -34,6 +34,16 @@ namespace Core {
         return ret;
     }
 
+    void LoadGhostOfPlayer(const string &in wsid, const string &in uid, const string &in name = "") {
+        auto recs = GetMapPlayerListRecordList({wsid}, uid);
+        if (recs is null || recs.Length == 0) {
+            NotifyWarning("Could not load ghost of " + (name.Length > 0 ? name : wsid));
+            return;
+        }
+        auto rec = recs[0];
+        LoadGhostFromUrl(rec.FileName, rec.ReplayUrl);
+    }
+
     void LoadGhostFromUrl(const string &in filename, const string &in url) {
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         auto dfm = ps.DataFileMgr;

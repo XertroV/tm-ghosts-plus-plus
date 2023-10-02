@@ -23,7 +23,7 @@ void RenderInterface() {
     if (!S_ShowWindow) return;
     if (!Cache::hasDoneInit) startnew(Cache::Initialize);
 
-    UI::SetNextWindowSize(400, 300, UI::Cond::Appearing);
+    UI::SetNextWindowSize(500, 300, UI::Cond::Appearing);
     if (UI::Begin(MenuTitle, S_ShowWindow)) {
         if (GetApp().PlaygroundScript is null) {
             UI::Text("Please load a map in Solo mode");
@@ -74,6 +74,8 @@ class SaveGhostsTab : Tab {
         super("Save Ghosts");
     }
 
+    uint[] saving;
+
     void DrawInner() override {
         auto mgr = GhostClipsMgr::Get(GetApp());
         if (mgr is null) return;
@@ -81,9 +83,29 @@ class SaveGhostsTab : Tab {
             UI::Text("No ghosts loaded.");
             return;
         }
+
+        if (UI::BeginTable("save-ghosts", 5, UI::TableFlags::SizingStretchProp)) {
+
+            UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 40.);
+            UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
+            UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 80.);
+            UI::TableSetupColumn("Save", UI::TableColumnFlags::WidthFixed, 40.);
+            UI::TableSetupColumn("Unload", UI::TableColumnFlags::WidthFixed, 40.);
+
+            UI::ListClipper clip(mgr.Ghosts.Length);
+            while (clip.Step()) {
+                for (int i = clip.DisplayStart; i < Math::Min(clip.DisplayEnd, mgr.Ghosts.Length); i++) {
+                    UI::PushID(i);
+                    auto item = mgr.Ghosts[i];
+                    auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
+                    DrawSaveGhost(mgr.Ghosts[i], i, id);
+                    UI::PopID();
+                }
+            }
+
+            UI::EndTable();
+        }
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
-            auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
-            DrawSaveGhost(mgr.Ghosts[i], i, id);
         }
         // auto bufOffset = Reflection::GetType("NGameGhostClips_SMgr").GetMember("Ghosts").Offset + 0x10;
         // auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
@@ -107,15 +129,27 @@ class SaveGhostsTab : Tab {
         auto gm = gc.GhostModel;
         auto clip = gc.Clip;
         auto rt = Time::Format(gm.RaceTime);
+
+        UI::TableNextRow();
+
+        UI::TableNextColumn();
         UI::AlignTextToFramePadding();
-        UI::Text(Text::Format("%02d. ", i) + Text::Format("%08x", id));
-        UI::SameLine();
-        UI::Text(gm.GhostNickname + " -- "+rt+" @ " + Text::FormatPointer(Dev_GetPointerForNod(clip)));
-        UI::SameLine();
+        UI::Text(Text::Format("%02d. ", i)); // + Text::Format("%08x", id));
+
+        UI::TableNextColumn();
+        UI::Text(gm.GhostNickname);
+
+        UI::TableNextColumn();
+        UI::Text(rt);
+
+        UI::TableNextColumn();
+        UI::BeginDisabled(saving.Find(id) >= 0);
         bool clicked = UI::Button(Icons::FloppyO + "##" + i);
         AddSimpleTooltip("Save " + gm.GhostNickname + "'s " + rt + " ghost for later.");
-        if (clicked) SaveGhost(gm);
-        UI::SameLine();
+        if (clicked) SaveGhost(gm, id);
+        UI::EndDisabled();
+
+        UI::TableNextColumn();
         clicked = UI::Button(Icons::Times + "##" + i);
         AddSimpleTooltip("Unload ghost");
         if (clicked) UnloadGhost(i);
@@ -130,10 +164,11 @@ class SaveGhostsTab : Tab {
         ps.GhostMgr.Ghost_Remove(MwId(id));
     }
 
-    void SaveGhost(CGameCtnGhost@ gm) {
+    void SaveGhost(CGameCtnGhost@ gm, uint id) {
+        saving.InsertLast(id);
         // we could upload the ghost like archivist, but it's easier to just get the current LB ghost
         // GetApp().PlaygroundScript.ScoreMgr.Map_GetPlayerListRecordList()
-        startnew(CoroutineFuncUserdata(RunSaveGhost), ref(array<string> = {gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname}));
+        startnew(CoroutineFuncUserdata(RunSaveGhost), ref(array<string> = {gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(id)}));
     }
 
     void RunSaveGhost(ref@ r) {
@@ -141,13 +176,16 @@ class SaveGhostsTab : Tab {
         auto login = args[0];
         auto uid = args[1];
         auto nickname = args[2];
+        auto id = Text::ParseUInt(args[3]);
         auto recs = Core::GetMapPlayerListRecordList({LoginToWSID(login)}, uid);
         if (recs is null) {
             NotifyWarning("Failed to get ghost download link: " + string::Join({nickname, login, uid}, " / "));
             return;
         }
         auto rec = recs[0];
-        Cache::AddRecord(rec, nickname);
+        Cache::AddRecord(rec, login, nickname);
+        auto ix = saving.Find(id);
+        if (ix >= 0) saving.RemoveAt(ix);
     }
 }
 
@@ -172,7 +210,7 @@ class LoadGhostsTab : Tab {
 class FavoritesTab : Tab {
 
     FavoritesTab() {
-        super("Favorites");
+        super("Favs");
     }
 
     void DrawInner() override {
@@ -188,8 +226,87 @@ class PlayersTab : Tab {
         super("Players");
     }
 
+    string m_PlayerFilter = "";
+    string[] loading;
+
     void DrawInner() override {
-        UI::Text("Players");
+        bool changed;
+        UI::SetNextItemWidth(UI::GetWindowContentRegionWidth() * .5);
+        m_PlayerFilter = UI::InputText("Filter", m_PlayerFilter, changed);
+        UI::SameLine();
+        if (UI::Button("Reset##playersfilter")) {
+            m_PlayerFilter = "";
+            changed = true;
+        }
+        if (changed) {
+            startnew(CoroutineFunc(UpdatePlayerFilter));
+        }
+
+        UI::Separator();
+
+        auto players = (m_PlayerFilter.Length > 0) ? filteredPlayers : Cache::LoginsArr;
+
+        UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
+
+        if (UI::BeginTable("players", 3, UI::TableFlags::SizingStretchProp | UI::TableFlags::RowBg)) {
+            UI::TableSetupColumn("Fav Player", UI::TableColumnFlags::WidthFixed, 40.);
+            UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
+            UI::TableSetupColumn("Find Ghost", UI::TableColumnFlags::WidthFixed, 100.);
+
+            UI::ListClipper clip(players.Length);
+            while (clip.Step()) {
+                for (int i = clip.DisplayStart; i < clip.DisplayEnd; i++) {
+                    if (i >= players.Length) break;
+                    auto j = players[i];
+                    // trace('j: ' + Json::Write(j));
+                    auto names = j['names'].GetKeys();
+                    string namesStr = string::Join(names, ", ");
+                    string login = j['key'];
+
+                    UI::PushID(i);
+                    UI::TableNextRow();
+                    UI::TableNextColumn();
+                    Cache::DrawPlayerFavButton(login);
+
+                    UI::TableNextColumn();
+                    UI::AlignTextToFramePadding();
+                    UI::Text(namesStr);
+
+                    UI::TableNextColumn();
+                    UI::BeginDisabled(loading.Find(login) >= 0);
+                    if (UI::Button("Find Ghost##" + i)) {
+                        OnClickFindGhost(j);
+                    }
+                    UI::EndDisabled();
+                    UI::PopID();
+                }
+            }
+
+            UI::EndTable();
+        }
+
+        UI::PopStyleColor(1);
+    }
+
+    void OnClickFindGhost(Json::Value@ j) {
+        loading.InsertLast(string(j['key']));
+        startnew(CoroutineFuncUserdata(this.FindAndLoadGhost), j);
+    }
+
+    void FindAndLoadGhost(ref@ r) {
+        auto j = cast <Json::Value>(r);
+        string login = j['key'];
+        string wsid = j['wsid'];
+        auto names = j['names'].GetKeys();
+        Core::LoadGhostOfPlayer(wsid, s_currMap, string::Join(names, ", "));
+        auto ix = loading.Find(login);
+        if (ix >= 0) loading.RemoveAt(ix);
+    }
+
+    Json::Value@[] filteredPlayers;
+    void UpdatePlayerFilter() {
+        filteredPlayers.RemoveRange(0, filteredPlayers.Length);
+        Cache::GetPlayersFromNameFilter(m_PlayerFilter, filteredPlayers);
     }
 
     void OnMapChange() override {
@@ -233,7 +350,13 @@ class SavedTab : Tab {
             return;
         }
 
-        if (UI::BeginTable("saved ghosts", 4, UI::TableFlags::SizingFixedFit)) {
+        if (UI::BeginTable("saved ghosts", 5, UI::TableFlags::SizingStretchProp)) {
+            UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 40.);
+            UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
+            UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 80.);
+            UI::TableSetupColumn("date", UI::TableColumnFlags::WidthFixed, 80.);
+            UI::TableSetupColumn("Load", UI::TableColumnFlags::WidthFixed, 50.);
+
             UI::ListClipper clip(ghostsForMap.Length);
             while (clip.Step()) {
                 for (int i = clip.DisplayStart; i < clip.DisplayEnd; i++) {
@@ -251,13 +374,15 @@ class SavedTab : Tab {
                     UI::TableNextRow();
                     UI::TableNextColumn();
                     UI::AlignTextToFramePadding();
+                    UI::Text(Text::Format("%02d.", i));
+                    UI::TableNextColumn();
                     UI::Text(name);
                     UI::TableNextColumn();
                     UI::Text(time);
                     UI::TableNextColumn();
                     UI::Text(date);
                     UI::TableNextColumn();
-                    UI::BeginDisabled(loading.FindByRef(key) >= 0);
+                    UI::BeginDisabled(loading.Find(key) >= 0);
                     if (UI::Button("Load##"+i)) {
                         startnew(CoroutineFuncUserdata(this.LoadGhost), j);
                     }
@@ -280,7 +405,7 @@ class SavedTab : Tab {
         loading.InsertLast(key);
         Notify("Loading ghost: " + name + " / " + time);
         Cache::LoadGhost(key);
-        auto ix = loading.FindByRef(key);
+        auto ix = loading.Find(key);
         if (ix >= 0) loading.RemoveAt(ix);
     }
 
@@ -350,7 +475,7 @@ class AroundRank : Tab {
 
 class Intervals : Tab {
     Intervals() {
-        super("Intervals");
+        super("Between");
     }
 
     void DrawInner() override {
