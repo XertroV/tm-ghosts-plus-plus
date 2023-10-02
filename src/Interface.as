@@ -23,6 +23,7 @@ void RenderInterface() {
     if (!S_ShowWindow) return;
     if (!Cache::hasDoneInit) startnew(Cache::Initialize);
 
+
     UI::SetNextWindowSize(500, 300, UI::Cond::Appearing);
     if (UI::Begin(MenuTitle, S_ShowWindow)) {
         if (GetApp().PlaygroundScript is null) {
@@ -258,6 +259,10 @@ class PlayersTab : Tab {
                 for (int i = clip.DisplayStart; i < clip.DisplayEnd; i++) {
                     if (i >= players.Length) break;
                     auto j = players[i];
+                    if (j.GetType() !=  Json::Type::Object) {
+                        warn('not obj: ' + Json::Write(j));
+                        break;
+                    }
                     auto jNames = j['names'];
                     if (jNames.GetType() != Json::Type::Object) break;
                     // trace('j: ' + Json::Write(j));

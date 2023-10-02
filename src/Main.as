@@ -1,10 +1,12 @@
 bool permissionsOkay = false;
+uint startTime = uint(-1);
 
 void Main() {
     CheckRequiredPermissions();
     MLHook::RequireVersionApi('0.3.1');
     startnew(MapCoro);
     startnew(ClearTaskCoro);
+    startTime = Time::Now;
 }
 
 // check for permissions and
