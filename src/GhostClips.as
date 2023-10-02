@@ -29,4 +29,26 @@ namespace GhostClipsMgr {
         }
         return null;
     }
+
+    uint GetInstanceIdAtIx(NGameGhostClips_SMgr@ mgr, uint ix) {
+        auto bufOffset = Reflection::GetType("NGameGhostClips_SMgr").GetMember("Ghosts").Offset + 0x10;
+        auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
+        auto nextIdOrSomething = Dev::GetOffsetUint32(mgr, bufOffset + 0x8);
+        auto bufLen = Dev::GetOffsetUint32(mgr, bufOffset + 0xC);
+        auto bufCapacity = Dev::GetOffsetUint32(mgr, bufOffset + 0x10);
+
+        // A bunch of trial and error to figure this out >.<
+        if (bufLen <= ix) return -1;
+        if (bufPtr == 0 or bufPtr % 8 != 0) return -1;
+        auto slot = Dev::ReadUInt32(bufPtr + (bufCapacity*4) + ix * 4);
+        auto msb = Dev::ReadUInt32(bufPtr + slot * 4) & 0xFF000000;
+        return msb + slot;
+
+        // auto lsb = Dev::ReadUInt32(bufPtr + slot * 4) & 0x00FFFFFF;
+        // if (lsb >= bufCapacity) {
+        //     warn('lsb outside expected range: ' + lsb + " should be < " + bufCapacity);
+        // }
+        // auto msb = Dev::ReadUInt32(bufPtr + (bufCapacity*4*2) + slot * 4) & 0xFF000000;
+        // trace('msb: ' + msb);
+    }
 }

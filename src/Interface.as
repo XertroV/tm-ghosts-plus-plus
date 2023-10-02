@@ -13,6 +13,7 @@ MedalsTab g_Medals;
 LoadGhostsTab g_LoadGhostTab;
 SaveGhostsTab g_SaveGhostTab;
 DebugGhostsTab g_DebugTab;
+DebugCacheTab g_DebugCacheTab;
 
 Tab@[] tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab};
 
@@ -24,7 +25,9 @@ void RenderInterface() {
 
     UI::SetNextWindowSize(400, 300, UI::Cond::Appearing);
     if (UI::Begin(MenuTitle, S_ShowWindow)) {
-        if (!Cache::IsInitialized) {
+        if (GetApp().PlaygroundScript is null) {
+            UI::Text("Please load a map in Solo mode");
+        } else if (!Cache::IsInitialized) {
             UI::Text("Loading...");
         } else {
             UI::BeginTabBar("save or load ghosts");
@@ -32,6 +35,7 @@ void RenderInterface() {
             g_LoadGhostTab.Draw();
 #if SIG_DEVELOPER
             g_DebugTab.Draw();
+            g_DebugCacheTab.Draw();
 #endif
             UI::EndTabBar();
         }
@@ -72,28 +76,64 @@ class SaveGhostsTab : Tab {
 
     void DrawInner() override {
         auto mgr = GhostClipsMgr::Get(GetApp());
-        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
-            DrawSaveGhost(mgr.Ghosts[i], i);
+        if (mgr is null) return;
+        if (mgr.Ghosts.Length == 0) {
+            UI::Text("No ghosts loaded.");
+            return;
         }
+        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+            auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
+            DrawSaveGhost(mgr.Ghosts[i], i, id);
+        }
+        // auto bufOffset = Reflection::GetType("NGameGhostClips_SMgr").GetMember("Ghosts").Offset + 0x10;
+        // auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
+        // auto bufLen = Dev::GetOffsetUint32(mgr, bufOffset + 0xC);
+        // auto bufCapacity = Dev::GetOffsetUint32(mgr, bufOffset + 0x10);
+
+        // for (uint i = 0; i < bufCapacity; i++) {
+        //     auto u1 = Dev::ReadUInt32(bufPtr + i * 4);
+        //     auto u2 = Dev::ReadUInt32(bufPtr + bufCapacity * 4 + i * 4);
+        //     auto u3 = Dev::ReadUInt32(bufPtr + bufCapacity * 8 + i * 4);
+        //     UI::Text(
+        //         Text::Format("%2d. ", i) +
+        //         Text::Format("%08x    ", u1) +
+        //         Text::Format("%08x    ", u2) +
+        //         Text::Format("%08x", u3)
+        //     );
+        // }
     }
 
-    void DrawSaveGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i) {
+    void DrawSaveGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i, uint id) {
         auto gm = gc.GhostModel;
+        auto clip = gc.Clip;
         auto rt = Time::Format(gm.RaceTime);
         UI::AlignTextToFramePadding();
-        UI::Text(gm.GhostNickname + " -- "+rt+"");
+        UI::Text(Text::Format("%02d. ", i) + Text::Format("%08x", id));
+        UI::SameLine();
+        UI::Text(gm.GhostNickname + " -- "+rt+" @ " + Text::FormatPointer(Dev_GetPointerForNod(clip)));
         UI::SameLine();
         bool clicked = UI::Button(Icons::FloppyO + "##" + i);
         AddSimpleTooltip("Save " + gm.GhostNickname + "'s " + rt + " ghost for later.");
-        if (clicked) {
-            SaveGhost(gm);
-        }
+        if (clicked) SaveGhost(gm);
+        UI::SameLine();
+        clicked = UI::Button(Icons::Times + "##" + i);
+        AddSimpleTooltip("Unload ghost");
+        if (clicked) UnloadGhost(i);
+    }
+
+    void UnloadGhost(uint i) {
+        auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+        if (ps is null) throw("null playground script");
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
+        log_info("unloading ghost with instance id: " + id);
+        ps.GhostMgr.Ghost_Remove(MwId(id));
     }
 
     void SaveGhost(CGameCtnGhost@ gm) {
         // we could upload the ghost like archivist, but it's easier to just get the current LB ghost
         // GetApp().PlaygroundScript.ScoreMgr.Map_GetPlayerListRecordList()
-        startnew(CoroutineFuncUserdata(RunSaveGhost), {gm.GhostLogin, gm.Validate_ChallengeUid, gm.GhostNickname});
+        startnew(CoroutineFuncUserdata(RunSaveGhost), ref(array<string> = {gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname}));
     }
 
     void RunSaveGhost(ref@ r) {
@@ -107,82 +147,7 @@ class SaveGhostsTab : Tab {
             return;
         }
         auto rec = recs[0];
-        Cache::AddRecord(rec);
-        NotifySuccess("Saved ghost: ")
-    }
-}
-
-class DebugGhostsTab : Tab {
-    DebugGhostsTab() {
-        super("Debug Ghosts");
-    }
-
-    void DrawInner() override {
-        auto mgr = GhostClipsMgr::Get(GetApp());
-        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
-            DrawDebugGhost(mgr.Ghosts[i], i);
-        }
-    }
-
-    void DrawDebugGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i) {
-        auto gm = gc.GhostModel;
-        auto zcc = gc.GhostZoneCountryCache;
-        if (UI::TreeNode(gm.GhostNickname + "( "+Time::Format(gm.RaceTime)+" )" + "##" + i, UI::TreeNodeFlags::None)) {
-            if (UI::TreeNode("GhostZoneCountryCache##" + i, UI::TreeNodeFlags::DefaultOpen)) {
-                UI::Columns(2);
-                DrawValLabel(zcc.Description, "Description");
-                DrawValLabel(zcc.IdName, "IdName");
-                DrawValLabel(tostring(zcc.IsGroup), "IsGroup");
-                DrawValLabel(zcc.Name, "Name");
-                DrawValLabel(zcc.Login, "Login");
-                DrawValLabel(zcc.Path, "Path");
-                UI::Columns(1);
-                UI::TreePop();
-            }
-            if (UI::TreeNode("Model##" + i, UI::TreeNodeFlags::DefaultOpen)) {
-                UI::Columns(2);
-                DrawValLabel(gm.Size, "Size");
-                DrawValLabel(gm.Duration, "Duration");
-                DrawValLabel(gm.RaceTime, "RaceTime");
-                DrawValLabel(gm.NbRespawns, "NbRespawns");
-                DrawValLabel(gm.StuntsScore, "StuntsScore");
-                DrawValLabel(gm.ModelIdentAuthor.GetName(), "ModelIdentAuthor");
-                DrawValLabel(gm.ModelIdentName.GetName(), "ModelIdentName");
-                DrawValLabel(gm.GhostAvatarName, "GhostAvatarName");
-                DrawValLabel(gm.GhostCountryPath, "GhostCountryPath");
-                DrawValLabel(gm.GhostLogin, "GhostLogin");
-                DrawValLabel(gm.GhostNickname, "GhostNickname");
-                DrawValLabel(gm.GhostTrigram, "GhostTrigram");
-                DrawValLabel(gm.LightTrailColor.ToString(), "LightTrailColor");
-                DrawValLabel(tostring(gm.m_GhostNameLogoType), "m_GhostNameLogoType");
-                DrawValLabel(gm.Validate_ChallengeUid.GetName(), "Validate_ChallengeUid");
-                DrawValLabel(gm.Validate_CpuKind, "Validate_CpuKind");
-                DrawValLabel(gm.Validate_ExeChecksum, "Validate_ExeChecksum");
-                DrawValLabel(gm.Validate_ExeVersion, "Validate_ExeVersion");
-                DrawValLabel(gm.Validate_ExtraTool_Info, "Validate_ExtraTool_Info");
-                DrawValLabel(gm.Validate_GameMode, "Validate_GameMode");
-                DrawValLabel(gm.Validate_GameModeCustomData, "Validate_GameModeCustomData");
-                DrawValLabel(gm.Validate_OsKind, "Validate_OsKind");
-                DrawValLabel(gm.Validate_ScopeId, "Validate_ScopeId");
-                DrawValLabel(gm.Validate_ScopeType, "Validate_ScopeType");
-                DrawValLabel(gm.Validate_TitleId, "Validate_TitleId");
-                UI::Columns(1);
-                UI::TreePop();
-            }
-
-            UI::TreePop();
-        }
-
-    }
-    void DrawValLabel(const string &in v, const string &in l) {
-        UI::Text(l + ": ");
-        UI::NextColumn();
-        UI::Text(v);
-        UI::NextColumn();
-    }
-
-    void DrawValLabel(uint v, const string &in l) {
-        DrawValLabel(tostring(v), l);
+        Cache::AddRecord(rec, nickname);
     }
 }
 
@@ -230,16 +195,107 @@ class PlayersTab : Tab {
     void OnMapChange() override {
     }
 }
+
+
+bool SortGhosts(const Json::Value@ &in a, const Json::Value@ &in b) {
+    if (a is null) return false;
+    if (b is null) return true;
+    return (int(a['time']) - int(b['time'])) < 0;
+};
+
+
 class SavedTab : Tab {
     SavedTab() {
-        super("Favorites");
+        super("Saved");
+    }
+
+    bool cacheLoaded = false;
+    bool cacheLoadStarted = false;
+    Json::Value@[] ghostsForMap;
+
+    void CheckLocalCache() {
+        if (cacheLoadStarted) return;
+        cacheLoadStarted = true;
+        startnew(CoroutineFunc(this.LoadCache));
+    }
+
+    void LoadCache() {
+        Cache::GetGhostsForMap(s_currMap, ghostsForMap);
+        if (ghostsForMap.Length > 1)
+            ghostsForMap.Sort(SortGhosts);
+        cacheLoaded = true;
     }
 
     void DrawInner() override {
-        UI::Text("Favs");
+        CheckLocalCache();
+        if (!cacheLoaded) {
+            UI::Text("Loading...");
+            return;
+        }
+
+        if (UI::BeginTable("saved ghosts", 4, UI::TableFlags::SizingFixedFit)) {
+            UI::ListClipper clip(ghostsForMap.Length);
+            while (clip.Step()) {
+                for (int i = clip.DisplayStart; i < clip.DisplayEnd; i++) {
+                // for (int i = 0; i < ghostsForMap.Length; i++) {
+                    auto j = ghostsForMap[i];
+                    string key = j['key'];
+                    string name = j.Get('name', "?");
+                    // string name = j['name'];
+                    string time = Time::Format(j.Get('time', 0));
+                    // string time = j['time'];
+                    string date = j.Get('date', '?');
+                    // string date = j['date'];
+                    UI::PushID(i);
+
+                    UI::TableNextRow();
+                    UI::TableNextColumn();
+                    UI::AlignTextToFramePadding();
+                    UI::Text(name);
+                    UI::TableNextColumn();
+                    UI::Text(time);
+                    UI::TableNextColumn();
+                    UI::Text(date);
+                    UI::TableNextColumn();
+                    UI::BeginDisabled(loading.FindByRef(key) >= 0);
+                    if (UI::Button("Load##"+i)) {
+                        startnew(CoroutineFuncUserdata(this.LoadGhost), j);
+                    }
+                    UI::EndDisabled();
+
+                    UI::PopID();
+                }
+            }
+
+            UI::EndTable();
+        }
+    }
+
+    string[] loading;
+    void LoadGhost(ref@ r) {
+        auto j = cast<Json::Value>(r);
+        string key = j['key'];
+        string name = j['name'];
+        string time = Time::Format(int(j['time']));
+        loading.InsertLast(key);
+        Notify("Loading ghost: " + name + " / " + time);
+        Cache::LoadGhost(key);
+        auto ix = loading.FindByRef(key);
+        if (ix >= 0) loading.RemoveAt(ix);
     }
 
     void OnMapChange() override {
+        ClearLocalCache();
+    }
+
+    void OnNewGhostSaved() {
+        ClearLocalCache();
+    }
+
+    void ClearLocalCache() {
+        cacheLoaded = false;
+        cacheLoadStarted = false;
+        ghostsForMap.RemoveRange(0, ghostsForMap.Length);
     }
 }
 

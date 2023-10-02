@@ -4,7 +4,7 @@ void Main() {
     CheckRequiredPermissions();
     MLHook::RequireVersionApi('0.3.1');
     startnew(MapCoro);
-    startnew(Intercepts);
+    startnew(ClearTaskCoro);
 }
 
 // check for permissions and

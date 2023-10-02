@@ -21,13 +21,12 @@ namespace Core {
         for (uint i = 0; i < wsids.Length; i++) {
             wsidsBuf.Add(wsids[i]);
         }
-        auto resp = scoreMgr.Map_GetPlayerListRecordList(userMgr.MainUser.Id, wsidsBuf, mapUid, "PersonalBest", "", "", "");
+        auto resp = scoreMgr.Map_GetPlayerListRecordList(userMgr.Users[0].Id, wsidsBuf, mapUid, "PersonalBest", "", "", "");
         WaitAndClearTaskLater(resp, scoreMgr);
         if (resp.HasFailed || !resp.HasSucceeded) {
             log_warn('GetMapPlayerListRecordList failed: ' + resp.ErrorCode + ", " + resp.ErrorType + ", " + resp.ErrorDescription);
             return null;
         }
-        auto x = resp.MapRecordList;
         CMapRecord@[] ret;
         for (uint i = 0; i < resp.MapRecordList.Length; i++) {
             ret.InsertLast(resp.MapRecordList[i]);
@@ -43,9 +42,10 @@ namespace Core {
         WaitAndClearTaskLater(task, dfm);
         if (task.HasFailed || !task.HasSucceeded) {
             log_warn('Ghost_Download failed: ' + task.ErrorCode + ", " + task.ErrorType + ", " + task.ErrorDescription);
-            return null;
+            return;
         }
-        gm.Ghost_Add(task.Ghost, true);
+        auto instId = gm.Ghost_Add(task.Ghost, true);
+        print('Instance ID: ' + instId.GetName() + " / " + Text::Format("%08x", instId.Value));
     }
 
     void LoadGhost(const string &in filename, bool onlyFirst = false) {
@@ -56,10 +56,11 @@ namespace Core {
         WaitAndClearTaskLater(task, dfm);
         if (task.HasFailed || !task.HasSucceeded) {
             log_warn('Replay_Load failed: ' + task.ErrorCode + ", " + task.ErrorType + ", " + task.ErrorDescription);
-            return null;
+            return;
         }
         for (uint i = 0; i < task.Ghosts.Length; i++) {
-            gm.Ghost_Add(task.Ghosts[i], true);
+            auto instId = gm.Ghost_Add(task.Ghosts[i], true);
+            print('Instance ID: ' + instId.GetName() + " / " + Text::Format("%08x", instId.Value));
             if (onlyFirst) break;
         }
     }
