@@ -1,10 +1,13 @@
-# Too Many Ghosts
+# Ghost Picker
 
 **Requires MLHook** -- you must also have MLHook installed.
 
-Toggle lots of ghosts at once.
-By default, toggles the top 20.
-Up to 100 ghosts are toggle-able at once.
+Pick any ghost (or ghosts) from the leaderboards to race against in solo.
+
+- Ghosts around your PB.
+- Ghosts around a specific rank.
+- Ghosts a bit faster than your PB.
+- Ghosts that are 500ms, 1000ms, 1500ms, ... faster than your PB (ghosts that are at regular intervals).
 
 License: Public Domain
 

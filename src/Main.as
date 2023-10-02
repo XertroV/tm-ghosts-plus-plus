@@ -1,19 +1,17 @@
-
-NadeoApi@ api;
 bool permissionsOkay = false;
 
 void Main() {
     CheckRequiredPermissions();
-    @api = NadeoApi();
     MLHook::RequireVersionApi('0.3.1');
     startnew(MapCoro);
+    startnew(Intercepts);
 }
 
 // check for permissions and
 void CheckRequiredPermissions() {
     permissionsOkay = Permissions::ViewRecords() && Permissions::PlayRecords();
     if (!permissionsOkay) {
-        NotifyWarn("Your edition of the game does not support playing against record ghosts.\n\nThis plugin won't work, sorry :(.");
+        NotifyWarning("Your edition of the game does not support playing against record ghosts.\n\nThis plugin won't work, sorry :(.");
         while(true) { sleep(10000); } // do nothing forever
     }
 }
@@ -26,7 +24,14 @@ void MapCoro() {
         if (s_currMap != CurrentMap) {
             s_currMap = CurrentMap;
             ResetToggleCache();
+            OnMapChange();
         }
+    }
+}
+
+void OnMapChange() {
+    for (uint i = 0; i < tabs.Length; i++) {
+        tabs[i].OnMapChange();
     }
 }
 
@@ -37,8 +42,6 @@ void ResetToggleCache() {
     lastRecordPid = "";
 }
 
-[Setting hidden]
-bool g_windowVisible = false;
 int g_numGhosts = 20;
 int g_ghostRankOffset = 0;
 
@@ -57,43 +60,16 @@ const string GenGhostRankString() {
 
 uint lastRefresh = 0;
 const uint disableTime = 3000;
-void RenderInterface() {
+void Render() {
     if (!permissionsOkay) return;
-    if (!g_windowVisible) return;
-    if (UI::Begin("Too Many Ghosts", g_windowVisible, UI::WindowFlags::AlwaysAutoResize | UI::WindowFlags::NoCollapse)) {
-        auto grString = GenGhostRankString();
-        g_numGhosts = UI::SliderInt("Number of Ghosts", g_numGhosts, 1, 100);
-        g_ghostRankOffset = UI::InputInt("Start at rank", g_ghostRankOffset + 1) - 1;
-        if (MDisabledButton(lastRefresh + disableTime > Time::Now, "Toggle " + grString + ".")) {
-            lastRefresh = Time::Now;
-            startnew(ToggleTopGhosts);
-        }
-        if (MDisabledButton(lastRefresh + disableTime > Time::Now, "Show " + grString + ".")) {
-            lastRefresh = Time::Now;
-            startnew(ShowTopGhosts);
-        }
-        if (MDisabledButton(lastRefresh + disableTime > Time::Now, "Hide " + grString + ".")) {
-            lastRefresh = Time::Now;
-            startnew(HideTopGhosts);
-        }
-        if (MDisabledButton(lastRefresh + disableTime > Time::Now, "Hide all enabled ghosts.")) {
-            lastRefresh = Time::Now;
-            startnew(HideAllGhosts);
-        }
-        AddSimpleTooltip("Useful if you reduce the number of ghosts and there are some left over.");
-        int lastRank = g_ghostRankOffset + g_numGhosts;
-        if (MDisabledButton(lastRefresh + disableTime > Time::Now, "Spectate ghost at rank " + lastRank + (g_numGhosts > 1 ? "\n(the last of " + grString + ")" : ""))) {
-            lastRefresh = Time::Now;
-            startnew(ToggleSpectator);
-        }
-    }
-    UI::End();
+    if (!S_ShowWindow) return;
+    return;
 }
 
 void RenderMenu() {
     if (!permissionsOkay) return;
-    if (UI::MenuItem("\\$888" + Icons::SnapchatGhost + "\\$z Too Many Ghosts", "", g_windowVisible)) {
-        g_windowVisible = !g_windowVisible;
+    if (UI::MenuItem("\\$888" + Icons::HandPointerO + "\\$z Ghost Picker", "", S_ShowWindow)) {
+        S_ShowWindow = !S_ShowWindow;
     }
 }
 
@@ -119,12 +95,12 @@ array<string> UpdateMapRecords() {
     if (!permissionsOkay) return array<string>();
     if (records.GetType() != Json::Type::Array || int(records.Length) < g_numGhosts || lastOffset != g_ghostRankOffset) {
         lastOffset = g_ghostRankOffset;
-        Json::Value mapRecords = api.GetMapRecords("Personal_Best", CurrentMap, true, g_numGhosts, g_ghostRankOffset);
+        Json::Value mapRecords = Live::GetMapRecords("Personal_Best", CurrentMap, true, g_numGhosts, g_ghostRankOffset);
         // trace(Json::Write(records));
         auto tops = mapRecords['tops'];
         if (tops.GetType() != Json::Type::Array) {
             warn('api did not return an array for records; instead got: ' + Json::Write(mapRecords));
-            NotifyWarn("API did not return map records.");
+            NotifyWarning("API did not return map records.");
             return array<string>();
         }
         records = tops[0]['top'];
@@ -198,7 +174,7 @@ void ToggleSpectator() {
     if (!permissionsOkay) return;
     auto pids = UpdateMapRecords();
     if (lastRecordPid == "" || int(pids.Length) < g_numGhosts) {
-        NotifyWarn("\n>> Toggle ghosts first at least once. <<\n");
+        NotifyWarning("\n>> Toggle ghosts first at least once. <<\n");
     } else {
         MLHook::Queue_SH_SendCustomEvent("TMxSM_Race_Record_SpectateGhost", {pids[g_numGhosts - 1]});
     }
@@ -206,66 +182,25 @@ void ToggleSpectator() {
 
 
 /*
-API
-api stuff -- copied from COTD_HUD
-*/
-
-void log_trace(const string &in msg) {
-    trace(msg);
-}
-
-class NadeoApi {
-    string liveSvcUrl;
-
-    NadeoApi() {
-        NadeoServices::AddAudience("NadeoLiveServices");
-        liveSvcUrl = NadeoServices::BaseURL();
-    }
-
-    void AssertGoodPath(const string &in path) {
-        if (path.Length <= 0 || !path.StartsWith("/")) {
-            throw("API Paths should start with '/'!");
-        }
-    }
-
-    const string LengthAndOffset(uint length, uint offset) {
-        return "length=" + length + "&offset=" + offset;
-    }
-
-    /* LIVE SERVICES API CALLS */
-
-    Json::Value CallLiveApiPath(const string &in path) {
-        AssertGoodPath(path);
-        return FetchLiveEndpoint(liveSvcUrl + path);
-    }
-
-    /* see COTD_HUD/example/getMapRecords.json */
-    Json::Value GetMapRecords(const string &in seasonUid, const string &in mapUid, bool onlyWorld = true, uint length=5, uint offset=0) {
-        // Personal_Best
-        string qParams = onlyWorld ? "?onlyWorld=true" : "";
-        if (onlyWorld) qParams += "&" + LengthAndOffset(length, offset);
-        return CallLiveApiPath("/api/token/leaderboard/group/" + seasonUid + "/map/" + mapUid + "/top" + qParams);
-    }
-}
-
-Json::Value FetchLiveEndpoint(const string &in route) {
-    log_trace("[FetchLiveEndpoint] Requesting: " + route);
-    while (!NadeoServices::IsAuthenticated("NadeoLiveServices")) { yield(); }
-    auto req = NadeoServices::Get("NadeoLiveServices", route);
-    req.Start();
-    while(!req.Finished()) { yield(); }
-    return Json::Parse(req.String());
-}
-
-/*
 UI STUFF
 */
 
 void Notify(const string &in msg) {
-    // UI::ShowNotification("Too Many Ghosts", msg, vec4(.1, .8, .5, .3));
-    UI::ShowNotification("Too Many Ghosts", msg, vec4(.2, .8, .5, .3));
+    UI::ShowNotification(Meta::ExecutingPlugin().Name, msg);
+    trace("Notified: " + msg);
 }
 
-void NotifyWarn(const string &in msg) {
-    UI::ShowNotification("Too Many Ghosts", msg, vec4(1, .5, .1, .5), 10000);
+void NotifySuccess(const string &in msg) {
+    UI::ShowNotification(Meta::ExecutingPlugin().Name, msg, vec4(.4, .7, .1, .3), 10000);
+    trace("Notified: " + msg);
+}
+
+void NotifyError(const string &in msg) {
+    warn(msg);
+    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Error", msg, vec4(.9, .3, .1, .3), 15000);
+}
+
+void NotifyWarning(const string &in msg) {
+    warn(msg);
+    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Warning", msg, vec4(.9, .6, .2, .3), 15000);
 }
