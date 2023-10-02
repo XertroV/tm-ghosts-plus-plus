@@ -258,8 +258,10 @@ class PlayersTab : Tab {
                 for (int i = clip.DisplayStart; i < clip.DisplayEnd; i++) {
                     if (i >= players.Length) break;
                     auto j = players[i];
+                    auto jNames = j['names'];
+                    if (jNames.GetType() != Json::Type::Object) break;
                     // trace('j: ' + Json::Write(j));
-                    auto names = j['names'].GetKeys();
+                    auto names = jNames.GetKeys();
                     string namesStr = string::Join(names, ", ");
                     string login = j['key'];
 
