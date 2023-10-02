@@ -58,6 +58,7 @@ namespace Cache {
             @j = GetLogin(login);
             if (j['names'].HasKey(name)) return;
             j['names'][name] = 1;
+            LoginNames[login+name] = true;
         } else {
             @j = Json::Object();
             j['names'] = Json::Object();
@@ -65,10 +66,11 @@ namespace Cache {
             j['wsid'] = wsid;
             j['key'] = login;
             Logins[login] = LoginsArr.Length;
-            LoginsArr.InsertLast(login);
+            LoginsArr.InsertLast(j);
             LoginNames[login+name] = true;
         }
         SaveToLoginCache(j);
+        // g_Players.OnUpdatedPlayers
     }
 
     void PopulateLoginNames() {

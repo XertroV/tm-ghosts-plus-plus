@@ -261,7 +261,10 @@ class PlayersTab : Tab {
                     auto j = players[i];
                     if (j.GetType() !=  Json::Type::Object) {
                         warn('not obj: ' + Json::Write(j));
-                        break;
+                        @j = Json::Object();
+                        j['key'] = 'unknown';
+                        j['names'] = Json::Object();
+                        j['names']['< UNK ERROR >'] = 1;
                     }
                     auto jNames = j['names'];
                     if (jNames.GetType() != Json::Type::Object) break;
@@ -277,7 +280,7 @@ class PlayersTab : Tab {
 
                     UI::TableNextColumn();
                     UI::AlignTextToFramePadding();
-                    UI::Text(namesStr);
+                    UI::Text(i + ". " + namesStr);
 
                     UI::TableNextColumn();
                     UI::BeginDisabled(loading.Find(login) >= 0);
