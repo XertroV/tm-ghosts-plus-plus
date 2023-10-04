@@ -1,4 +1,42 @@
 
+class DebugClipsTab : Tab {
+    DebugClipsTab() {
+        super("Debug Clips");
+    }
+
+    void DrawInner() override {
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        if (mgr is null) return;
+        auto clip1 = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20));
+        uint64 clip1Ptr = Dev::GetOffsetUint64(mgr, 0x20);
+        auto clip2 = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x40));
+        uint64 clip2Ptr = Dev::GetOffsetUint64(mgr, 0x40);
+        auto debug1 = GetGhostClipPlayerDebugValues(clip1);
+        auto debug2 = GetGhostClipPlayerDebugValues(clip2);
+
+        DrawClip("clip1", clip1, clip1Ptr, debug1);
+        UI::Separator();
+        DrawClip("clip2", clip2, clip2Ptr, debug2);
+    }
+
+    void DrawClip(const string &in name, CGameCtnMediaClipPlayer@ clip, uint64 ptr, string[]@ debugVals) {
+        UI::Text(name);
+        UI::Indent();
+        UI::Text("ptr: " + Text::FormatPointer(ptr));
+        if (UI::IsItemClicked()) {
+            IO::SetClipboard(Text::FormatPointer(ptr));
+            Notify("Copied: " + Text::FormatPointer(ptr));
+        }
+        UI::Text("Debug vals: " + string::Join(debugVals, ", "));
+        if (UI::Button("Pause " + name)) {
+            SetGhostClipPlayerPaused(clip, 3.0);
+        }
+        if (UI::Button("Unpause " + name)) {
+            SetGhostClipPlayerUnpaused(clip, 3.0, float(GhostClipsMgr::GetMaxGhostDuration(GetApp())) / 1000.);
+        }
+        UI::Unindent();
+    }
+}
 class DebugGhostsTab : Tab {
     DebugGhostsTab() {
         super("Debug Ghosts");
@@ -7,6 +45,7 @@ class DebugGhostsTab : Tab {
     void DrawInner() override {
         auto mgr = GhostClipsMgr::Get(GetApp());
         if (mgr is null) return;
+        // UI::Text(GetReplaySpeed_Debug());
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
             DrawDebugGhost(mgr.Ghosts[i], i);
         }

@@ -2,7 +2,7 @@ void DrawScrubber() {
     auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
     if (ps is null) return;
     vec2 screen = vec2(Draw::GetWidth(), Draw::GetHeight());
-    vec2 pos = screen * vec2(0.05, 0.9);
+    vec2 pos = screen * vec2(0.1, 0.87);
     vec2 size = screen * vec2(0.3, 0);
     auto spacing = UI::GetStyleVarVec2(UI::StyleVar::ItemSpacing);
     auto fp = UI::GetStyleVarVec2(UI::StyleVar::FramePadding);
@@ -35,7 +35,17 @@ void DrawScrubber() {
         UI::SameLine();
         rClicked = UI::Button((scrubberPaused ? Icons::Play : Icons::Pause) + "##scrubber-toggle", vec2(50, 0)) || rClicked;
 
+        auto mgr = GhostClipsMgr::Get(GetApp());
+
+        if (exit) {
+            ExitSpectatingGhostAndCleanUp();
+            rClicked = scrubberPaused;
+        }
         if (reset) setProg = 0;
+        if (stepBack || stepFwd) {
+            rClicked = !scrubberPaused;
+            setProg = t + 10 * (stepBack ? -1 : 1);
+        }
         if (setProg != t) {
             trace('t / s ' + t + ' / ' + setProg);
             auto newStartTime = ps.Now - setProg;
@@ -44,14 +54,21 @@ void DrawScrubber() {
             if (ps !is null) {
                 ps.Ghosts_SetStartTime(newStartTime);
             }
+            if (scrubberPaused) {
+                GhostClipsMgr::PauseClipPlayers(mgr, float(t) / 1000.);
+            }
         }
         if (rClicked) {
+            // makes pausing smoother
+            t += 10;
             scrubberPaused = !scrubberPaused;
             scrubberPauseAt = t;
+            if (scrubberPaused) {
+                GhostClipsMgr::PauseClipPlayers(mgr, float(t) / 1000.);
+            } else {
+                GhostClipsMgr::UnpauseClipPlayers(mgr, float(t) / 1000., float(GhostClipsMgr::GetMaxGhostDuration(mgr)) / 1000.);
+            }
         }
-        // if (scrubberPaused) {
-        //     // ps.Ghosts_SetStartTime(ps.Now - t);
-        // }
     }
     UI::End();
 }
@@ -66,7 +83,6 @@ void ML_PG_Callback(ref@ r) {
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (ps is null) return;
         auto setStart = ps.Now - scrubberPauseAt;
-        setStart = setStart - setStart%10;
         ps.Ghosts_SetStartTime(setStart);
     }
 }

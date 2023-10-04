@@ -14,8 +14,9 @@ LoadGhostsTab g_LoadGhostTab;
 SaveGhostsTab g_SaveGhostTab;
 DebugGhostsTab g_DebugTab;
 DebugCacheTab g_DebugCacheTab;
+DebugClipsTab g_DebugClips;
 
-Tab@[] tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab};
+Tab@[] tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips};
 
 /** Render function called every frame intended for `UI`.
 */
@@ -42,6 +43,7 @@ void RenderInterface() {
             g_LoadGhostTab.Draw();
 #if SIG_DEVELOPER
             g_DebugTab.Draw();
+            g_DebugClips.Draw();
             g_DebugCacheTab.Draw();
 #endif
             UI::EndTabBar();
@@ -208,11 +210,13 @@ class SaveGhostsTab : Tab {
             // auto g = GhostClipsMgr::GetGhostFromInstanceId()
             CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
             // while PS exists and now < finish time of longest ghost
-            while (IsSpectatingGhost() && GetApp().PlaygroundScript.Now < (lastSpectatedGhostRaceTime + lastSetStartTime)) {
+            while (IsSpectatingGhost() && GetApp().PlaygroundScript.Now < (lastSpectatedGhostRaceTime + lastSetStartTime - 10)) {
                 yield();
             }
             if (!IsSpectatingGhost()) break;
-            cast<CSmArenaRulesMode>(GetApp().PlaygroundScript).Ghosts_SetStartTime(ps.Now);
+            if (!scrubberPaused) {
+                cast<CSmArenaRulesMode>(GetApp().PlaygroundScript).Ghosts_SetStartTime(ps.Now);
+            }
             yield();
         }
         watchLoopActive = false;
@@ -379,8 +383,9 @@ class PlayersTab : Tab {
         string wsid = j['wsid'];
         auto names = j['names'].GetKeys();
         Core::LoadGhostOfPlayer(wsid, s_currMap, string::Join(names, ", "));
-        auto ix = loading.Find(login);
-        if (ix >= 0) loading.RemoveAt(ix);
+        // no need to refind someones ghost
+        // auto ix = loading.Find(login);
+        // if (ix >= 0) loading.RemoveAt(ix);
     }
 
     Json::Value@[] filteredPlayers;
@@ -390,6 +395,7 @@ class PlayersTab : Tab {
     }
 
     void OnMapChange() override {
+        loading.RemoveRange(0, loading.Length);
     }
 }
 

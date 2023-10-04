@@ -2,23 +2,39 @@ bool permissionsOkay = false;
 uint startTime = uint(-1);
 
 void Main() {
+    trace('ghost picker checking permissions');
     CheckRequiredPermissions();
-    MLHook::RequireVersionApi('0.3.1');
+    trace('checked permissions');
     startnew(MapCoro);
     startnew(ClearTaskCoro);
     startnew(SetupIntercepts);
+    startnew(InitGP);
+    trace('started coros');
     startTime = Time::Now;
-    MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
 
+}
+
+void InitGP() {
+    trace('registering callback');
+    MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
+    trace('checking spec');
     if (IsSpectatingGhost()) {
+        trace('is spectating ghost! getting current values');
         // get current spec'd ghost id and update values
         SetCurrentGhostValues();
+        trace("starting watch loop on init because we're spectating a ghost");
+        startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
     }
+    trace('init done');
 }
 
 void Unload() {
+    trace('unloading ghost picker #1 paused');
+    if (scrubberPaused) GhostClipsMgr::UnpauseClipPlayers(GhostClipsMgr::Get(GetApp()), 0., 60.0);
     scrubberPaused = false;
+    trace('unloading ghost picker #2 mlhook');
     MLHook::UnregisterMLHooksAndRemoveInjectedML();
+    trace('unloading ghost picker #3 done');
 }
 void OnDestroyed() { Unload(); }
 void OnDisabled() { Unload(); }

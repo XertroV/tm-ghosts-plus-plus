@@ -14,8 +14,10 @@ namespace GhostClipsMgr {
     }
 
     uint GetMaxGhostDuration(CGameCtnApp@ app) {
+        return GetMaxGhostDuration(GhostClipsMgr::Get(app));
+    }
+    uint GetMaxGhostDuration(NGameGhostClips_SMgr@ mgr) {
         uint maxTime = 0;
-        auto mgr = GhostClipsMgr::Get(app);
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
             maxTime = Math::Max(mgr.Ghosts[i].GhostModel.RaceTime, maxTime);
         }
@@ -86,6 +88,7 @@ namespace GhostClipsMgr {
         return null;
     }
 
+    // this is the result of the last call to Ghosts_SetStartTime
     uint GetCurrentGhostTime(NGameGhostClips_SMgr@ mgr) {
         if (mgr.Ghosts.Length == 0) return -1;
         auto clipPlayer = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, GhostsOffset - 0x30));
@@ -98,5 +101,15 @@ namespace GhostClipsMgr {
         }
         // this nod is 0x350 bytes large => memory will always be allocated
         return Dev::GetOffsetUint32(clipPlayer, 0x320);
+    }
+
+    void PauseClipPlayers(NGameGhostClips_SMgr@ mgr, float currTime) {
+        SetGhostClipPlayerPaused(cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20)), currTime);
+        SetGhostClipPlayerPaused(cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x40)), currTime);
+    }
+
+    void UnpauseClipPlayers(NGameGhostClips_SMgr@ mgr, float currTime, float totalTime) {
+        SetGhostClipPlayerUnpaused(cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20)), currTime, totalTime);
+        SetGhostClipPlayerUnpaused(cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x40)), currTime, totalTime);
     }
 }
