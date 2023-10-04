@@ -6,8 +6,20 @@ NGameGhostClips_SMgr@ GetGhostClipsMgr(CGameCtnApp@ app) {
 }
 
 namespace GhostClipsMgr {
+    const uint16 GhostsOffset = GetOffset("NGameGhostClips_SMgr", "Ghosts");
+    const uint16 GhostInstIdsOffset = GhostsOffset + 0x10;
+
     NGameGhostClips_SMgr@ Get(CGameCtnApp@ app) {
         return GetGhostClipsMgr(app);
+    }
+
+    uint GetMaxGhostDuration(CGameCtnApp@ app) {
+        uint maxTime = 0;
+        auto mgr = GhostClipsMgr::Get(app);
+        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+            maxTime = Math::Max(mgr.Ghosts[i].GhostModel.RaceTime, maxTime);
+        }
+        return maxTime;
     }
 
     NGameGhostClips_SClipPlayerGhost@ Find(NGameGhostClips_SMgr@ mgr, uint32 entUid) {
@@ -32,7 +44,7 @@ namespace GhostClipsMgr {
 
     uint GetInstanceIdAtIx(NGameGhostClips_SMgr@ mgr, uint ix) {
         if (mgr is null) return uint(-1);
-        auto bufOffset = Reflection::GetType("NGameGhostClips_SMgr").GetMember("Ghosts").Offset + 0x10;
+        auto bufOffset = GhostInstIdsOffset;
         auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
         auto nextIdOrSomething = Dev::GetOffsetUint32(mgr, bufOffset + 0x8);
         auto bufLen = Dev::GetOffsetUint32(mgr, bufOffset + 0xC);
@@ -53,5 +65,38 @@ namespace GhostClipsMgr {
         // }
         // auto msb = Dev::ReadUInt32(bufPtr + (bufCapacity*4*2) + slot * 4) & 0xFF000000;
         // trace('msb: ' + msb);
+    }
+
+    NGameGhostClips_SClipPlayerGhost@ GetGhostFromInstanceId(NGameGhostClips_SMgr@ mgr, uint instanceId) {
+        auto lsb = instanceId & 0x00FFFFFF;
+        auto bufOffset = GhostInstIdsOffset;
+        // auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
+        // auto nextIdOrSomething = Dev::GetOffsetUint32(mgr, bufOffset + 0x8);
+        // auto bufLen = Dev::GetOffsetUint32(mgr, bufOffset + 0xC);
+        auto bufCapacity = Dev::GetOffsetUint32(mgr, bufOffset + 0x10);
+        if (lsb > bufCapacity) {
+            warn('unexpectedly high ghost instance ID');
+            return null;
+        }
+        for (uint i = 0; i < bufCapacity; i++) {
+            if (GetInstanceIdAtIx(mgr, i) == instanceId) {
+                return mgr.Ghosts[i];
+            }
+        }
+        return null;
+    }
+
+    uint GetCurrentGhostTime(NGameGhostClips_SMgr@ mgr) {
+        if (mgr.Ghosts.Length == 0) return -1;
+        auto clipPlayer = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, GhostsOffset - 0x30));
+        if (clipPlayer is null) {
+            @clipPlayer = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, GhostsOffset - 0x10));
+        }
+        if (clipPlayer is null) {
+            warn("unexpected clip player null");
+            return -1;
+        }
+        // this nod is 0x350 bytes large => memory will always be allocated
+        return Dev::GetOffsetUint32(clipPlayer, 0x320);
     }
 }

@@ -6,6 +6,7 @@ class DebugGhostsTab : Tab {
 
     void DrawInner() override {
         auto mgr = GhostClipsMgr::Get(GetApp());
+        if (mgr is null) return;
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
             DrawDebugGhost(mgr.Ghosts[i], i);
         }
@@ -94,6 +95,11 @@ class DebugCacheTab : Tab {
         DrawValLabel(Cache::LoginsArr.Length, "LoginsArr.Length");
         DrawValLabel(Cache::FavoritesArr.Length, "FavoritesArr.Length");
         DrawValLabel(Cache::MapsArr.Length, "MapsArr.Length");
+        UI::Separator();
+        DrawValLabel(lastSetStartTime, "lastSetStartTime");
+        DrawValLabel(lastSpectatedGhostInstanceId.Value, "lastSpectatedGhostInstanceId.Value");
+        DrawValLabel(lastSpectatedGhostRaceTime, "lastSpectatedGhostRaceTime");
+
         UI::Columns(1);
     }
 }

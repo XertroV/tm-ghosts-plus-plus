@@ -28,6 +28,12 @@ void RenderInterface() {
     if (UI::Begin(MenuTitle, S_ShowWindow)) {
         if (GetApp().PlaygroundScript is null) {
             UI::Text("Please load a map in Solo mode");
+#if SIG_DEVELOPER
+            UI::BeginTabBar("save or load ghosts");
+            g_DebugTab.Draw();
+            g_DebugCacheTab.Draw();
+            UI::EndTabBar();
+#endif
         } else if (!Cache::IsInitialized) {
             UI::Text("Loading...");
         } else {
@@ -72,7 +78,7 @@ class Tab {
 
 class SaveGhostsTab : Tab {
     SaveGhostsTab() {
-        super("Save Ghosts");
+        super("Curr Ghosts");
     }
 
     uint[] saving;
@@ -85,11 +91,12 @@ class SaveGhostsTab : Tab {
             return;
         }
 
-        if (UI::BeginTable("save-ghosts", 5, UI::TableFlags::SizingStretchProp)) {
+        if (UI::BeginTable("save-ghosts", 6, UI::TableFlags::SizingStretchProp)) {
 
             UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 40.);
             UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
             UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 80.);
+            UI::TableSetupColumn("Spectate", UI::TableColumnFlags::WidthFixed, 40.);
             UI::TableSetupColumn("Save", UI::TableColumnFlags::WidthFixed, 40.);
             UI::TableSetupColumn("Unload", UI::TableColumnFlags::WidthFixed, 40.);
 
@@ -106,8 +113,7 @@ class SaveGhostsTab : Tab {
 
             UI::EndTable();
         }
-        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
-        }
+#if DEV
         // auto bufOffset = Reflection::GetType("NGameGhostClips_SMgr").GetMember("Ghosts").Offset + 0x10;
         // auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
         // auto bufLen = Dev::GetOffsetUint32(mgr, bufOffset + 0xC);
@@ -121,9 +127,10 @@ class SaveGhostsTab : Tab {
         //         Text::Format("%2d. ", i) +
         //         Text::Format("%08x    ", u1) +
         //         Text::Format("%08x    ", u2) +
-        //         Text::Format("%08x", u3)
+        //         Text::Format("%08x    ", u3)
         //     );
         // }
+#endif
     }
 
     void DrawSaveGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i, uint id) {
@@ -144,8 +151,13 @@ class SaveGhostsTab : Tab {
         UI::Text(rt);
 
         UI::TableNextColumn();
+        bool clicked = UI::Button(Icons::Eye + "##" + i);
+        AddSimpleTooltip("Spectate");
+        if (clicked) startnew(CoroutineFuncUserdataInt64(SpectateGhost), int64(i));
+
+        UI::TableNextColumn();
         UI::BeginDisabled(saving.Find(id) >= 0);
-        bool clicked = UI::Button(Icons::FloppyO + "##" + i);
+        clicked = UI::Button(Icons::FloppyO + "##" + i);
         AddSimpleTooltip("Save " + gm.GhostNickname + "'s " + rt + " ghost for later.");
         if (clicked) SaveGhost(gm, id);
         UI::EndDisabled();
@@ -156,6 +168,56 @@ class SaveGhostsTab : Tab {
         if (clicked) UnloadGhost(i);
     }
 
+    void SpectateGhost(int64 _i) {
+        uint i = uint(_i);
+        auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+        if (ps is null) throw("null playground script");
+        auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
+
+        startnew(CoroutineFunc(this.WatchGhostsToLoopThem));
+
+        // auto cmap = GetApp().Network.ClientManiaAppPlayground;
+        // if (cmap is null) throw("null cmap");
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
+        auto g = mgr.Ghosts[i].GhostModel;
+
+        auto ghostPlayTime = int(ps.Now) - lastSetStartTime;
+        // if we choose a ghost that has already finished, restart ghosts
+        if (g.RaceTime < ghostPlayTime) {
+            ps.Ghosts_SetStartTime(ps.Now);
+        }
+
+        log_info("spectating ghost with instance id: " + id);
+        ps.UnspawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
+        ps.UIManager.UIAll.ForceSpectator = true;
+        // normally 1 but this works and prevents ghost scrubber doing annoying things
+        ps.UIManager.UIAll.SpectatorForceCameraType = 3;
+        ps.UIManager.UIAll.Spectator_SetForcedTarget_Ghost(MwId(id));
+        ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::EndRound;
+    }
+
+    bool watchLoopActive = false;
+    void WatchGhostsToLoopThem() {
+        if (watchLoopActive) return;
+        watchLoopActive = true;
+        // main ghost watch loop
+        while (IsSpectatingGhost() && watchLoopActive) {
+            // curr loaded max time
+            // uint maxTime = GhostClipsMgr::GetMaxGhostDuration(GetApp());
+            // auto g = GhostClipsMgr::GetGhostFromInstanceId()
+            CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+            // while PS exists and now < finish time of longest ghost
+            while (IsSpectatingGhost() && GetApp().PlaygroundScript.Now < (lastSpectatedGhostRaceTime + lastSetStartTime)) {
+                yield();
+            }
+            if (!IsSpectatingGhost()) break;
+            cast<CSmArenaRulesMode>(GetApp().PlaygroundScript).Ghosts_SetStartTime(ps.Now);
+            yield();
+        }
+        watchLoopActive = false;
+    }
+
     void UnloadGhost(uint i) {
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (ps is null) throw("null playground script");
@@ -163,6 +225,8 @@ class SaveGhostsTab : Tab {
         auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
         log_info("unloading ghost with instance id: " + id);
         ps.GhostMgr.Ghost_Remove(MwId(id));
+        auto ix = saving.Find(id);
+        if (ix >= 0) saving.RemoveAt(ix);
     }
 
     void SaveGhost(CGameCtnGhost@ gm, uint id) {
@@ -185,8 +249,13 @@ class SaveGhostsTab : Tab {
         }
         auto rec = recs[0];
         Cache::AddRecord(rec, login, nickname);
-        auto ix = saving.Find(id);
-        if (ix >= 0) saving.RemoveAt(ix);
+        // don't remove from the saving list b/c it'll get reset on map change
+        // auto ix = saving.Find(id);
+        // if (ix >= 0) saving.RemoveAt(ix);
+    }
+
+    void OnMapChange() override {
+        saving.RemoveRange(0, saving.Length);
     }
 }
 
@@ -201,6 +270,7 @@ class LoadGhostsTab : Tab {
         g_Players.Draw();
         g_Saved.Draw();
         g_PBTab.Draw();
+        g_Medals.Draw();
         g_NearTimeTab.Draw();
         g_AroundRankTab.Draw();
         g_IntervalsTab.Draw();
@@ -414,9 +484,27 @@ class SavedTab : Tab {
         string time = Time::Format(int(j['time']));
         loading.InsertLast(key);
         Notify("Loading ghost: " + name + " / " + time);
-        Cache::LoadGhost(key);
+        if (IsGhostLoaded(j)) {
+            NotifyWarning("Ghost already loaded: " + name + " / " + time);
+            sleep(1000);
+        } else {
+            Cache::LoadGhost(key);
+        }
         auto ix = loading.Find(key);
         if (ix >= 0) loading.RemoveAt(ix);
+    }
+
+    bool IsGhostLoaded(Json::Value@ j) {
+        string name = j['name'];
+        int time = int(j['time']);
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+            auto gm = mgr.Ghosts[i].GhostModel;
+            if (gm.GhostNickname == name && gm.RaceTime == time) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void OnMapChange() override {
@@ -435,15 +523,53 @@ class SavedTab : Tab {
 }
 
 class MedalsTab : Tab {
+    int[] medals = {-1, -1, -1, -1, -1};
+
     MedalsTab() {
         super("Medals");
     }
 
+    uint nbGhosts = 2;
+
     void DrawInner() override {
-        UI::Text("Near medal times");
+        UI::AlignTextToFramePadding();
+        UI::Text("Load Medal Ghosts:");
+        UI::Indent();
+        UI::BeginDisabled(isLoadingGhosts);
+        UI::SetNextItemWidth(100.);
+        nbGhosts = Math::Clamp(UI::InputInt("Number of ghosts", nbGhosts), 1, 20);
+        if (medals[4] > 0 && UI::Button(Time::Format(medals[4]) + " / Champion Medal Ghosts")) {
+            LoadGhostsNear(medals[4], nbGhosts);
+        }
+        if (UI::Button(Time::Format(medals[3]) + " / AT Medal Ghosts")) {
+            LoadGhostsNear(medals[3], nbGhosts);
+        }
+        if (UI::Button(Time::Format(medals[2]) + " / Gold Medal Ghosts")) {
+            LoadGhostsNear(medals[2], nbGhosts);
+        }
+        if (UI::Button(Time::Format(medals[1]) + " / Silver Medal Ghosts")) {
+            LoadGhostsNear(medals[1], nbGhosts);
+        }
+        if (UI::Button(Time::Format(medals[0]) + " / Bronze Medal Ghosts")) {
+            LoadGhostsNear(medals[0], nbGhosts);
+        }
+        UI::EndDisabled();
+        UI::Unindent();
     }
 
     void OnMapChange() override {
+        if (s_currMap.Length == 0) return;
+        PopulateMedalTimes();
+    }
+
+    void PopulateMedalTimes() {
+        auto map = GetApp().RootMap;
+        if (map is null) return;
+        medals[0] = map.TMObjective_BronzeTime;
+        medals[1] = map.TMObjective_SilverTime;
+        medals[2] = map.TMObjective_GoldTime;
+        medals[3] = map.TMObjective_AuthorTime;
+        medals[4] = -1;
     }
 }
 class PBTab : Tab {
@@ -491,4 +617,17 @@ class Intervals : Tab {
     void DrawInner() override {
         UI::Text(Name + "...");
     }
+}
+
+bool isLoadingGhosts = false;
+
+void LoadGhostsNear(uint time, uint nbGhosts) {
+    isLoadingGhosts = true;
+    startnew(_LoadGhostsNear, array<uint> = {time, nbGhosts});
+}
+
+void _LoadGhostsNear(ref@ r) {
+    auto args = cast<array<uint>>(r);
+    sleep(1000);
+    isLoadingGhosts = false;
 }

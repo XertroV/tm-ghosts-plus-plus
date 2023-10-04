@@ -6,8 +6,22 @@ void Main() {
     MLHook::RequireVersionApi('0.3.1');
     startnew(MapCoro);
     startnew(ClearTaskCoro);
+    startnew(SetupIntercepts);
     startTime = Time::Now;
+    MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
+
+    if (IsSpectatingGhost()) {
+        // get current spec'd ghost id and update values
+        SetCurrentGhostValues();
+    }
 }
+
+void Unload() {
+    scrubberPaused = false;
+    MLHook::UnregisterMLHooksAndRemoveInjectedML();
+}
+void OnDestroyed() { Unload(); }
+void OnDisabled() { Unload(); }
 
 // check for permissions and
 void CheckRequiredPermissions() {
@@ -65,6 +79,9 @@ const uint disableTime = 3000;
 void Render() {
     if (!permissionsOkay) return;
     if (!S_ShowWindow) return;
+    if (IsSpectatingGhost()) {
+        DrawScrubber();
+    }
     return;
 }
 
@@ -163,10 +180,15 @@ void HideAllGhosts() {
     }
 }
 
+/**
+TMGame_Record_SpectateGhost
+TMGame_Record_ToggleGhost
+TMGame_Record_TogglePB
+ */
 void ToggleGhost(const string &in playerId) {
     if (!permissionsOkay) return;
     // trace('toggled ghost for ' + playerId);
-    MLHook::Queue_SH_SendCustomEvent("TMxSM_Race_Record_ToggleGhost", {playerId});
+    MLHook::Queue_SH_SendCustomEvent("TMGame_Record_ToggleGhost", {playerId});
     bool enabled = false;
     toggleCache.Get(playerId, enabled);
     toggleCache[playerId] = !enabled;
@@ -178,7 +200,7 @@ void ToggleSpectator() {
     if (lastRecordPid == "" || int(pids.Length) < g_numGhosts) {
         NotifyWarning("\n>> Toggle ghosts first at least once. <<\n");
     } else {
-        MLHook::Queue_SH_SendCustomEvent("TMxSM_Race_Record_SpectateGhost", {pids[g_numGhosts - 1]});
+        MLHook::Queue_SH_SendCustomEvent("TMGame_Record_SpectateGhost", {pids[g_numGhosts - 1]});
     }
 }
 
@@ -193,16 +215,51 @@ void Notify(const string &in msg) {
 }
 
 void NotifySuccess(const string &in msg) {
-    UI::ShowNotification(Meta::ExecutingPlugin().Name, msg, vec4(.4, .7, .1, .3), 10000);
+    UI::ShowNotification(Meta::ExecutingPlugin().Name, msg, vec4(.4, .7, .1, .3), 12000);
     trace("Notified: " + msg);
 }
 
 void NotifyError(const string &in msg) {
     warn(msg);
-    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Error", msg, vec4(.9, .3, .1, .3), 15000);
+    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Error", msg, vec4(.9, .3, .1, .3), 12000);
 }
 
 void NotifyWarning(const string &in msg) {
     warn(msg);
-    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Warning", msg, vec4(.9, .6, .2, .3), 15000);
+    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Warning", msg, vec4(.7, .4, .1, .3), 12000);
+}
+
+
+bool IsSpectatingGhost() {
+    auto ps = GetApp().PlaygroundScript;
+    if (ps is null || ps.UIManager is null) return false;
+    return ps.UIManager.UIAll.ForceSpectator;
+}
+
+void ExitSpectatingGhost() {
+    auto ps = GetApp().PlaygroundScript;
+    if (ps is null || ps.UIManager is null) return;
+    MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {""});
+}
+
+void ExitSpectatingGhostAndCleanUp() {
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    auto cp = GetApp().CurrentPlayground;
+    if (ps is null || ps.UIManager is null || cp is null) return;
+    ps.Ghosts_SetStartTime(-1);
+    ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::Playing;
+    ps.RespawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
+    ps.UIManager.UIAll.ForceSpectator = false;
+    ps.UIManager.UIAll.SpectatorForceCameraType = -1;
+    ps.UIManager.UIAll.Spectator_SetForcedTarget_Clear();
+    MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {""});
+}
+
+/** Called whenever a key is pressed on the keyboard. See the documentation for the [`VirtualKey` enum](https://openplanet.dev/docs/api/global/VirtualKey).
+*/
+UI::InputBlocking OnKeyPress(bool down, VirtualKey key) {
+    if (down && key == VirtualKey::Escape && IsSpectatingGhost()) {
+        ExitSpectatingGhost();
+    }
+    return UI::InputBlocking::DoNothing;
 }
