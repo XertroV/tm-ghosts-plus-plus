@@ -9,6 +9,13 @@ Pick any ghost (or ghosts) from the leaderboards to race against in solo.
 - Ghosts a bit faster than your PB.
 - Ghosts that are 500ms, 1000ms, 1500ms, ... faster than your PB (ghosts that are at regular intervals).
 
+
+todo:
+- free cam / cinematic
+- change in replay speed
+- scrubber everywhere
+-
+
 License: Public Domain
 
 Authors: XertroV

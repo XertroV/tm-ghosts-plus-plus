@@ -91,12 +91,12 @@ namespace GhostClipsMgr {
     // this is the result of the last call to Ghosts_SetStartTime
     uint GetCurrentGhostTime(NGameGhostClips_SMgr@ mgr) {
         if (mgr.Ghosts.Length == 0) return -1;
-        auto clipPlayer = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, GhostsOffset - 0x30));
+        auto clipPlayer = GetMainClipPlayer(mgr);
         if (clipPlayer is null) {
-            @clipPlayer = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, GhostsOffset - 0x10));
+            @clipPlayer = GetPBClipPlayer(mgr);
         }
         if (clipPlayer is null) {
-            warn("unexpected clip player null");
+            warn("no loaded ghosts");
             return -1;
         }
         // this nod is 0x350 bytes large => memory will always be allocated
@@ -104,12 +104,129 @@ namespace GhostClipsMgr {
     }
 
     void PauseClipPlayers(NGameGhostClips_SMgr@ mgr, float currTime) {
-        SetGhostClipPlayerPaused(cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20)), currTime);
-        SetGhostClipPlayerPaused(cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x40)), currTime);
+        SetGhostClipPlayerPaused(GetMainClipPlayer(mgr), currTime);
+        SetGhostClipPlayerPaused(GetPBClipPlayer(mgr), currTime);
     }
 
     void UnpauseClipPlayers(NGameGhostClips_SMgr@ mgr, float currTime, float totalTime) {
-        SetGhostClipPlayerUnpaused(cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20)), currTime, totalTime);
-        SetGhostClipPlayerUnpaused(cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x40)), currTime, totalTime);
+        SetGhostClipPlayerUnpaused(GetMainClipPlayer(mgr), currTime, totalTime);
+        SetGhostClipPlayerUnpaused(GetPBClipPlayer(mgr), currTime, totalTime);
     }
+    // if total time is not provided, then the current values are used.
+    void UnpauseClipPlayers(NGameGhostClips_SMgr@ mgr, float currTime) {
+        auto tmp = GetMainClipPlayer(mgr);
+        if (tmp is null) @tmp = GetPBClipPlayer(mgr);
+        if (tmp is null) return;
+        auto totalTime = ClipPlayer_GetTotalTime(tmp);
+        SetGhostClipPlayerUnpaused(GetMainClipPlayer(mgr), currTime, totalTime);
+        SetGhostClipPlayerUnpaused(GetPBClipPlayer(mgr), currTime, totalTime);
+    }
+
+    // all ghosts but 1 PB ghost, null if there are no ghosts
+    CGameCtnMediaClipPlayer@ GetMainClipPlayer(NGameGhostClips_SMgr@ mgr) {
+        return cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20));
+    }
+
+    // One ghost only, always PB (PBs can also be in the other clip player tho too). Can be null if you unload PB ghosts
+    CGameCtnMediaClipPlayer@ GetPBClipPlayer(NGameGhostClips_SMgr@ mgr) {
+        return cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x40));
+    }
+
+    vec2 AdvanceClipPlayersByDelta(NGameGhostClips_SMgr@ mgr, float playbackSpeed = 1.0) {
+        auto ret = ClipPlayer_AdvanceByDelta(GetPBClipPlayer(mgr), playbackSpeed);
+        auto mainClip = GetMainClipPlayer(mgr);
+        if (mainClip !is null) {
+            ret = ClipPlayer_AdvanceByDelta(mainClip, playbackSpeed);
+        }
+        return ret;
+    }
+}
+
+// Utils for CGameCtnMediaClipPlayer
+
+float ClipPlayer_GetCurrSeconds(CGameCtnMediaClipPlayer@ player) {
+    return Dev::GetOffsetFloat(player, 0x1AC);
+}
+
+void ClipPlayer_SetCurrSeconds(CGameCtnMediaClipPlayer@ player, float t) {
+    Dev::SetOffset(player, 0x1AC, t);
+}
+
+float ClipPlayer_GetFrameDelta(CGameCtnMediaClipPlayer@ player) {
+    return Dev::GetOffsetFloat(player, 0x310);
+}
+
+float ClipPlayer_GetTotalTime(CGameCtnMediaClipPlayer@ player) {
+    return Dev::GetOffsetFloat(player, 0x338);
+}
+
+// returns vec2(time, delta)
+vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSpeed = 1.0) {
+    if (player is null) return vec2();
+    auto d = ClipPlayer_GetFrameDelta(player) * playbackSpeed;
+    auto t = ClipPlayer_GetCurrSeconds(player) + d;
+    ClipPlayer_SetCurrSeconds(player, t);
+    return vec2(t, d);
+}
+
+
+
+
+// 0x1ac - float time
+// 0x1b0 - some scaling thing? 1.0 normally
+// 0x310, delta?
+// 0x314, ?
+// 0x318 - time speed
+// 0x324 - flag 2?
+  // set to 0 (1 does motion interpolation or something)
+// 0x328 - flag? (test rdx,rdx)
+// 0x330 - test
+// --- both above pass then
+// 0x338 - total len
+// 0x33c - time speed
+// 0x340 - time float
+// 0x348 - flag 1? (nonzero)
+  // set to 1? (invis if not f2 also 1)
+  // hides other ghosts?
+// 0x364 - apply custom time?
+// set 0x1b0 to -1?
+
+// load tiem speed, mov to xmm2, mulss x2 x0, mulss x2 0x1b0 (scaling), addss 0x340 (time)
+
+
+// set 338 to -100
+// set 324 to 0
+// set 348 to 1
+// set 1ac to set the position of the ghost
+// set 33c > 0
+
+
+string[] GetGhostClipPlayerDebugValues(CGameCtnMediaClipPlayer@ player) {
+    if (player is null) return {"not found"};
+    float totalTime = Dev::GetOffsetFloat(player, 0x338);
+    float curTime = Dev::GetOffsetFloat(player, 0x1AC);
+    uint8 doMotionInterp = Dev::GetOffsetUint8(player, 0x324);
+    uint8 otherGhostsVisible = Dev::GetOffsetUint8(player, 0x348);
+    float timeSpeed_33C = Dev::GetOffsetFloat(player, 0x33C);
+    float timeSpeed_318 = Dev::GetOffsetFloat(player, 0x318);
+    float timeSpeed_1B0 = Dev::GetOffsetFloat(player, 0x1B0);
+    return {tostring(totalTime), tostring(curTime), tostring(doMotionInterp), tostring(otherGhostsVisible), "1B0: " + timeSpeed_1B0, "318: " + timeSpeed_318, "33C: " + timeSpeed_33C};
+}
+
+void SetGhostClipPlayerPaused(CGameCtnMediaClipPlayer@ player, float timestamp) {
+    if (player is null) return;
+    Dev::SetOffset(player, 0x1AC, timestamp);
+    Dev::SetOffset(player, 0x338, float(-100.0));
+    Dev::SetOffset(player, 0x324, uint8(0));
+    Dev::SetOffset(player, 0x348, uint8(1));
+    Dev::SetOffset(player, 0x33C, float(1.0));
+}
+
+void SetGhostClipPlayerUnpaused(CGameCtnMediaClipPlayer@ player, float timestamp, float totalTime) {
+    if (player is null) return;
+    Dev::SetOffset(player, 0x1AC, timestamp);
+    Dev::SetOffset(player, 0x338, float(totalTime));
+    Dev::SetOffset(player, 0x324, uint8(1));
+    Dev::SetOffset(player, 0x348, uint8(1));
+    Dev::SetOffset(player, 0x33C, uint32(0));
 }

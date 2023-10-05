@@ -15,8 +15,9 @@ SaveGhostsTab g_SaveGhostTab;
 DebugGhostsTab g_DebugTab;
 DebugCacheTab g_DebugCacheTab;
 DebugClipsTab g_DebugClips;
+ScrubberDebugTab g_ScrubDebug;
 
-Tab@[] tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips};
+Tab@[] tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug};
 
 /** Render function called every frame intended for `UI`.
 */
@@ -43,6 +44,7 @@ void RenderInterface() {
             g_LoadGhostTab.Draw();
 #if SIG_DEVELOPER
             g_DebugTab.Draw();
+            g_ScrubDebug.Draw();
             g_DebugClips.Draw();
             g_DebugCacheTab.Draw();
 #endif
@@ -214,7 +216,7 @@ class SaveGhostsTab : Tab {
                 yield();
             }
             if (!IsSpectatingGhost()) break;
-            if (!scrubberPaused) {
+            if (!scrubberMgr.IsPaused) {
                 cast<CSmArenaRulesMode>(GetApp().PlaygroundScript).Ghosts_SetStartTime(ps.Now);
             }
             yield();

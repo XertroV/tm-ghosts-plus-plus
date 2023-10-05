@@ -1,7 +1,7 @@
 
 class DebugClipsTab : Tab {
     DebugClipsTab() {
-        super("Debug Clips");
+        super("[D] Clips");
     }
 
     void DrawInner() override {
@@ -39,7 +39,7 @@ class DebugClipsTab : Tab {
 }
 class DebugGhostsTab : Tab {
     DebugGhostsTab() {
-        super("Debug Ghosts");
+        super("[D] Ghosts");
     }
 
     void DrawInner() override {
@@ -122,7 +122,7 @@ class DebugGhostsTab : Tab {
 }
 class DebugCacheTab : Tab {
     DebugCacheTab() {
-        super("Debug Cache");
+        super("[D] Cache");
     }
 
     void DrawInner() override {
@@ -152,6 +152,9 @@ void DrawValLabel(const string &in v, const string &in l) {
 }
 
 void DrawValLabel(uint v, const string &in l) {
+    DrawValLabel(tostring(v), l);
+}
+void DrawValLabel(float v, const string &in l) {
     DrawValLabel(tostring(v), l);
 }
 void DrawValLabel(bool v, const string &in l) {
