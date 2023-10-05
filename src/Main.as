@@ -275,7 +275,7 @@ void ExitSpectatingGhostAndCleanUp() {
     ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::Playing;
     ps.RespawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
     ps.UIManager.UIAll.ForceSpectator = false;
-    ps.UIManager.UIAll.SpectatorForceCameraType = -1;
+    ps.UIManager.UIAll.SpectatorForceCameraType = 15;
     ps.UIManager.UIAll.Spectator_SetForcedTarget_Clear();
     MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {""});
 }

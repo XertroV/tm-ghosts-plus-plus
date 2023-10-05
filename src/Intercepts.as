@@ -64,7 +64,7 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     return true;
 }
 
-MwId lastSpectatedGhostInstanceId = MwId(-1);
+MwId lastSpectatedGhostInstanceId = MwId(uint(-1));
 uint lastSpectatedGhostRaceTime = 0;
 
 bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {

@@ -203,7 +203,7 @@ class SaveGhostsTab : Tab {
 
         auto ghostPlayTime = int(ps.Now) - lastSetStartTime;
         // if we choose a ghost that has already finished, restart ghosts
-        if (g.RaceTime < ghostPlayTime) {
+        if (int(g.RaceTime) < ghostPlayTime) {
             ps.Ghosts_SetStartTime(ps.Now);
         }
 
@@ -227,7 +227,7 @@ class SaveGhostsTab : Tab {
             // auto g = GhostClipsMgr::GetGhostFromInstanceId()
             CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
             // while PS exists and now < finish time of longest ghost
-            while (IsSpectatingGhost() && GetApp().PlaygroundScript.Now < (lastSpectatedGhostRaceTime + lastSetStartTime - 10)) {
+            while (IsSpectatingGhost() && int(GetApp().PlaygroundScript.Now) < (int(lastSpectatedGhostRaceTime) + lastSetStartTime - 10)) {
                 yield();
             }
             if (!IsSpectatingGhost()) break;
@@ -352,7 +352,7 @@ class PlayersTab : Tab {
             UI::ListClipper clip(players.Length);
             while (clip.Step()) {
                 for (int i = clip.DisplayStart; i < clip.DisplayEnd; i++) {
-                    if (i >= players.Length) break;
+                    if (i >= int(players.Length)) break;
                     auto j = players[i];
                     if (j.GetType() !=  Json::Type::Object) {
                         warn('not obj: ' + Json::Write(j));
@@ -527,7 +527,7 @@ class SavedTab : Tab {
         auto mgr = GhostClipsMgr::Get(GetApp());
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
             auto gm = mgr.Ghosts[i].GhostModel;
-            if (gm.GhostNickname == name && gm.RaceTime == time) {
+            if (gm.GhostNickname == name && int(gm.RaceTime) == time) {
                 return true;
             }
         }

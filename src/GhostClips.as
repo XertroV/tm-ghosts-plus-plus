@@ -90,14 +90,14 @@ namespace GhostClipsMgr {
 
     // this is the result of the last call to Ghosts_SetStartTime
     uint GetCurrentGhostTime(NGameGhostClips_SMgr@ mgr) {
-        if (mgr.Ghosts.Length == 0) return -1;
+        if (mgr.Ghosts.Length == 0) return uint(-1);
         auto clipPlayer = GetMainClipPlayer(mgr);
         if (clipPlayer is null) {
             @clipPlayer = GetPBClipPlayer(mgr);
         }
         if (clipPlayer is null) {
             warn("no loaded ghosts");
-            return -1;
+            return uint(-1);
         }
         // this nod is 0x350 bytes large => memory will always be allocated
         return Dev::GetOffsetUint32(clipPlayer, 0x320);

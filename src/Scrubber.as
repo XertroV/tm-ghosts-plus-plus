@@ -47,7 +47,7 @@ void DrawScrubber() {
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
         double t = double(ps.Now - lastSetStartTime) + scrubberMgr.subSecondOffset;
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
-        auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920, 3440, screen.x), 0., 1.));
+        auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.));
         auto btnWidthFull = btnWidth + spacing.x;
 
         bool expand = UI::Button(Icons::Expand + "##scrubber-expand", vec2(btnWidth, 0));
@@ -67,9 +67,9 @@ void DrawScrubber() {
         maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
         maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime);
-        string labelTime = Time::Format(Math::Abs(t));
+        string labelTime = Time::Format(int64(Math::Abs(t)));
         if (t < 0) labelTime = "-" + labelTime;
-        auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t),  labelTime + " / " + Time::Format(maxTime));
+        auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t),  labelTime + " / " + Time::Format(int64(maxTime)));
 
         bool clickTogglePause = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
 
@@ -125,7 +125,7 @@ void DrawScrubber() {
                 scrubberMgr.SetProgress(scrubberMgr.pauseAt + 5000.0 * Math::Abs(scrubberMgr.playbackSpeed) * (stepBack ? -1. : 1.));
             }
         } else if (dragDelta.y > 0) {
-            float dragY = Math::Clamp(dragDelta.y, -100, 100);
+            float dragY = Math::Clamp(dragDelta.y, -100., 100.);
             print('' + dragY);
             float sign = dragY >= 0 ? 1.0 : -1.0;
             dragY = Math::Max(1, Math::Abs(dragY));
@@ -210,7 +210,7 @@ class ScrubberMgr {
         pauseAt = setProg;
         auto newStartTime = ps.Now - pauseAt;
         if (ps !is null) {
-            ps.Ghosts_SetStartTime(newStartTime);
+            ps.Ghosts_SetStartTime(int(newStartTime));
         }
         if (!IsStdPlayback) {
             auto mgr = GhostClipsMgr::Get(GetApp());
@@ -297,7 +297,7 @@ class ScrubberMgr {
         if (IsPaused) {
             // auto setStart = ps.Now - pauseAt;
             // ps.Ghosts_SetStartTime(setStart);
-            ps.Ghosts_SetStartTime(ps.Now - pauseAt);
+            ps.Ghosts_SetStartTime(ps.Now - int(pauseAt));
         } else if (!unpausedFlag && IsCustPlayback) {
             auto mgr = GhostClipsMgr::Get(GetApp());
             auto td = GhostClipsMgr::AdvanceClipPlayersByDelta(mgr, playbackSpeed);
@@ -308,7 +308,7 @@ class ScrubberMgr {
                 pauseAt = double(td.x) * 1000.;
                 subSecondOffset = pauseAt - Math::Floor(pauseAt);
             }
-            ps.Ghosts_SetStartTime(ps.Now - pauseAt);
+            ps.Ghosts_SetStartTime(ps.Now - int(pauseAt));
         } else {
             pauseAt = ps.Now - lastSetStartTime;
         }
