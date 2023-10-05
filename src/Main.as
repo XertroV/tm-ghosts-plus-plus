@@ -1,5 +1,6 @@
 bool permissionsOkay = false;
 uint startTime = uint(-1);
+ResetHook resetHook;
 
 void Main() {
     trace('ghost picker checking permissions');
@@ -11,20 +12,24 @@ void Main() {
     startnew(InitGP);
     trace('started coros');
     startTime = Time::Now;
-
+    trace('checking spec');
+    if (GetApp().PlaygroundScript !is null) {
+        trace('in playground! getting current values');
+        // get current spec'd ghost id and update values
+        SetCurrentGhostValues();
+        if (IsSpectatingGhost()) {
+            trace("starting watch loop on init because we're spectating a ghost");
+            startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
+        }
+    }
 }
 
 void InitGP() {
-    trace('registering callback');
+    yield();
+    trace('registering callback & hook');
     MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
-    trace('checking spec');
-    if (IsSpectatingGhost()) {
-        trace('is spectating ghost! getting current values');
-        // get current spec'd ghost id and update values
-        SetCurrentGhostValues();
-        trace("starting watch loop on init because we're spectating a ghost");
-        startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
-    }
+    MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_NextMap", true);
+    MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_Exit", true);
     trace('init done');
 }
 
@@ -51,10 +56,14 @@ void CheckRequiredPermissions() {
 string s_currMap = "";
 
 void MapCoro() {
+    s_currMap = CurrentMap;
     while(true) {
         sleep(273); // no need to check that frequently. 273 seems primeish
         if (s_currMap != CurrentMap) {
             s_currMap = CurrentMap;
+            lastSpectatedGhostRaceTime = 0;
+            lastLoadedGhostRaceTime = 0;
+            maxTime = 0.;
             ResetToggleCache();
             OnMapChange();
         }
@@ -94,10 +103,10 @@ uint lastRefresh = 0;
 const uint disableTime = 3000;
 void Render() {
     if (!permissionsOkay) return;
-    if (!S_ShowWindow) return;
-    if (IsSpectatingGhost()) {
-        DrawScrubber();
-    }
+    // if (!S_ShowWindow) return;
+    DrawScrubber();
+    // if (IsSpectatingGhost()) {
+    // }
     return;
 }
 
@@ -278,4 +287,17 @@ UI::InputBlocking OnKeyPress(bool down, VirtualKey key) {
         ExitSpectatingGhost();
     }
     return UI::InputBlocking::DoNothing;
+}
+
+/** Called whenever the mouse wheel is scrolled. `x` and `y` are the scroll delta values.
+*/
+UI::InputBlocking OnMouseWheel(int x, int y) {
+    pendingScroll = vec2(x, y);
+    return UI::InputBlocking::DoNothing;
+}
+
+vec2 pendingScroll;
+
+void RenderEarly() {
+    pendingScroll = vec2();
 }

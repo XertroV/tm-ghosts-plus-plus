@@ -8,11 +8,13 @@ Pick any ghost (or ghosts) from the leaderboards to race against in solo.
 - Ghosts around a specific rank.
 - Ghosts a bit faster than your PB.
 - Ghosts that are 500ms, 1000ms, 1500ms, ... faster than your PB (ghosts that are at regular intervals).
+- ~~ ghost clips offset in MT? for skipping ahead when > pg time
+- ?? more speed options
 
 
 todo:
-- free cam / cinematic
-- scrubber everywhere
+- ~~ free cam / cinematic
+- ~~ scrubber everywhere
 - searcher for particular record times / ghosts
 -
 

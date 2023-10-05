@@ -232,6 +232,10 @@ class SaveGhostsTab : Tab {
             }
             if (!IsSpectatingGhost()) break;
             if (!scrubberMgr.IsPaused) {
+                if (!scrubberMgr.IsStdPlayback) {
+                    scrubberMgr.DoUnpause();
+                    startnew(CoroutineFunc(scrubberMgr.DoPause));
+                }
                 scrubberMgr.SetProgress(0);
             }
             yield();
