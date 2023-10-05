@@ -26,7 +26,7 @@ void RenderInterface() {
     if (!Cache::hasDoneInit) startnew(Cache::Initialize);
 
 
-    UI::SetNextWindowSize(500, 300, UI::Cond::Appearing);
+    UI::SetNextWindowSize(600, 300, UI::Cond::Appearing);
     if (UI::Begin(MenuTitle, S_ShowWindow)) {
         if (GetApp().PlaygroundScript is null) {
             UI::Text("Please load a map in Solo mode");
@@ -39,6 +39,16 @@ void RenderInterface() {
         } else if (!Cache::IsInitialized) {
             UI::Text("Loading...");
         } else {
+            // if (UI::BeginChild("main-lhs", vec2(300., 0))) {
+            //     UI::AlignTextToFramePadding();
+            //     UI::Text("Current Ghosts:");
+            //     UI::Indent();
+            //     g_SaveGhostTab.DrawInner();
+            //     UI::Unindent();
+            // }
+            // UI::EndChild();
+            // UI::SameLine();
+            if (UI::BeginChild("main-rhs")) {
             UI::BeginTabBar("save or load ghosts");
             g_SaveGhostTab.Draw();
             g_LoadGhostTab.Draw();
@@ -47,8 +57,12 @@ void RenderInterface() {
             g_ScrubDebug.Draw();
             g_DebugClips.Draw();
             g_DebugCacheTab.Draw();
+#else
+            // g_LoadGhostTab.DrawInner();
 #endif
             UI::EndTabBar();
+            }
+            UI::EndChild();
         }
     }
     UI::End();
@@ -95,14 +109,15 @@ class SaveGhostsTab : Tab {
             return;
         }
 
-        if (UI::BeginTable("save-ghosts", 6, UI::TableFlags::SizingStretchProp)) {
+        auto nbCols = 6;
+        if (UI::BeginTable("save-ghosts", nbCols, UI::TableFlags::SizingStretchProp)) {
 
-            UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 40.);
+            UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 30.);
             UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
-            UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 80.);
-            UI::TableSetupColumn("Spectate", UI::TableColumnFlags::WidthFixed, 40.);
-            UI::TableSetupColumn("Save", UI::TableColumnFlags::WidthFixed, 40.);
-            UI::TableSetupColumn("Unload", UI::TableColumnFlags::WidthFixed, 40.);
+            UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 70.);
+            UI::TableSetupColumn("Spectate", UI::TableColumnFlags::WidthFixed, 32.);
+            UI::TableSetupColumn("Save", UI::TableColumnFlags::WidthFixed, 32.);
+            UI::TableSetupColumn("Unload", UI::TableColumnFlags::WidthFixed, 32.);
 
             UI::ListClipper clip(mgr.Ghosts.Length);
             while (clip.Step()) {
@@ -146,7 +161,7 @@ class SaveGhostsTab : Tab {
 
         UI::TableNextColumn();
         UI::AlignTextToFramePadding();
-        UI::Text(Text::Format("%02d. ", i)); // + Text::Format("%08x", id));
+        UI::Text(Text::Format("%02d. ", i+1)); // + Text::Format("%08x", id));
 
         UI::TableNextColumn();
         UI::Text(gm.GhostNickname);
@@ -217,7 +232,7 @@ class SaveGhostsTab : Tab {
             }
             if (!IsSpectatingGhost()) break;
             if (!scrubberMgr.IsPaused) {
-                cast<CSmArenaRulesMode>(GetApp().PlaygroundScript).Ghosts_SetStartTime(ps.Now);
+                scrubberMgr.SetProgress(0);
             }
             yield();
         }
@@ -356,7 +371,7 @@ class PlayersTab : Tab {
 
                     UI::TableNextColumn();
                     UI::AlignTextToFramePadding();
-                    UI::Text(i + ". " + namesStr);
+                    UI::Text((i + 1) + ". " + namesStr);
 
                     UI::TableNextColumn();
                     UI::BeginDisabled(loading.Find(login) >= 0);
@@ -462,7 +477,7 @@ class SavedTab : Tab {
                     UI::TableNextRow();
                     UI::TableNextColumn();
                     UI::AlignTextToFramePadding();
-                    UI::Text(Text::Format("%02d.", i));
+                    UI::Text(Text::Format("%02d.", i + 1));
                     UI::TableNextColumn();
                     UI::Text(name);
                     UI::TableNextColumn();

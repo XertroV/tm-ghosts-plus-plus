@@ -31,7 +31,7 @@ void InitGP() {
 void Unload() {
     trace('unloading ghost picker #1 paused');
     // if (scrubberPaused) GhostClipsMgr::UnpauseClipPlayers(GhostClipsMgr::Get(GetApp()), 0., 60.0);
-    scrubberMgr.SetPlayback(true);
+    scrubberMgr.ResetAll();
     trace('unloading ghost picker #2 mlhook');
     MLHook::UnregisterMLHooksAndRemoveInjectedML();
     trace('unloading ghost picker #3 done');

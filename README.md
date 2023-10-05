@@ -12,8 +12,8 @@ Pick any ghost (or ghosts) from the leaderboards to race against in solo.
 
 todo:
 - free cam / cinematic
-- change in replay speed
 - scrubber everywhere
+- searcher for particular record times / ghosts
 -
 
 License: Public Domain

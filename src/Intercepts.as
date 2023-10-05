@@ -1,8 +1,18 @@
 void SetupIntercepts() {
     Dev::InterceptProc("CSmArenaRulesMode", "Ghosts_SetStartTime", _Ghosts_SetStartTime);
+    Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Add", _Ghost_Add);
     Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Ghost", _Spectator_SetForcedTarget_Ghost);
 }
 
+bool _Ghost_Add(CMwStack &in stack) {
+    trace('Ghost_Add');
+    if (scrubberMgr !is null && IsSpectatingGhost() && !scrubberMgr.IsStdPlayback) {
+        scrubberMgr.DoUnpause();
+        startnew(CoroutineFunc(scrubberMgr.DoPause));
+    }
+    // lastSetStartTime = stack.CurrentInt(0);
+    return true;
+}
 
 uint lastSetStartTime;
 bool _Ghosts_SetStartTime(CMwStack &in stack) {
