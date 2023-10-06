@@ -1,6 +1,12 @@
 bool permissionsOkay = false;
 uint startTime = uint(-1);
 ResetHook resetHook;
+SpectateHook spectateHook;
+
+UI::Font@ g_fontStd;
+UI::Font@ g_fontBold;
+UI::Font@ g_fontLarge;
+UI::Font@ g_fontLarger;
 
 void Main() {
     trace('ghost picker checking permissions');
@@ -10,6 +16,7 @@ void Main() {
     startnew(ClearTaskCoro);
     startnew(SetupIntercepts);
     startnew(InitGP);
+    startnew(LoadFonts);
     trace('started coros');
     startTime = Time::Now;
     trace('checking spec');
@@ -25,14 +32,28 @@ void Main() {
     }
 }
 
+void LoadFonts() {
+    @g_fontStd = UI::LoadFont("DroidSans.ttf", 16., -1, -1, true, true, true);
+    @g_fontBold = UI::LoadFont("DroidSans-bold.ttf");
+    @g_fontLarge = UI::LoadFont("DroidSans.ttf", 20.);
+    @g_fontLarger = UI::LoadFont("DroidSans.ttf", 26.);
+}
+
 void InitGP() {
+    yield();
+    yield();
     yield();
     trace('registering callback & hook');
     MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
     MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_NextMap", true);
     MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_Exit", true);
+    // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_SpectateGhost", true);
+    MLHook::RegisterMLHook(spectateHook, "TMGame_Record_Spectate", true);
     trace('init done');
+    g_Initialized = true;
 }
+
+bool g_Initialized = false;
 
 void Unload() {
     trace('unloading ghost picker #1 paused');
@@ -78,6 +99,11 @@ void OnMapChange() {
     for (uint i = 0; i < tabs.Length; i++) {
         tabs[i].OnMapChange();
     }
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    if (ps is null) return;
+    Dev::SetOffset(ps, GetOffset(ps, "Now"), 0x000FFFFF);
+    Dev::SetOffset(Dev::GetOffsetNod(GetApp(), GetOffset("CGameCtnApp", "GameScene") + 0x8), 0x918, 0x000FFFFF);
+
 }
 
 dictionary toggleCache;

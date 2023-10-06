@@ -21,13 +21,15 @@ uint lastLoadedGhostRaceTime = 0;
 bool ghostAddSkipIntercept = false;
 bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
     if (ghostAddSkipIntercept) return true;
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    if (ps is null || ps.Now < 1000) return true;
+
     // having ghosts in the paused state can crash the game when loading ghosts
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
 
-    auto ps = GetApp().PlaygroundScript;
     if (ps !is null) {
         // auto gm = cast<CGameGhostMgrScript>(nod);
         auto ghost = cast<CGameGhostScript>(stack.CurrentNod(1));

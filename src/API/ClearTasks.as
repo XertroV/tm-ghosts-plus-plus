@@ -15,11 +15,11 @@ class ClearTask {
         if (userMgr !is null) userMgr.TaskResult_Release(task.Id);
         else if (dataFileMgr !is null) dataFileMgr.TaskResult_Release(task.Id);
         else if (scoreMgr !is null) scoreMgr.TaskResult_Release(task.Id);
-        else throw("ClearTask.Release called but I don't know how to handle this type: " + Reflection::TypeOf(nod).Name);
+        else warn("ClearTask.Release called but I don't know how to handle this type: " + Reflection::TypeOf(nod).Name);
     }
 }
 
-ClearTask@[] tasksToClear;
+ClearTask@[] tasksToClear = {};
 
 // Wait for the task to finish processing, then add it to the list of tasks to be cleared later. Execution returns immediately, so you should consume all data in the task before yielding.
 void WaitAndClearTaskLater(CWebServicesTaskResult@ task, CMwNod@ owner) {

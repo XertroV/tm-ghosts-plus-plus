@@ -30,16 +30,18 @@ class GhostFinder {
         while (!S_ShowWindow) yield();
         if (uid != s_currMap) return;
         log_trace('GhostFinder.Init running');
-        await({
-            startnew(CoroutineFunc(this.LoadNbPlayers)),
-            startnew(CoroutineFunc(this.LoadTopRecords))
-        });
+        // don't really need to get these anymore.
+        // await({
+        //     startnew(CoroutineFunc(this.LoadNbPlayers)),
+        //     startnew(CoroutineFunc(this.LoadTopRecords))
+        // });
 
         log_trace('GhostFinder.Init complete');
     }
 
     bool get_IsInitialized() {
-        return gotNbPlayers && gotTopRecords;
+        return true;
+        // return gotNbPlayers && gotTopRecords;
     }
 
     void LoadNbPlayers() {

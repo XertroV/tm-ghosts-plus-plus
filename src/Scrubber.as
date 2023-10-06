@@ -16,6 +16,30 @@ float S_YPosRel = 0.94;
 [Setting category="Scrubber Size / Pos" name="Width (relative to screen)" min=0 max=1]
 float S_XWidth = 0.5;
 
+enum Font {
+    Std = 0, Bold = 1, Large = 2, Larger = 3
+}
+
+[Setting category="Scrubber Size / Pos" name="Font Size"]
+Font S_FontSize = Font::Large;
+
+UI::Font@ GetCurrFont() {
+    if (S_FontSize == Font::Std) return g_fontStd;
+    if (S_FontSize == Font::Bold) return g_fontBold;
+    if (S_FontSize == Font::Large) return g_fontLarge;
+    if (S_FontSize == Font::Larger) return g_fontLarger;
+    return g_fontStd;
+}
+
+float GetCurrFontSize() {
+    if (S_FontSize == Font::Std) return 16.;
+    if (S_FontSize == Font::Bold) return 16.;
+    if (S_FontSize == Font::Large) return 20.;
+    if (S_FontSize == Font::Larger) return 26.;
+    return 16.;
+}
+
+
 float maxTime = 0.;
 uint lastHover;
 
@@ -26,6 +50,7 @@ void DrawScrubber() {
     auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
     if (ps is null) return;
 
+    UI::PushFont(GetCurrFont());
 
     vec2 screen = vec2(Draw::GetWidth(), Draw::GetHeight());
     auto spacing = UI::GetStyleVarVec2(UI::StyleVar::ItemSpacing);
@@ -40,10 +65,12 @@ void DrawScrubber() {
     }
 
     bool showScrubber = isSpectating || (int(ps.StartTime) - ps.Now) > 0 || (Time::Now - lastHover) < 5000;
-    if (!showScrubber) return;
-    if (scrubberMgr is null) return;
-
     auto mgr = GhostClipsMgr::Get(GetApp());
+    if (!showScrubber || scrubberMgr is null || mgr is null) {
+        UI::PopFont();
+        return;
+    }
+
     auto nbGhosts = mgr.Ghosts.Length;
 
     bool showInputs = isSpectating && S_ShowInputsWhileSpectatingGhosts
@@ -84,7 +111,8 @@ void DrawScrubber() {
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
         double t = double(ps.Now - lastSetStartTime) + scrubberMgr.subSecondOffset;
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
-        auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.));
+        auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
+            * (GetCurrFontSize() / 16.);
         auto btnWidthFull = btnWidth + spacing.x;
 
         bool expand = UI::Button(Icons::Expand + "##scrubber-expand", vec2(btnWidth, 0));
@@ -104,10 +132,11 @@ void DrawScrubber() {
         maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
         maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime);
+        maxTime = Math::Min(maxTime, ps.Now);
         string labelTime = Time::Format(int64(Math::Abs(t)));
         if (t < 0) labelTime = "-" + labelTime;
         auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t),  labelTime + " / " + Time::Format(int64(maxTime)));
-
+        bool startedScrub = UI::IsItemClicked();
         bool clickTogglePause = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
 
         UI::SameLine();
@@ -135,10 +164,18 @@ void DrawScrubber() {
         UI::SameLine();
         bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
 
+        if (startedScrub) {
+            scrubberMgr.StartScrubWatcher();
+        }
+
         if (expand) {
-            S_ShowWindow = !S_ShowWindow;
             if (S_ShowWindow && !UI::IsOverlayShown()) {
                 UI::ShowOverlay();
+            } else {
+                S_ShowWindow = !S_ShowWindow;
+                if (S_ShowWindow && !UI::IsOverlayShown()) {
+                    UI::ShowOverlay();
+                }
             }
         }
         if (clickCamera) {
@@ -164,13 +201,13 @@ void DrawScrubber() {
             } else {
                 scrubberMgr.SetProgress(scrubberMgr.pauseAt + 5000.0 * Math::Abs(scrubberMgr.playbackSpeed) * (stepBack ? -1. : 1.));
             }
-        } else if (dragDelta.y > 0) {
-            float dragY = Math::Clamp(dragDelta.y, -100., 100.);
-            print('' + dragY);
-            float sign = dragY >= 0 ? 1.0 : -1.0;
-            dragY = Math::Max(1, Math::Abs(dragY));
-            auto dyl = sign * Math::Pow(Math::Log(dragY) / Math::Log(100.), 10.);
-            scrubberMgr.SetPlaybackSpeed(dyl, !scrubberMgr.IsPaused);
+        // } else if (dragDelta.y > 0) {
+        //     float dragY = Math::Clamp(dragDelta.y, -100., 100.);
+        //     print('' + dragY);
+        //     float sign = dragY >= 0 ? 1.0 : -1.0;
+        //     dragY = Math::Max(1, Math::Abs(dragY));
+        //     auto dyl = sign * Math::Pow(Math::Log(dragY) / Math::Log(100.), 10.);
+        //     scrubberMgr.SetPlaybackSpeed(dyl, !scrubberMgr.IsPaused);
         } else if (clickTogglePause) {
             // makes pausing smoother
             // t += 10 * scrubberMgr.playbackSpeed;
@@ -185,6 +222,8 @@ void DrawScrubber() {
         }
     }
     UI::End();
+
+    UI::PopFont();
 }
 
 string get_currSpeedLabel() {
@@ -198,6 +237,14 @@ enum ScrubberMode {
     Paused,
     CustomSpeed,
 }
+
+enum ScrubberSpecCamera {
+    None = 0x0, Cam1 = 0x12, Cam2 = 0x13, Cam3 = 0x14
+}
+
+[Setting category="Camera" name="Force Ghost Camera"]
+ScrubberSpecCamera S_SpecCamera = ScrubberSpecCamera::None;
+
 
 class ScrubberMgr {
     ScrubberMode mode = ScrubberMode::Playback;
@@ -252,7 +299,7 @@ class ScrubberMgr {
         if (ps !is null) {
             ps.Ghosts_SetStartTime(int(newStartTime));
         }
-        if (!IsStdPlayback) {
+        if (!IsStdPlayback || !unpausedFlag) {
             auto mgr = GhostClipsMgr::Get(GetApp());
             GhostClipsMgr::PauseClipPlayers(mgr, setProg / 1000.);
         }
@@ -329,16 +376,13 @@ class ScrubberMgr {
         if (ps is null) return;
         auto m = cast<CTrackMania>(GetApp()).Network;
 
-        // if () {
-        //     // having ghosts in the paused state can crash the game when exiting map
-        //     ResetAll();
-        //     return;
-        // }
+        if (IsSpectatingGhost() && S_SpecCamera != ScrubberSpecCamera::None) {
+            GameCamera().ActiveCam = uint(S_SpecCamera);
+        }
+
         if (IsPaused) {
-            // auto setStart = ps.Now - pauseAt;
-            // ps.Ghosts_SetStartTime(setStart);
             ps.Ghosts_SetStartTime(ps.Now - int(pauseAt));
-        } else if (!unpausedFlag && IsCustPlayback) {
+        } else if (!unpausedFlag && !isScrubbing && IsCustPlayback) {
             auto mgr = GhostClipsMgr::Get(GetApp());
             auto td = GhostClipsMgr::AdvanceClipPlayersByDelta(mgr, playbackSpeed);
             if (td.x < 0) {
@@ -352,6 +396,24 @@ class ScrubberMgr {
         } else {
             pauseAt = ps.Now - lastSetStartTime;
         }
+    }
+
+    bool isScrubbing = false;
+    bool isScrubbingShouldUnpause = false;
+    void StartScrubWatcher() {
+        if (IsPaused) return;
+        isScrubbing = true;
+        isScrubbingShouldUnpause = IsStdPlayback;
+        if (isScrubbingShouldUnpause)
+            DoPause();
+        startnew(CoroutineFunc(this.ScrubWatcher));
+    }
+
+    protected void ScrubWatcher() {
+        while (UI::IsMouseDown(UI::MouseButton::Left)) yield();
+        if (isScrubbingShouldUnpause)
+            DoUnpause();
+        isScrubbing = false;
     }
 }
 

@@ -225,18 +225,24 @@ class SaveGhostsTab : Tab {
             // curr loaded max time
             // uint maxTime = GhostClipsMgr::GetMaxGhostDuration(GetApp());
             // auto g = GhostClipsMgr::GetGhostFromInstanceId()
-            CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+            // CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+
             // while PS exists and now < finish time of longest ghost
-            while (IsSpectatingGhost() && int(GetApp().PlaygroundScript.Now) < (int(lastSpectatedGhostRaceTime) + lastSetStartTime - 10)) {
+            while (IsSpectatingGhost() && int(GetApp().PlaygroundScript.Now) < (int(lastSpectatedGhostRaceTime) + lastSetStartTime - 20)) {
                 yield();
             }
             if (!IsSpectatingGhost()) break;
-            if (!scrubberMgr.IsPaused) {
-                if (!scrubberMgr.IsStdPlayback) {
-                    scrubberMgr.DoUnpause();
-                    startnew(CoroutineFunc(scrubberMgr.DoPause));
+            try {
+                if (scrubberMgr !is null && !scrubberMgr.IsPaused) {
+                    if (!scrubberMgr.IsStdPlayback) {
+                        scrubberMgr.DoUnpause();
+                        startnew(CoroutineFunc(scrubberMgr.DoPause));
+                    }
+                    scrubberMgr.SetProgress(0);
                 }
-                scrubberMgr.SetProgress(0);
+            } catch {
+                // can get a null ptr exception here (from mlhook, but from this code) if we reload the plugin and the loop is active
+                // warn("Got weird exception (null ptr?): " + getExceptionInfo());
             }
             yield();
         }
