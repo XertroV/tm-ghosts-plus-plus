@@ -6,4 +6,5 @@ version  = "0.1.3"
 
 [script]
 #__DEFINES__
-dependencies = ["MLHook", "NadeoServices"]
+dependencies = ["MLHook", "NadeoServices", "VehicleState"]
+optional_dependencies = ["ChampionMedals"]

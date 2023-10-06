@@ -41,6 +41,43 @@ void DrawScrubber() {
 
     bool showScrubber = isSpectating || (int(ps.StartTime) - ps.Now) > 0 || (Time::Now - lastHover) < 5000;
     if (!showScrubber) return;
+    if (scrubberMgr is null) return;
+
+    auto mgr = GhostClipsMgr::Get(GetApp());
+    auto nbGhosts = mgr.Ghosts.Length;
+
+    bool showInputs = isSpectating && S_ShowInputsWhileSpectatingGhosts
+        && (UI::IsGameUIVisible() || S_ShowInputsWhenUIHidden)
+        && (!S_HideInputsIfOnlyGhost || nbGhosts > 1)
+        && nbGhosts > 0 && ps !is null;
+    if (showInputs) {
+        auto instId = GetCurrentlySpecdGhostInstanceId(ps);
+        auto g = GhostClipsMgr::GetGhostFromInstanceId(mgr, instId);
+        if (g !is null) {
+            auto ghostVisId = Dev::GetOffsetUint32(g, 0x0);
+            if (ghostVisId < 0x0F000000 && ghostVisId & 0x04000000 != 0) {
+                CSceneVehicleVis@[] viss = VehicleState::GetAllVis(GetApp().GameScene);
+                CSceneVehicleVis@ found;
+                for (uint i = 0; i < viss.Length; i++) {
+                    auto vis = viss[i];
+                    auto visId = Dev::GetOffsetUint32(vis, 0);
+                    if (visId == ghostVisId) {
+                        @found = vis;
+                        break;
+                    }
+                }
+                if (found !is null) {
+                    auto inputsSize = vec2(S_InputsHeight * 2, S_InputsHeight) * screen.y;
+                    auto inputsPos = (screen - inputsSize) * vec2(S_InputsPosX, S_InputsPosY);
+                    inputsPos += inputsSize;
+                    nvg::Translate(inputsPos);
+                    Inputs::DrawInputs(found.AsyncState, inputsSize);
+                    nvg::ResetTransform();
+                }
+            }
+
+        }
+    }
 
     UI::SetNextWindowSize(int(size.x), int(size.y), UI::Cond::Always);
     UI::SetNextWindowPos(int(pos.x), int(pos.y), UI::Cond::Always);
@@ -100,6 +137,9 @@ void DrawScrubber() {
 
         if (expand) {
             S_ShowWindow = !S_ShowWindow;
+            if (S_ShowWindow && !UI::IsOverlayShown()) {
+                UI::ShowOverlay();
+            }
         }
         if (clickCamera) {
             auto cam = ps.UIManager.UIAll.SpectatorForceCameraType;

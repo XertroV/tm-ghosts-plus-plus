@@ -22,7 +22,7 @@ Json::Value@ FetchClubEndpoint(const string &in route) {
 
 Json::Value@ CallLiveApiPath(const string &in path) {
     AssertGoodPath(path);
-    return FetchLiveEndpoint(NadeoServices::BaseURL() + path);
+    return FetchLiveEndpoint(NadeoServices::BaseURLLive() + path);
 }
 
 Json::Value@ CallCompApiPath(const string &in path) {
@@ -42,7 +42,6 @@ Json::Value@ CallMapMonitorApiPath(const string &in path) {
     log_trace("[CallMapMonitorApiPath] Requesting: " + url);
     auto req = Net::HttpRequest();
     req.Url = MM_API_ROOT + path;
-    req.Headers['User-Agent'] = 'MapInfo/Openplanet-Plugin/contact=@XertroV';
     // req.Headers['Authorization'] = 'openplanet ' + token;
     req.Method = Net::HttpMethod::Get;
     req.Start();

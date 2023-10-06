@@ -21,6 +21,7 @@ void Main() {
             trace("starting watch loop on init because we're spectating a ghost");
             startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
         }
+        @g_GhostFinder = GhostFinder();
     }
 }
 
@@ -61,16 +62,19 @@ void MapCoro() {
         sleep(273); // no need to check that frequently. 273 seems primeish
         if (s_currMap != CurrentMap) {
             s_currMap = CurrentMap;
-            lastSpectatedGhostRaceTime = 0;
-            lastLoadedGhostRaceTime = 0;
-            maxTime = 0.;
-            ResetToggleCache();
             OnMapChange();
         }
     }
 }
 
 void OnMapChange() {
+    lastSpectatedGhostRaceTime = 0;
+    lastLoadedGhostRaceTime = 0;
+    maxTime = 0.;
+    ResetToggleCache();
+    if (s_currMap.Length > 0) {
+        @g_GhostFinder = GhostFinder();
+    }
     for (uint i = 0; i < tabs.Length; i++) {
         tabs[i].OnMapChange();
     }
@@ -139,7 +143,7 @@ array<string> UpdateMapRecords() {
     if (!permissionsOkay) return array<string>();
     if (records.GetType() != Json::Type::Array || int(records.Length) < g_numGhosts || lastOffset != g_ghostRankOffset) {
         lastOffset = g_ghostRankOffset;
-        Json::Value mapRecords = Live::GetMapRecords("Personal_Best", CurrentMap, true, g_numGhosts, g_ghostRankOffset);
+        Json::Value@ mapRecords = Live::GetMapRecords("Personal_Best", CurrentMap, true, g_numGhosts, g_ghostRankOffset);
         // trace(Json::Write(records));
         auto tops = mapRecords['tops'];
         if (tops.GetType() != Json::Type::Array) {
@@ -296,7 +300,7 @@ UI::InputBlocking OnMouseWheel(int x, int y) {
     return UI::InputBlocking::DoNothing;
 }
 
-vec2 pendingScroll;
+vec2 pendingScroll = vec2();
 
 void RenderEarly() {
     pendingScroll = vec2();

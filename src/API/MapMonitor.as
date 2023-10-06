@@ -20,7 +20,8 @@ namespace MapMonitor {
         return CallMapMonitorApiPath('/map/' + mapUid + '/nb_players/refresh');
     }
 
-    Json::Value@ GetScoresAroundForMap(const string &in mapUid, int score) {
+    // https://webservices.openplanet.dev/live/leaderboards/surround
+    Json::Value@ GetMapLbSurround(const string &in mapUid, int score) {
         return CallMapMonitorApiPath('/map/' + mapUid + '/' + score + '/refresh');
     }
 }

@@ -294,28 +294,16 @@ class LoadGhostsTab : Tab {
         g_Favorites.Draw();
         g_Players.Draw();
         g_Saved.Draw();
-        g_PBTab.Draw();
         g_Medals.Draw();
-        g_NearTimeTab.Draw();
-        g_AroundRankTab.Draw();
-        g_IntervalsTab.Draw();
+        // g_PBTab.Draw();
+        // g_NearTimeTab.Draw();
+        // g_AroundRankTab.Draw();
+        // g_IntervalsTab.Draw();
         UI::EndTabBar();
     }
 }
 
-class FavoritesTab : Tab {
 
-    FavoritesTab() {
-        super("Favs");
-    }
-
-    void DrawInner() override {
-        UI::Text("Favs");
-    }
-
-    void OnMapChange() override {
-    }
-}
 class PlayersTab : Tab {
 
     PlayersTab() {
@@ -324,6 +312,10 @@ class PlayersTab : Tab {
 
     string m_PlayerFilter = "";
     string[] loading;
+
+    Json::Value@[]@ get_DefaultList() {
+        return Cache::LoginsArr;
+    }
 
     void DrawInner() override {
         bool changed;
@@ -340,7 +332,7 @@ class PlayersTab : Tab {
 
         UI::Separator();
 
-        auto players = (m_PlayerFilter.Length > 0) ? filteredPlayers : Cache::LoginsArr;
+        auto players = (m_PlayerFilter.Length > 0) ? filteredPlayers : DefaultList;
 
         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
 
@@ -404,7 +396,7 @@ class PlayersTab : Tab {
         string wsid = j['wsid'];
         auto names = j['names'].GetKeys();
         Core::LoadGhostOfPlayer(wsid, s_currMap, string::Join(names, ", "));
-        // no need to refind someones ghost
+        // no need to refind someones ghost (is there?)
         // auto ix = loading.Find(login);
         // if (ix >= 0) loading.RemoveAt(ix);
     }
@@ -418,7 +410,41 @@ class PlayersTab : Tab {
     void OnMapChange() override {
         loading.RemoveRange(0, loading.Length);
     }
+
+    void OnPlayerAdded() {
+        UpdatePlayerFilter();
+    }
 }
+
+
+
+class FavoritesTab : PlayersTab {
+    FavoritesTab() {
+        super();
+        Name = "Favs";
+        startnew(CoroutineFunc(this.InitSoon));
+    }
+
+    void InitSoon() {
+        sleep(100);
+        while (!Cache::IsInitialized) yield();
+        UpdatePlayerFilter();
+    }
+
+    array<Json::Value@>@ get_DefaultList() override property {
+        return filteredPlayers;
+    }
+
+    void UpdatePlayerFilter() override {
+        filteredPlayers.RemoveRange(0, filteredPlayers.Length);
+        Cache::GetFavoritesFromNameFilter(m_PlayerFilter, filteredPlayers);
+    }
+
+    void OnFavAdded() {
+        UpdatePlayerFilter();
+    }
+}
+
 
 
 bool SortGhosts(const Json::Value@ &in a, const Json::Value@ &in b) {
@@ -554,6 +580,7 @@ class MedalsTab : Tab {
 
     MedalsTab() {
         super("Medals");
+        startnew(CoroutineFunc(this.PopulateMedalTimes));
     }
 
     uint nbGhosts = 2;
@@ -564,7 +591,7 @@ class MedalsTab : Tab {
         UI::Indent();
         UI::BeginDisabled(isLoadingGhosts);
         UI::SetNextItemWidth(100.);
-        nbGhosts = Math::Clamp(UI::InputInt("Number of ghosts", nbGhosts), 1, 20);
+        nbGhosts = Math::Clamp(UI::InputInt("Number of ghosts", nbGhosts), 1, 3);
         if (medals[4] > 0 && UI::Button(Time::Format(medals[4]) + " / Champion Medal Ghosts")) {
             LoadGhostsNear(medals[4], nbGhosts);
         }
@@ -586,17 +613,28 @@ class MedalsTab : Tab {
 
     void OnMapChange() override {
         if (s_currMap.Length == 0) return;
-        PopulateMedalTimes();
+        medals[0] = medals[1] = medals[2] = medals[3] = medals[4] = -1;
+        startnew(CoroutineFunc(this.PopulateMedalTimes));
     }
 
     void PopulateMedalTimes() {
+        // give some time for other things to catch up;
+        sleep(2500);
         auto map = GetApp().RootMap;
         if (map is null) return;
         medals[0] = map.TMObjective_BronzeTime;
         medals[1] = map.TMObjective_SilverTime;
         medals[2] = map.TMObjective_GoldTime;
         medals[3] = map.TMObjective_AuthorTime;
+#if DEPENDENCY_CHAMPIONMEDALS
+        medals[4] = ChampionMedals::GetCMTime();
+        if (medals[4] < 1) {
+            sleep(2500);
+            medals[4] = ChampionMedals::GetCMTime();
+        }
+#else
         medals[4] = -1;
+#endif
     }
 }
 class PBTab : Tab {
@@ -655,6 +693,10 @@ void LoadGhostsNear(uint time, uint nbGhosts) {
 
 void _LoadGhostsNear(ref@ r) {
     auto args = cast<array<uint>>(r);
-    sleep(1000);
+    auto time = args[0];
+    auto nbGhosts = args[1];
+    if (g_GhostFinder is null) return;
+    auto wsids = g_GhostFinder.FindAroundTime(time, nbGhosts);
+    Cache::LoadGhostsForWsids(wsids, s_currMap);
     isLoadingGhosts = false;
 }

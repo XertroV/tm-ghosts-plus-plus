@@ -26,6 +26,15 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
         scrubberMgr.DoUnpause();
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
+
+    auto ps = GetApp().PlaygroundScript;
+    if (ps !is null) {
+        // auto gm = cast<CGameGhostMgrScript>(nod);
+        auto ghost = cast<CGameGhostScript>(stack.CurrentNod(1));
+        if (ghost !is null)
+            Cache::CheckForNameToAddSoon(ghost.Nickname, ghost.Result.Time);
+    }
+
     // an attempt to get the end of ghosts to load faster than normal -- didn't work
     // auto ps = GetApp().PlaygroundScript;
     // if (ps !is null) {
@@ -41,6 +50,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
     //         ghostAddSkipIntercept = false;
     //     }
     // }
+
     return true;
 }
 
@@ -111,3 +121,17 @@ void SetCurrentGhostValues() {
 }
 
 // ! clip pausing and unpausing moved to GhostClips.as
+
+
+uint GetCurrentlySpecdGhostInstanceId(CSmArenaRulesMode@ ps) {
+    if (ps is null) return 0x0FF00000;
+    auto currInstIdOffset = GetOffset("CGamePlaygroundUIConfig", "SpectatorCamAutoLatitude") - 0x14;
+    uint instId = Dev::GetOffsetUint32(ps.UIManager.UIAll, currInstIdOffset);
+    // 0 none, 1 all players, 2 all map, 3 clan, ? entity, ? landmark, 6 ghost
+    uint specFlag = Dev::GetOffsetUint32(ps.UIManager.UIAll, currInstIdOffset - 0x4);
+    if (specFlag != 6) {
+        log_trace('spec target type == ' + specFlag + ' (not ghost)');
+        return 0x0FF00000;
+    }
+    return instId;
+}

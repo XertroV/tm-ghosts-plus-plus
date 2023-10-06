@@ -28,6 +28,8 @@ namespace Core {
             return null;
         }
         CMapRecord@[] ret;
+        log_debug('GetMapPlayerListRecordList found ' + resp.MapRecordList.Length + ' records for ' + wsidsBuf.Length + ' players.');
+        log_debug('wsids: ' + string::Join(wsids, ','));
         for (uint i = 0; i < resp.MapRecordList.Length; i++) {
             ret.InsertLast(resp.MapRecordList[i]);
         }
@@ -42,6 +44,30 @@ namespace Core {
         }
         auto rec = recs[0];
         LoadGhostFromUrl(rec.FileName, rec.ReplayUrl);
+    }
+
+    void LoadGhostOfPlayers(string[]@ wsids, const string &in uid) {
+        log_trace('Getting ghosts for ' + wsids.Length + ' players');
+        auto recs = GetMapPlayerListRecordList(wsids, uid);
+        if (recs is null || recs.Length == 0) {
+            NotifyWarning("Could not load ghosts for " + string::Join(wsids, ', '));
+            return;
+        }
+        log_trace('Found ' + recs.Length + ' ghosts for ' + wsids.Length + ' players');
+        LoadGhostsAsync(recs);
+    }
+
+    void LoadGhostsAsync(CMapRecord@[]@ recs) {
+        Meta::PluginCoroutine@[] coros;
+        for (uint i = 0; i < recs.Length; i++) {
+            coros.InsertLast(startnew(LoadGhostAsync, array<string> = {string(recs[i].FileName), recs[i].ReplayUrl}));
+        }
+        await(coros);
+    }
+
+    void LoadGhostAsync(ref@ r) {
+        auto args = cast<string[]>(r);
+        LoadGhostFromUrl(args[0], args[1]);
     }
 
     void LoadGhostFromUrl(const string &in filename, const string &in url) {
