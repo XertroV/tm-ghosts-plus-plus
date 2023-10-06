@@ -53,6 +53,7 @@ void InitGP() {
     // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_SpectateGhost", true);
     MLHook::RegisterMLHook(spectateHook, "TMGame_Record_Spectate", true);
     MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
+    startnew(WatchAndRemoveFadeOut);
     trace('init done');
     g_Initialized = true;
 }
@@ -110,6 +111,28 @@ void OnMapChange() {
     // if (ps is null) return;
     // Dev::SetOffset(ps, GetOffset(ps, "Now"), 0x000FFFFF);
     // Dev::SetOffset(Dev::GetOffsetNod(GetApp(), GetOffset("CGameCtnApp", "GameScene") + 0x8), 0x918, 0x000FFFFF);
+}
+
+
+void WatchAndRemoveFadeOut() {
+    auto app = GetApp();
+    while (true) {
+        yield();
+        while (app.PlaygroundScript is null) yield();
+        while (app.Network.ClientManiaAppPlayground is null || app.Network.ClientManiaAppPlayground.UILayers.Length < 5) yield();
+        sleep(1000);
+        if (app.Network.ClientManiaAppPlayground is null) continue;
+        for (uint i = 0; i < app.Network.ClientManiaAppPlayground.UILayers.Length; i++) {
+            auto layer = app.Network.ClientManiaAppPlayground.UILayers[i];
+            auto qf = cast<CGameManialinkQuad>(layer.LocalPage.GetFirstChild("quad-fade"));
+            if (qf !is null) {
+                qf.Size = vec2(0, 0);
+                // log_trace("!! SET SIZE ON QUAD FADE");
+            }
+        }
+        string uid = app.RootMap.EdChallengeId;
+        while (app.RootMap !is null && uid == app.RootMap.EdChallengeId) yield();
+    }
 }
 
 

@@ -58,6 +58,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         // wait a bit to give ML time to process request
         sleep(100);
 
+        // this abadons the load + spectate ghost request on ML size
         ExitSpectatingGhost();
         // while (GetApp().PlaygroundScript !is null && mgr.Ghosts.Length == nbGhosts) yield();
         Cache::LoadGhostsForWsids({wsid}, CurrentMap);
@@ -67,8 +68,9 @@ class SpectateHook : MLHook::HookMLEventsByType {
         if (mgr2 is null || ps2 is null) return;
 
         if (scrubberMgr !is null) {
-            scrubberMgr.SetProgress(0);
-            scrubberMgr.SetPlayback();
+            scrubberMgr.ResetAll();
+            // scrubberMgr.SetProgress(0);
+            // scrubberMgr.SetPlayback();
         }
 
         for (uint i = nbGhosts; i < mgr2.Ghosts.Length; i++) {
