@@ -2,30 +2,34 @@ const string PluginName = Meta::ExecutingPlugin().Name;
 const string MenuTitle = "\\$dd5" + Icons::HandPointerO + "\\$z " + PluginName;
 
 
-PBTab g_PBTab;
-NearTime g_NearTimeTab;
-AroundRank g_AroundRankTab;
-Intervals g_IntervalsTab;
-FavoritesTab g_Favorites;
-PlayersTab g_Players;
-SavedTab g_Saved;
-MedalsTab g_Medals;
-LoadGhostsTab g_LoadGhostTab;
-SaveGhostsTab g_SaveGhostTab;
-DebugGhostsTab g_DebugTab;
-DebugCacheTab g_DebugCacheTab;
-DebugClipsTab g_DebugClips;
-ScrubberDebugTab g_ScrubDebug;
+PBTab@ g_PBTab = PBTab();
+NearTime@ g_NearTimeTab = NearTime();
+AroundRank@ g_AroundRankTab = AroundRank();
+Intervals@ g_IntervalsTab = Intervals();
+FavoritesTab@ g_Favorites = FavoritesTab();
+PlayersTab@ g_Players = PlayersTab();
+SavedTab@ g_Saved = SavedTab();
+MedalsTab@ g_Medals = MedalsTab();
+LoadGhostsTab@ g_LoadGhostTab = LoadGhostsTab();
+SaveGhostsTab@ g_SaveGhostTab = SaveGhostsTab();
+DebugGhostsTab@ g_DebugTab = DebugGhostsTab();
+DebugCacheTab@ g_DebugCacheTab = DebugCacheTab();
+DebugClipsTab@ g_DebugClips = DebugClipsTab();
+ScrubberDebugTab@ g_ScrubDebug = ScrubberDebugTab();
 
-Tab@[] tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug};
+Tab@[]@ tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug};
 
 /** Render function called every frame intended for `UI`.
 */
 void RenderInterface() {
     if (!S_ShowWindow) return;
+    // only show a window outside the map in dev mode
+#if DEV
+#else
+    if (GetApp().PlaygroundScript is null) return;
+#endif
+
     if (!Cache::hasDoneInit) startnew(Cache::Initialize);
-
-
     UI::SetNextWindowSize(600, 300, UI::Cond::Appearing);
     if (UI::Begin(MenuTitle, S_ShowWindow)) {
         if (GetApp().PlaygroundScript is null) {
@@ -109,6 +113,7 @@ class SaveGhostsTab : Tab {
             return;
         }
 
+        UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
         auto nbCols = 6;
         if (UI::BeginTable("save-ghosts", nbCols, UI::TableFlags::SizingStretchProp)) {
 
@@ -132,6 +137,7 @@ class SaveGhostsTab : Tab {
 
             UI::EndTable();
         }
+        UI::PopStyleColor();
 #if DEV
         // auto bufOffset = Reflection::GetType("NGameGhostClips_SMgr").GetMember("Ghosts").Offset + 0x10;
         // auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
@@ -489,6 +495,7 @@ class SavedTab : Tab {
             return;
         }
 
+        UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
         if (UI::BeginTable("saved ghosts", 5, UI::TableFlags::SizingStretchProp)) {
             UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 40.);
             UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
@@ -533,6 +540,7 @@ class SavedTab : Tab {
 
             UI::EndTable();
         }
+        UI::PopStyleColor();
     }
 
     string[] loading;

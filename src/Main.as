@@ -43,6 +43,8 @@ void InitGP() {
     yield();
     yield();
     yield();
+    auto app = GetApp();
+    while (app.PlaygroundScript is null) yield();
     trace('registering callback & hook');
     MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
     MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_NextMap", true);
@@ -58,7 +60,8 @@ bool g_Initialized = false;
 void Unload() {
     trace('unloading ghost picker #1 paused');
     // if (scrubberPaused) GhostClipsMgr::UnpauseClipPlayers(GhostClipsMgr::Get(GetApp()), 0., 60.0);
-    scrubberMgr.ResetAll();
+    if (scrubberMgr !is null)
+        scrubberMgr.ResetAll();
     trace('unloading ghost picker #2 mlhook');
     MLHook::UnregisterMLHooksAndRemoveInjectedML();
     trace('unloading ghost picker #3 done');
@@ -83,7 +86,7 @@ void MapCoro() {
         sleep(273); // no need to check that frequently. 273 seems primeish
         if (s_currMap != CurrentMap) {
             s_currMap = CurrentMap;
-            OnMapChange();
+            startnew(OnMapChange);
         }
     }
 }
@@ -92,40 +95,19 @@ void OnMapChange() {
     lastSpectatedGhostRaceTime = 0;
     lastLoadedGhostRaceTime = 0;
     maxTime = 0.;
-    ResetToggleCache();
     if (s_currMap.Length > 0) {
         @g_GhostFinder = GhostFinder();
     }
+    if (tabs is null) return;
     for (uint i = 0; i < tabs.Length; i++) {
         tabs[i].OnMapChange();
     }
-    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
-    if (ps is null) return;
-    Dev::SetOffset(ps, GetOffset(ps, "Now"), 0x000FFFFF);
-    Dev::SetOffset(Dev::GetOffsetNod(GetApp(), GetOffset("CGameCtnApp", "GameScene") + 0x8), 0x918, 0x000FFFFF);
-
-}
-
-dictionary toggleCache;
-void ResetToggleCache() {
-    toggleCache.DeleteAll();
-    records = Json::Value();
-    lastRecordPid = "";
-}
-
-int g_numGhosts = 20;
-int g_ghostRankOffset = 0;
-
-// returns e.g., "the top X ghosts" or "ghosts ranked 5 to 56";
-const string GenGhostRankString() {
-    if (g_ghostRankOffset == 0)
-        return "the top " + g_numGhosts + " ghosts";
-    int startRank = g_ghostRankOffset + 1;
-    if (g_numGhosts == 1) {
-        return "the ghost ranked " + startRank;
-    }
-    int endRank = startRank + g_numGhosts - 1;
-    return "ghosts ranked " + startRank + " to " + endRank;
+    if (scrubberMgr is null) return;
+    scrubberMgr.ResetAll();
+    // auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    // if (ps is null) return;
+    // Dev::SetOffset(ps, GetOffset(ps, "Now"), 0x000FFFFF);
+    // Dev::SetOffset(Dev::GetOffsetNod(GetApp(), GetOffset("CGameCtnApp", "GameScene") + 0x8), 0x918, 0x000FFFFF);
 }
 
 
@@ -142,17 +124,9 @@ void Render() {
 
 void RenderMenu() {
     if (!permissionsOkay) return;
-    if (UI::MenuItem("\\$888" + Icons::HandPointerO + "\\$z Ghost Picker", "", S_ShowWindow)) {
+    if (UI::MenuItem("\\$888" + Icons::HandPointerO + "\\$z " + PluginName, "", S_ShowWindow)) {
         S_ShowWindow = !S_ShowWindow;
     }
-}
-
-CTrackMania@ get_app() {
-    return cast<CTrackMania>(GetApp());
-}
-
-CGameManiaAppPlayground@ get_cmap() {
-    return app.Network.ClientManiaAppPlayground;
 }
 
 string get_CurrentMap() {
@@ -161,103 +135,29 @@ string get_CurrentMap() {
     return map.MapInfo.MapUid;
 }
 
-string lastRecordPid;
-int lastOffset = -1;
-Json::Value records = Json::Value(); // null
+// /**
+// TMGame_Record_SpectateGhost
+// TMGame_Record_ToggleGhost
+// TMGame_Record_TogglePB
+//  */
+// void ToggleGhost(const string &in playerId) {
+//     if (!permissionsOkay) return;
+//     // trace('toggled ghost for ' + playerId);
+//     MLHook::Queue_SH_SendCustomEvent("TMGame_Record_ToggleGhost", {playerId});
+//     bool enabled = false;
+//     toggleCache.Get(playerId, enabled);
+//     toggleCache[playerId] = !enabled;
+// }
 
-array<string> UpdateMapRecords() {
-    if (!permissionsOkay) return array<string>();
-    if (records.GetType() != Json::Type::Array || int(records.Length) < g_numGhosts || lastOffset != g_ghostRankOffset) {
-        lastOffset = g_ghostRankOffset;
-        Json::Value@ mapRecords = Live::GetMapRecords("Personal_Best", CurrentMap, true, g_numGhosts, g_ghostRankOffset);
-        // trace(Json::Write(records));
-        auto tops = mapRecords['tops'];
-        if (tops.GetType() != Json::Type::Array) {
-            warn('api did not return an array for records; instead got: ' + Json::Write(mapRecords));
-            NotifyWarning("API did not return map records.");
-            return array<string>();
-        }
-        records = tops[0]['top'];
-    }
-    array<string> pids = {};
-    if (records.GetType() == Json::Type::Array) {
-        for (uint i = 0; i < records.Length; i++) {
-            auto item = records[i];
-            pids.InsertLast(item['accountId']);
-        }
-    }
-    lastRecordPid = pids[pids.Length - 1];
-    return pids;
-}
-
-void ToggleTopGhosts() {
-    array<string> pids = UpdateMapRecords();
-    Notify("Toggling " + pids.Length + " ghosts...");
-    yield();
-    for (uint i = 0; i < pids.Length; i++) {
-        auto playerId = pids[i];
-        ToggleGhost(playerId);
-        yield();
-    }
-}
-
-void _ShowTopGhosts(bool hideInstead = false) {
-    array<string> pids = UpdateMapRecords();
-    Notify((hideInstead ? "Hiding " : "Showing ") + pids.Length + " ghosts...");
-    yield();
-    for (uint i = 0; i < pids.Length; i++) {
-        auto playerId = pids[i];
-        bool enabled = false;
-        toggleCache.Get(playerId, enabled);
-        if (enabled == hideInstead) {
-            ToggleGhost(playerId);
-            yield();
-        }
-    }
-}
-
-void ShowTopGhosts() {
-    _ShowTopGhosts(false);
-}
-
-void HideTopGhosts() {
-    _ShowTopGhosts(true);
-}
-
-void HideAllGhosts() {
-    auto pids = toggleCache.GetKeys();
-    for (uint i = 0; i < pids.Length; i++) {
-        auto pid = pids[i];
-        if (bool(toggleCache[pid])) {
-            ToggleGhost(pid);
-            yield();
-        }
-    }
-}
-
-/**
-TMGame_Record_SpectateGhost
-TMGame_Record_ToggleGhost
-TMGame_Record_TogglePB
- */
-void ToggleGhost(const string &in playerId) {
-    if (!permissionsOkay) return;
-    // trace('toggled ghost for ' + playerId);
-    MLHook::Queue_SH_SendCustomEvent("TMGame_Record_ToggleGhost", {playerId});
-    bool enabled = false;
-    toggleCache.Get(playerId, enabled);
-    toggleCache[playerId] = !enabled;
-}
-
-void ToggleSpectator() {
-    if (!permissionsOkay) return;
-    auto pids = UpdateMapRecords();
-    if (lastRecordPid == "" || int(pids.Length) < g_numGhosts) {
-        NotifyWarning("\n>> Toggle ghosts first at least once. <<\n");
-    } else {
-        MLHook::Queue_SH_SendCustomEvent("TMGame_Record_SpectateGhost", {pids[g_numGhosts - 1]});
-    }
-}
+// void ToggleSpectator() {
+//     if (!permissionsOkay) return;
+//     auto pids = UpdateMapRecords();
+//     if (lastRecordPid == "" || int(pids.Length) < g_numGhosts) {
+//         NotifyWarning("\n>> Toggle ghosts first at least once. <<\n");
+//     } else {
+//         MLHook::Queue_SH_SendCustomEvent("TMGame_Record_SpectateGhost", {pids[g_numGhosts - 1]});
+//     }
+// }
 
 
 /*
@@ -315,6 +215,9 @@ void ExitSpectatingGhostAndCleanUp() {
 UI::InputBlocking OnKeyPress(bool down, VirtualKey key) {
     if (down && key == VirtualKey::Escape && IsSpectatingGhost()) {
         ExitSpectatingGhost();
+        if (scrubberMgr !is null) scrubberMgr.ResetAll();
+        // GetApp().Network.PlaygroundInterfaceScriptHandler.CloseInGameMenu(CGameScriptHandlerPlaygroundInterface::EInGameMenuResult::Resume);
+        return UI::InputBlocking::Block;
     }
     return UI::InputBlocking::DoNothing;
 }

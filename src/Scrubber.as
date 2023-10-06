@@ -42,6 +42,7 @@ float GetCurrFontSize() {
 
 float maxTime = 0.;
 uint lastHover;
+bool showAdvanced = false;
 
 void DrawScrubber() {
     if (!S_ScrubberWhenOverlayOff && !UI::IsOverlayShown()) return;
@@ -65,8 +66,10 @@ void DrawScrubber() {
     }
 
     bool showScrubber = isSpectating || (int(ps.StartTime) - ps.Now) > 0 || (Time::Now - lastHover) < 5000;
-    auto mgr = GhostClipsMgr::Get(GetApp());
-    if (!showScrubber || scrubberMgr is null || mgr is null) {
+    auto @mgr = GhostClipsMgr::Get(GetApp());
+    showScrubber = showScrubber && scrubberMgr !is null;
+    showScrubber = showScrubber && mgr !is null;
+    if (!showScrubber) {
         UI::PopFont();
         return;
     }
@@ -106,7 +109,7 @@ void DrawScrubber() {
         }
     }
 
-    UI::SetNextWindowSize(int(size.x), int(size.y), UI::Cond::Always);
+    UI::SetNextWindowSize(int(size.x), 0 /*int(size.y)*/, UI::Cond::Always);
     UI::SetNextWindowPos(int(pos.x), int(pos.y), UI::Cond::Always);
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
         double t = double(ps.Now - lastSetStartTime) + scrubberMgr.subSecondOffset;
@@ -127,15 +130,19 @@ void DrawScrubber() {
 
         auto nbBtns = 8;
 
+        if (lastLoadedGhostRaceTime == 0 && mgr.Ghosts.Length > 0) {
+            lastLoadedGhostRaceTime = mgr.Ghosts[0].GhostModel.RaceTime;
+        }
+
         UI::SetNextItemWidth(UI::GetWindowContentRegionWidth() - btnWidthFull * nbBtns);
         maxTime = 0;
         maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
         maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime);
         maxTime = Math::Min(maxTime, ps.Now);
-        string labelTime = Time::Format(int64(Math::Abs(t)));
+        string labelTime = Time::Format(int64(Math::Abs(t) + lastSetGhostOffset));
         if (t < 0) labelTime = "-" + labelTime;
-        auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t),  labelTime + " / " + Time::Format(int64(maxTime)));
+        auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t),  labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset)));
         bool startedScrub = UI::IsItemClicked();
         bool clickTogglePause = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
 
@@ -162,7 +169,15 @@ void DrawScrubber() {
         UI::SameLine();
         clickTogglePause = UI::Button((scrubberMgr.IsPaused ? Icons::Play : Icons::Pause) + "##scrubber-toggle", vec2(btnWidth, 0)) || clickTogglePause;
         UI::SameLine();
-        bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
+        // bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
+        bool toggleAdv = UI::Button(Icons::Cogs + "##scrubber-toggle-adv", vec2(btnWidth, 0));
+
+        if (toggleAdv) {
+            showAdvanced = !showAdvanced;
+        }
+        if (showAdvanced) {
+            DrawAdvancedScrubberExtras(ps, btnWidth);
+        }
 
         if (startedScrub) {
             scrubberMgr.StartScrubWatcher();
@@ -177,15 +192,6 @@ void DrawScrubber() {
                     UI::ShowOverlay();
                 }
             }
-        }
-        if (clickCamera) {
-            auto cam = ps.UIManager.UIAll.SpectatorForceCameraType;
-            auto newCam = cam;
-            if (cam == 0) newCam = 2;
-            if (cam == 1) newCam = 2;
-            if (cam == 2) newCam = 3;
-            if (cam >= 3) newCam = 0;
-            ps.UIManager.UIAll.SpectatorForceCameraType = newCam;
         }
         if (exit) {
             scrubberMgr.SetPlayback();
@@ -225,6 +231,73 @@ void DrawScrubber() {
 
     UI::PopFont();
 }
+
+uint m_NewGhostOffset = 0;
+uint lastSetGhostOffset = 0;
+void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
+    bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
+    AddSimpleTooltip("While spectating, cycle between cimenatic cam, free cam, and the player camera.");
+    UI::SameLine();
+    bool clickCycleCams = UI::Button(CurrCamLabel() + "##scrubber-spec-cam", vec2(btnWidth, 0));
+    AddSimpleTooltip("Force the camera you spectate ghosts with (1, 2, 3) -- does not override mediatracker.");
+    UI::SameLine();
+    UI::Dummy(vec2(10, 0));
+    UI::SameLine();
+    UI::AlignTextToFramePadding();
+    UI::Text("Set Ghosts Offset");
+    AddSimpleTooltip("This can be used to exceed the usual limits on ghosts.");
+    UI::SameLine();
+    UI::SetNextItemWidth(btnWidth * 4.0);
+    m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, 60000);
+    UI::SameLine();
+    bool clickSetOffset = UI::Button("Set Offset: " + Time::Format(m_NewGhostOffset));
+    UI::SameLine();
+    UI::Dummy(vec2(10, 0));
+
+    if (clickCycleCams) {
+        S_SpecCamera =
+            S_SpecCamera == ScrubberSpecCamera::None ? ScrubberSpecCamera::Cam1
+            : S_SpecCamera == ScrubberSpecCamera::Cam1 ? ScrubberSpecCamera::Cam2
+            : S_SpecCamera == ScrubberSpecCamera::Cam2 ? ScrubberSpecCamera::Cam3
+            : ScrubberSpecCamera::None
+            ;
+    } else if (clickCamera) {
+        auto cam = ps.UIManager.UIAll.SpectatorForceCameraType;
+        auto newCam = cam;
+        // we use 0x3 instead of 0x1 b/c it's the same but avoids ghost scrubber blocking our calls to Ghosts_SetStartTime
+        if (cam == 0) newCam = 2;
+        if (cam == 1) newCam = 2;
+        if (cam == 2) newCam = 3;
+        if (cam >= 3) newCam = 0;
+        ps.UIManager.UIAll.SpectatorForceCameraType = newCam;
+    } else if (clickSetOffset) {
+        // CGameCtnGhost@[] ghosts;
+        dictionary seenGhosts;
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+            auto gm = mgr.Ghosts[i].GhostModel;
+            seenGhosts[gm.GhostNickname + "|" + gm.RaceTime] = true;
+        }
+        ps.GhostMgr.Ghost_RemoveAll();
+        for (uint i = 0; i < ps.DataFileMgr.Ghosts.Length; i++) {
+            auto g = ps.DataFileMgr.Ghosts[i];
+            if (seenGhosts.Exists(string(g.Nickname) + "|" + g.Result.Time)) {
+                ps.GhostMgr.Ghost_Add(g, true, m_NewGhostOffset * -1);
+            }
+        }
+        lastSetGhostOffset = m_NewGhostOffset;
+        // for (uint i = 0; i < ghosts.Length; i++) {
+        //     auto item = ghosts[i];
+        //     // ps.GhostMgr.Ghost_Add(ghosts[i]);
+        // }
+    }
+}
+
+
+string CurrCamLabel() {
+    return tostring(S_SpecCamera);
+}
+
 
 string get_currSpeedLabel() {
     if (Math::Abs(scrubberMgr.playbackSpeed) < 0.1)
@@ -273,6 +346,8 @@ class ScrubberMgr {
     }
 
     void ResetAll() {
+        m_NewGhostOffset = 0;
+        lastSetGhostOffset = 0;
         scrubberMgr.ForceUnpause();
         scrubberMgr.SetPlayback();
     }
@@ -372,9 +447,18 @@ class ScrubberMgr {
     }
 
     void Update() {
-        auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+        auto app = cast<CTrackMania>(GetApp());
+        auto ps = cast<CSmArenaRulesMode>(app.PlaygroundScript);
         if (ps is null) return;
-        auto m = cast<CTrackMania>(GetApp()).Network;
+
+        // check for the quit trackmania dialog, if present, reset
+        auto nbActiveMenus = app.ActiveMenus.Length;
+        if (nbActiveMenus > 0) {
+            auto currFrame = app.ActiveMenus[nbActiveMenus - 1].CurrentFrame;
+            if (currFrame !is null && currFrame.IdName == "DialogConfirmClose") {
+                ResetAll();
+            }
+        }
 
         if (IsSpectatingGhost() && S_SpecCamera != ScrubberSpecCamera::None) {
             GameCamera().ActiveCam = uint(S_SpecCamera);
@@ -417,7 +501,7 @@ class ScrubberMgr {
     }
 }
 
-ScrubberMgr scrubberMgr;
+ScrubberMgr@ scrubberMgr = ScrubberMgr();
 
 enum PlaybackSpeeds {
     x2 = 0, x1 = 1, x0_5, x0_1, x0_01,

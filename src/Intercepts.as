@@ -4,6 +4,16 @@ void SetupIntercepts() {
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Remove", _Ghost_Remove);
     Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Ghost", _Spectator_SetForcedTarget_Ghost);
     Dev::InterceptProc("CGameScriptHandlerPlaygroundInterface", "CloseInGameMenu", _CGSHPI_CloseInGameMenu);
+    // Dev::InterceptProc("CTrackMania", "TerminateGame", _OnExit);
+    // Dev::InterceptProc("CTrackMania", "BackToMainMenu", _OnExit);
+}
+
+bool _OnExit(CMwStack &in stack) {
+    print("got OnExit intercept");
+    if (scrubberMgr !is null) {
+        scrubberMgr.ResetAll();
+    }
+    return true;
 }
 
 bool _CGSHPI_CloseInGameMenu(CMwStack &in stack) {
@@ -25,6 +35,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
     if (ps is null || ps.Now < 1000) return true;
 
     // having ghosts in the paused state can crash the game when loading ghosts
+    // ! sometimes a null ptr exception is thrown here
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
         startnew(CoroutineFunc(scrubberMgr.DoPause));

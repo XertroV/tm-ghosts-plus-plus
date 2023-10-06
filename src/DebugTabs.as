@@ -22,11 +22,7 @@ class DebugClipsTab : Tab {
     void DrawClip(const string &in name, CGameCtnMediaClipPlayer@ clip, uint64 ptr, string[]@ debugVals) {
         UI::Text(name);
         UI::Indent();
-        UI::Text("ptr: " + Text::FormatPointer(ptr));
-        if (UI::IsItemClicked()) {
-            IO::SetClipboard(Text::FormatPointer(ptr));
-            Notify("Copied: " + Text::FormatPointer(ptr));
-        }
+        CopiableLabel("ptr: " + Text::FormatPointer(ptr), Text::FormatPointer(ptr));
         UI::Text("Debug vals: " + string::Join(debugVals, ", "));
         if (UI::Button("Pause " + name)) {
             SetGhostClipPlayerPaused(clip, 3.0);
@@ -53,6 +49,7 @@ class DebugGhostsTab : Tab {
 
     void DrawDebugGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i) {
         auto gm = gc.GhostModel;
+        auto gmPtr = Dev::GetOffsetUint64(gc, GetOffset("NGameGhostClips_SClipPlayerGhost", "GhostModel"));
         auto zcc = gc.GhostZoneCountryCache;
         auto clip = gc.Clip;
         if (UI::TreeNode(gm.GhostNickname + "( "+Time::Format(gm.RaceTime)+" )" + "##" + i, UI::TreeNodeFlags::None)) {
@@ -86,6 +83,7 @@ class DebugGhostsTab : Tab {
             }
             if (UI::TreeNode("Model##" + i, UI::TreeNodeFlags::DefaultOpen)) {
                 UI::Columns(2);
+                CopiableLabel("ptr", Text::FormatPointer(gmPtr), true);
                 DrawValLabel(gm.Size, "Size");
                 DrawValLabel(gm.Duration, "Duration");
                 DrawValLabel(gm.RaceTime, "RaceTime");
@@ -112,6 +110,9 @@ class DebugGhostsTab : Tab {
                 DrawValLabel(gm.Validate_ScopeType, "Validate_ScopeType");
                 DrawValLabel(gm.Validate_TitleId, "Validate_TitleId");
                 UI::Columns(1);
+                if (UI::Button("Explore Ghost##"+i)) {
+                    ExploreNod("Ghost "+i, gm);
+                }
                 UI::TreePop();
             }
 
@@ -171,4 +172,22 @@ uint64 Dev_GetPointerForNod(CMwNod@ nod) {
     uint64 ptr = Dev::GetOffsetUint64(tmpNod, 0);
     Dev::SetOffset(tmpNod, 0, tmp);
     return ptr;
+}
+
+void CopiableLabel(const string &in label, const string &in copy, bool useCols = false) {
+    bool clicked;
+    if (useCols) {
+        UI::Text(label);
+        UI::NextColumn();
+        UI::Text(copy);
+        clicked = UI::IsItemClicked();
+        UI::NextColumn();
+    } else {
+        UI::Text(label + ": " + copy);
+        clicked = UI::IsItemClicked();
+    }
+    if (clicked) {
+        IO::SetClipboard(copy);
+        Notify("Copied: " + copy);
+    }
 }

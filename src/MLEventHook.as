@@ -65,8 +65,10 @@ class SpectateHook : MLHook::HookMLEventsByType {
         auto ps2 = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (mgr2 is null || ps2 is null) return;
 
-        scrubberMgr.SetProgress(0);
-        scrubberMgr.SetPlayback();
+        if (scrubberMgr !is null) {
+            scrubberMgr.SetProgress(0);
+            scrubberMgr.SetPlayback();
+        }
 
         for (uint i = nbGhosts; i < mgr2.Ghosts.Length; i++) {
             if (wsid == LoginToWSID(mgr2.Ghosts[i].GhostModel.GhostLogin)) {
