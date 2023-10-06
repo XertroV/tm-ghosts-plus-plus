@@ -234,12 +234,15 @@ void DrawScrubber() {
 
 uint m_NewGhostOffset = 0;
 uint lastSetGhostOffset = 0;
+bool m_UseAltCam = false;
 void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
     bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
     AddSimpleTooltip("While spectating, cycle between cimenatic cam, free cam, and the player camera.");
     UI::SameLine();
     bool clickCycleCams = UI::Button(CurrCamLabel() + "##scrubber-spec-cam", vec2(btnWidth, 0));
     AddSimpleTooltip("Force the camera you spectate ghosts with (1, 2, 3) -- does not override mediatracker.");
+    // UI::SameLine();
+    // m_UseAltCam = UI::Checkbox("Alt", m_UseAltCam);
     UI::SameLine();
     UI::Dummy(vec2(10, 0));
     UI::SameLine();
@@ -282,7 +285,7 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
         for (uint i = 0; i < ps.DataFileMgr.Ghosts.Length; i++) {
             auto g = ps.DataFileMgr.Ghosts[i];
             if (seenGhosts.Exists(string(g.Nickname) + "|" + g.Result.Time)) {
-                ps.GhostMgr.Ghost_Add(g, true, m_NewGhostOffset * -1);
+                ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, m_NewGhostOffset * -1);
             }
         }
         lastSetGhostOffset = m_NewGhostOffset;
@@ -327,9 +330,12 @@ class ScrubberMgr {
     float subSecondOffset = 0.0;
 
     ScrubberMgr() {
-        auto ps = GetApp().PlaygroundScript;
+        auto app = GetApp();
+        if (app is null) return;
+        auto ps = app.PlaygroundScript;
         if (ps is null) return;
-        auto mgr = GhostClipsMgr::Get(GetApp());
+        auto mgr = GhostClipsMgr::Get(app);
+        if (mgr is null) return;
         pauseAt = ps.Now - GhostClipsMgr::GetCurrentGhostTime(mgr);
     }
 
@@ -464,10 +470,18 @@ class ScrubberMgr {
             GameCamera().ActiveCam = uint(S_SpecCamera);
         }
 
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        // auto specId = GetCurrentlySpecdGhostInstanceId(ps);
+        // auto ghost = GhostClipsMgr::GetGhostFromInstanceId(mgr, specId);
+        // only set in some branches
+        auto newStartTime = ps.Now - int(pauseAt);
+        // if (ghost.GhostModel.RaceTime - 100 < int(pauseAt)) {
+        //     log_trace('flicker range');
+        //     newStartTime -= 100;
+        // }
         if (IsPaused) {
-            ps.Ghosts_SetStartTime(ps.Now - int(pauseAt));
+            ps.Ghosts_SetStartTime(newStartTime);
         } else if (!unpausedFlag && !isScrubbing && IsCustPlayback) {
-            auto mgr = GhostClipsMgr::Get(GetApp());
             auto td = GhostClipsMgr::AdvanceClipPlayersByDelta(mgr, playbackSpeed);
             if (td.x < 0) {
                 pauseAt = ps.Now;
@@ -476,7 +490,7 @@ class ScrubberMgr {
                 pauseAt = double(td.x) * 1000.;
                 subSecondOffset = pauseAt - Math::Floor(pauseAt);
             }
-            ps.Ghosts_SetStartTime(ps.Now - int(pauseAt));
+            ps.Ghosts_SetStartTime(newStartTime);
         } else {
             pauseAt = ps.Now - lastSetStartTime;
         }

@@ -80,7 +80,7 @@ namespace Core {
             log_warn('Ghost_Download failed: ' + task.ErrorCode + ", " + task.ErrorType + ", " + task.ErrorDescription);
             return;
         }
-        auto instId = gm.Ghost_Add(task.Ghost, true);
+        auto instId = gm.Ghost_Add(task.Ghost, S_UseGhostLayer);
         print('Instance ID: ' + instId.GetName() + " / " + Text::Format("%08x", instId.Value));
     }
 
@@ -95,7 +95,7 @@ namespace Core {
             return;
         }
         for (uint i = 0; i < task.Ghosts.Length; i++) {
-            auto instId = gm.Ghost_Add(task.Ghosts[i], true);
+            auto instId = gm.Ghost_Add(task.Ghosts[i], S_UseGhostLayer);
             print('Instance ID: ' + instId.GetName() + " / " + Text::Format("%08x", instId.Value));
             if (onlyFirst) break;
         }

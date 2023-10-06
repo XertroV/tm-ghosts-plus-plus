@@ -1,7 +1,8 @@
 bool permissionsOkay = false;
 uint startTime = uint(-1);
-ResetHook resetHook;
-SpectateHook spectateHook;
+ResetHook@ resetHook = ResetHook();
+SpectateHook@ spectateHook = SpectateHook();
+const string SetFocusedRecord_PageUID = "SetFocusedRecord";
 
 UI::Font@ g_fontStd;
 UI::Font@ g_fontBold;
@@ -51,6 +52,7 @@ void InitGP() {
     MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_Exit", true);
     // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_SpectateGhost", true);
     MLHook::RegisterMLHook(spectateHook, "TMGame_Record_Spectate", true);
+    MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
     trace('init done');
     g_Initialized = true;
 }
@@ -195,6 +197,7 @@ void ExitSpectatingGhost() {
     auto ps = GetApp().PlaygroundScript;
     if (ps is null || ps.UIManager is null) return;
     MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {""});
+    Update_ML_SetSpectateID("");
 }
 
 void ExitSpectatingGhostAndCleanUp() {
@@ -207,7 +210,7 @@ void ExitSpectatingGhostAndCleanUp() {
     ps.UIManager.UIAll.ForceSpectator = false;
     ps.UIManager.UIAll.SpectatorForceCameraType = 15;
     ps.UIManager.UIAll.Spectator_SetForcedTarget_Clear();
-    MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {""});
+    ExitSpectatingGhost();
 }
 
 /** Called whenever a key is pressed on the keyboard. See the documentation for the [`VirtualKey` enum](https://openplanet.dev/docs/api/global/VirtualKey).

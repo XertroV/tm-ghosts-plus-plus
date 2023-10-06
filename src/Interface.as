@@ -207,6 +207,8 @@ class SaveGhostsTab : Tab {
         auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
         auto g = mgr.Ghosts[i].GhostModel;
 
+        Update_ML_SetSpectateID(LoginToWSID(g.GhostLogin));
+
         auto ghostPlayTime = int(ps.Now) - lastSetStartTime;
         // if we choose a ghost that has already finished, restart ghosts
         if (int(g.RaceTime) < ghostPlayTime) {
@@ -260,6 +262,7 @@ class SaveGhostsTab : Tab {
         if (ps is null) throw("null playground script");
         auto mgr = GhostClipsMgr::Get(GetApp());
         auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
+        Update_ML_SetGhostUnloaded(LoginToWSID(mgr.Ghosts[i].GhostModel.GhostLogin));
         log_info("unloading ghost with instance id: " + id);
         ps.GhostMgr.Ghost_Remove(MwId(id));
         auto ix = saving.Find(id);
@@ -407,7 +410,9 @@ class PlayersTab : Tab {
         string login = j['key'];
         string wsid = j['wsid'];
         auto names = j['names'].GetKeys();
+        Update_ML_SetGhostLoading(wsid);
         Core::LoadGhostOfPlayer(wsid, s_currMap, string::Join(names, ", "));
+        Update_ML_SetGhostLoaded(wsid);
         // no need to refind someones ghost (is there?)
         // auto ix = loading.Find(login);
         // if (ix >= 0) loading.RemoveAt(ix);

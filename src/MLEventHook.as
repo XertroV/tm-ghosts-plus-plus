@@ -40,7 +40,8 @@ class SpectateHook : MLHook::HookMLEventsByType {
                 if (LoginToWSID(g.GhostModel.GhostLogin) == wsid) {
                     // we want to unspectate this player, but not load a ghost.
                     sleep(100);
-                    MLHook::Queue_PG_SendCustomEvent(event.type, {""});
+                    ExitSpectatingGhost();
+                    if (scrubberMgr !is null) scrubberMgr.ResetAll();
                     return;
                 }
             }
@@ -57,7 +58,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         // wait a bit to give ML time to process request
         sleep(100);
 
-        MLHook::Queue_PG_SendCustomEvent(event.type, {""});
+        ExitSpectatingGhost();
         // while (GetApp().PlaygroundScript !is null && mgr.Ghosts.Length == nbGhosts) yield();
         Cache::LoadGhostsForWsids({wsid}, CurrentMap);
         // ghost was added
@@ -84,4 +85,20 @@ class SpectateHook : MLHook::HookMLEventsByType {
             }
         }
     }
+}
+
+void Update_ML_SetSpectateID(const string &in wsid) {
+    MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetSpectating", wsid});
+}
+
+void Update_ML_SetGhostLoading(const string &in wsid) {
+    MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetGhostLoading", wsid});
+}
+
+void Update_ML_SetGhostLoaded(const string &in wsid) {
+    MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetGhostLoaded", wsid});
+}
+
+void Update_ML_SetGhostUnloaded(const string &in wsid) {
+    MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetGhostUnloaded", wsid});
 }

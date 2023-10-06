@@ -2,6 +2,9 @@
 [Setting hidden]
 bool S_ShowWindow = true;
 
+// does this do anything?
+[Setting hidden]
+bool S_UseGhostLayer = true;
 
 [Setting category="General" name="Log Level"]
 #if DEV

@@ -251,7 +251,9 @@ namespace Cache {
         if (Ghosts.Exists(key)) {
             // Core::LoadGhost(GetGhostFilename(key));
             auto j = GetGhost(key);
+            Update_ML_SetGhostLoading(j['wsid']);
             Core::LoadGhostFromUrl(j['fileName'], GetGhostLocalURL(key));
+            Update_ML_SetGhostLoaded(j['wsid']);
             NotifySuccess("Loaded ghost.");
         } else {
             NotifyWarning("Ghost not in cache.");
@@ -259,7 +261,13 @@ namespace Cache {
     }
 
     void LoadGhostsForWsids(string[]@ wsids, const string &in uid) {
+        for (uint i = 0; i < wsids.Length; i++) {
+            Update_ML_SetGhostLoading(wsids[i]);
+        }
         Core::LoadGhostOfPlayers(wsids, uid);
+        for (uint i = 0; i < wsids.Length; i++) {
+            Update_ML_SetGhostLoaded(wsids[i]);
+        }
     }
 
     Json::Value@ GetGhost(const string &in key) {
