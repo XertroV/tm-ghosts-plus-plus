@@ -1,6 +1,7 @@
 const string PluginName = Meta::ExecutingPlugin().Name;
 const string MenuTitle = "\\$dd5" + Icons::HandPointerO + "\\$z " + PluginName;
 
+const int TABLE_FLAGS = UI::TableFlags::SizingStretchProp | UI::TableFlags::RowBg;
 
 PBTab@ g_PBTab = PBTab();
 NearTime@ g_NearTimeTab = NearTime();
@@ -10,6 +11,7 @@ FavoritesTab@ g_Favorites = FavoritesTab();
 PlayersTab@ g_Players = PlayersTab();
 SavedTab@ g_Saved = SavedTab();
 MedalsTab@ g_Medals = MedalsTab();
+LeaderboardTab@ g_LeaderboardTab = LeaderboardTab();
 LoadGhostsTab@ g_LoadGhostTab = LoadGhostsTab();
 SaveGhostsTab@ g_SaveGhostTab = SaveGhostsTab();
 DebugGhostsTab@ g_DebugTab = DebugGhostsTab();
@@ -38,6 +40,8 @@ void RenderInterface() {
             UI::BeginTabBar("save or load ghosts");
             g_DebugTab.Draw();
             g_DebugCacheTab.Draw();
+            g_Favorites.Draw();
+            g_Players.Draw();
             UI::EndTabBar();
 #endif
         } else if (!Cache::IsInitialized) {
@@ -115,7 +119,7 @@ class SaveGhostsTab : Tab {
 
         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
         auto nbCols = 6;
-        if (UI::BeginTable("save-ghosts", nbCols, UI::TableFlags::SizingStretchProp)) {
+        if (UI::BeginTable("save-ghosts", nbCols, TABLE_FLAGS)) {
 
             UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 30.);
             UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
@@ -310,6 +314,7 @@ class LoadGhostsTab : Tab {
         g_Players.Draw();
         g_Saved.Draw();
         g_Medals.Draw();
+        g_LeaderboardTab.Draw();
         // g_PBTab.Draw();
         // g_NearTimeTab.Draw();
         // g_AroundRankTab.Draw();
@@ -350,8 +355,7 @@ class PlayersTab : Tab {
         auto players = (m_PlayerFilter.Length > 0) ? filteredPlayers : DefaultList;
 
         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
-
-        if (UI::BeginTable("players", 3, UI::TableFlags::SizingStretchProp | UI::TableFlags::RowBg)) {
+        if (UI::BeginTable("players", 3, TABLE_FLAGS)) {
             UI::TableSetupColumn("Fav Player", UI::TableColumnFlags::WidthFixed, 40.);
             UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
             UI::TableSetupColumn("Find Ghost", UI::TableColumnFlags::WidthFixed, 100.);
@@ -501,7 +505,7 @@ class SavedTab : Tab {
         }
 
         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
-        if (UI::BeginTable("saved ghosts", 5, UI::TableFlags::SizingStretchProp)) {
+        if (UI::BeginTable("saved ghosts", 5, TABLE_FLAGS)) {
             UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 40.);
             UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
             UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 80.);
@@ -566,19 +570,6 @@ class SavedTab : Tab {
         if (ix >= 0) loading.RemoveAt(ix);
     }
 
-    bool IsGhostLoaded(Json::Value@ j) {
-        string name = j['name'];
-        int time = int(j['time']);
-        auto mgr = GhostClipsMgr::Get(GetApp());
-        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
-            auto gm = mgr.Ghosts[i].GhostModel;
-            if (gm.GhostNickname == name && int(gm.RaceTime) == time) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     void OnMapChange() override {
         ClearLocalCache();
     }
@@ -637,8 +628,10 @@ class MedalsTab : Tab {
     }
 
     void PopulateMedalTimes() {
-        // give some time for other things to catch up;
-        sleep(2500);
+        // give some time for other things to catch up, like CM
+        if (GetApp().PlaygroundScript is null) return;
+        while (GetApp().PlaygroundScript.Now < 10000) yield();
+
         auto map = GetApp().RootMap;
         if (map is null) return;
         medals[0] = map.TMObjective_BronzeTime;
@@ -656,6 +649,96 @@ class MedalsTab : Tab {
 #endif
     }
 }
+class LeaderboardTab : Tab {
+    LeaderboardTab() {
+        super("Leaderboard");
+    }
+
+    void DrawInner() override {
+        g_GhostFinder.EnsureLoaded();
+        if (!g_GhostFinder.IsInitialized) {
+            UI::Text("Loading...");
+            return;
+        }
+
+        UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
+        if (UI::BeginTable("leaderboard", 5, TABLE_FLAGS)) {
+            UI::TableSetupColumn("Rank", UI::TableColumnFlags::WidthFixed, 40.);
+            UI::TableSetupColumn("Fav", UI::TableColumnFlags::WidthFixed, 40.);
+            UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
+            UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 80.);
+            // UI::TableSetupColumn("Date", UI::TableColumnFlags::WidthFixed, 80.);
+            UI::TableSetupColumn("Load", UI::TableColumnFlags::WidthFixed, 50.);
+
+            UI::ListClipper clip(g_GhostFinder.NbRecords);
+            while (clip.Step()) {
+                for (int i = clip.DisplayStart; i < clip.DisplayEnd; i++) {
+                    UI::PushID(i);
+                    g_GhostFinder.ForLBRecord(i, LBRecordMapF(this.DrawRecordRow));
+                    UI::PopID();
+                }
+            }
+
+            UI::EndTable();
+        }
+        UI::PopStyleColor();
+
+    }
+
+    void DrawRecordRow(uint rank, uint time, Json::Value@ j) {
+        UI::TableNextRow();
+        UI::TableNextColumn();
+        UI::AlignTextToFramePadding();
+        UI::Text(tostring(rank) + ".");
+
+        UI::TableNextColumn();
+        Cache::DrawPlayerFavButton(j['login']);
+
+        UI::TableNextColumn();
+
+        string name = j['name'];
+        UI::Text(name);
+
+        UI::TableNextColumn();
+        UI::Text(Time::Format(time));
+
+        UI::TableNextColumn();
+        UI::BeginDisabled(IsCurrLoadingGhost(j['accountId'])); //  || IsGhostLoaded(j)
+        if (UI::Button("Load##" + rank)) {
+            startnew(CoroutineFuncUserdata(this.LoadRecord), j);
+        }
+        UI::EndDisabled();
+    }
+
+    string[] loading;
+    void LoadRecord(ref@ refJson) {
+        auto j = cast<Json::Value>(refJson);
+        auto wsid = j['accountId'];
+        bool doNotLoad = IsCurrLoadingGhost(wsid) || IsGhostLoaded(j);
+        loading.InsertLast(wsid);
+        if (doNotLoad) {
+            Notify("Ghost already loaded: " + string(j['name']) + " / " + Time::Format(int(j['time'])));
+            sleep(1000);
+        } else {
+            Cache::LoadGhostsForWsids({wsid}, s_currMap);
+        }
+        RemoveFromLoading(wsid);
+    }
+
+    void RemoveFromLoading(const string &in wsid) {
+        auto ix = loading.Find(wsid);
+        if (ix >= 0) loading.RemoveAt(ix);
+    }
+
+    bool IsCurrLoadingGhost(const string &in wsid) {
+        return loading.Find(wsid) >= 0;
+    }
+
+    void OnMapChange() override {
+        loading.RemoveRange(0, loading.Length);
+    }
+}
+
 class PBTab : Tab {
     int pbTime;
 
@@ -718,4 +801,20 @@ void _LoadGhostsNear(ref@ r) {
     auto wsids = g_GhostFinder.FindAroundTime(time, nbGhosts);
     Cache::LoadGhostsForWsids(wsids, s_currMap);
     isLoadingGhosts = false;
+}
+
+
+bool IsGhostLoaded(Json::Value@ j) {
+    int time = int(j['time']);
+    auto mgr = GhostClipsMgr::Get(GetApp());
+    for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+        auto gm = mgr.Ghosts[i].GhostModel;
+        if (int(gm.RaceTime) == time) {
+            string name = j['name'];
+            if (gm.GhostNickname == name) {
+                return true;
+            }
+        }
+    }
+    return false;
 }

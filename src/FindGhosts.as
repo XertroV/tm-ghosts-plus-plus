@@ -1,19 +1,43 @@
 GhostFinder@ g_GhostFinder;
 
+funcdef void LBRecordMapF(uint rank, uint time, Json::Value@ j);
+
 class GhostFinder {
     bool gotNbPlayers = false;
     bool gotTopRecords = false;
     int nbPlayers = -1;
     int worstTime = -1;
     string uid;
+    // (rank, time)
     nat2[] knownTimes;
+    Json::Value@[] apiRespForTimes;
 
 
     GhostFinder() {
         trace('GhostFinder init');
         uid = CurrentMap;
         if (uid.Length == 0) return;
-        startnew(CoroutineFunc(this.Init));
+    }
+
+    int get_NbRecords() {
+        return knownTimes.Length;
+    }
+
+    void ForEachLBRecord(LBRecordMapF@ f) {
+        for (uint i = 0; i < knownTimes.Length; i++) {
+            auto rt = knownTimes[i];
+            auto j = apiRespForTimes[i];
+            f(rt.x, rt.y, j);
+        }
+    }
+    void ForLBRecord(uint index, LBRecordMapF@ f) {
+        auto rt = knownTimes[index];
+        auto j = apiRespForTimes[index];
+        f(rt.x, rt.y, j);
+    }
+
+    void EnsureLoaded() {
+        if (!initStarted) startnew(CoroutineFunc(this.Init));
     }
 
     // using reset can lead to race conditions, better to replace it
@@ -25,23 +49,26 @@ class GhostFinder {
     //     startnew(CoroutineFunc(this.Init));
     // }
 
+    private bool initStarted = false;
     void Init() {
+        if (initStarted) return;
+        initStarted = true;
         log_trace('GhostFinder.Init');
         while (!S_ShowWindow) yield();
         if (uid != s_currMap) return;
         log_trace('GhostFinder.Init running');
-        // don't really need to get these anymore.
-        // await({
-        //     startnew(CoroutineFunc(this.LoadNbPlayers)),
-        //     startnew(CoroutineFunc(this.LoadTopRecords))
-        // });
+        // get nb players for searching purposes later if needed
+        // get top records for loading ghosts anywhere on LB
+        await({
+            startnew(CoroutineFunc(this.LoadNbPlayers)),
+            startnew(CoroutineFunc(this.LoadTopRecords))
+        });
 
         log_trace('GhostFinder.Init complete');
     }
 
     bool get_IsInitialized() {
-        return true;
-        // return gotNbPlayers && gotTopRecords;
+        return gotNbPlayers && gotTopRecords;
     }
 
     void LoadNbPlayers() {
@@ -53,40 +80,55 @@ class GhostFinder {
         nbPlayers = resp['nb_players'];
         worstTime = resp["last_highest_score"];
         gotNbPlayers = true;
-        if (nbPlayers > 0)
-            AddTime(nbPlayers, worstTime);
+        // if (nbPlayers > 0)
+            // AddTime(nbPlayers, worstTime);
         log_trace('done load nb players');
     }
 
     void LoadTopRecords() {
-        auto records = Live::GetMapRecordsMeat("Personal_Best", uid);
+        auto records = Live::GetMapRecordsMeat("Personal_Best", uid, true, 100);
         AddJsonTimes(records);
         gotTopRecords = true;
         log_trace('done load top records');
     }
 
     void AddJsonTimes(Json::Value@ arr) {
+        Meta::PluginCoroutine@[] coros;
         for (uint i = 0; i < arr.Length; i++) {
-            AddJsonTime(arr[i]);
+            coros.InsertLast(startnew(CoroutineFuncUserdata(AddJsonTime), arr[i]));
         }
+        await(coros);
     }
 
-    void AddJsonTime(Json::Value@ j) {
+    void AddJsonTime(ref@ jsonObj) {
+        auto j = cast<Json::Value>(jsonObj);
         uint rank = j['position'];
         uint time = j['score'];
-        AddTime(rank, time);
+        j['time'] = time;
+        string accountId = j['accountId'];
+        string login = WSIDToLogin(accountId);
+        string name = NadeoServices::GetDisplayNameAsync(accountId);
+        j['login'] = login;
+        j['name'] = name;
+        Cache::AddLogin(accountId, login, name);
+        AddTime(rank, time, j);
     }
 
-    void AddTime(uint rank, uint time) {
+    void AddTime(uint rank, uint time, Json::Value@ j) {
         bool inserted = false;
-        for (uint i = 0; i < knownTimes.Length; i++) {
-            if (rank > knownTimes[i].x) continue;
-            knownTimes.InsertAt(i, nat2(rank, time));
-            inserted = true;
-            break;
+        if (knownTimes.Length > 0 && rank < knownTimes[knownTimes.Length-1].x) {
+            // todo: optimize to use binary search
+            for (uint i = 0; i < knownTimes.Length; i++) {
+                if (rank > knownTimes[i].x) continue;
+                knownTimes.InsertAt(i, nat2(rank, time));
+                apiRespForTimes.InsertAt(i, j);
+                inserted = true;
+                break;
+            }
         }
         if (!inserted) {
             knownTimes.InsertLast(nat2(rank, time));
+            apiRespForTimes.InsertLast(j);
         }
     }
 
@@ -102,7 +144,8 @@ class GhostFinder {
         auto found = SearchForRanks(time, nb);
         string[] ret;
         for (uint i = 0; i < found.Length; i++) {
-            ret.InsertLast(found[i]['accountId']);
+            if (!IsGhostLoaded(found[i]))
+                ret.InsertLast(found[i]['accountId']);
         }
         log_trace('FindAroundTime ('+time+', '+nb+'): ' + string::Join(ret, ", "));
         return ret;
@@ -131,7 +174,13 @@ class GhostFinder {
         log_debug('SearchForRanks found: ' + Json::Write(recs));
         Json::Value@[] ret;
         if (nb == 1 && recs.Length == 3) {
-            ret.InsertLast(recs[1]);
+            auto j = recs[1];
+            auto accountId = string(j['accountId']);
+            auto login = WSIDToLogin(accountId);
+            j['time'] = int(j['score']);
+            j['login'] = login;
+            j['name'] = NadeoServices::GetDisplayNameAsync(accountId);
+            ret.InsertLast(j);
             return ret;
         }
         for (uint i = 0; i < recs.Length; i++) {

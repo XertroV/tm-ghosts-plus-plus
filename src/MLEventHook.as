@@ -69,8 +69,6 @@ class SpectateHook : MLHook::HookMLEventsByType {
 
         if (scrubberMgr !is null) {
             scrubberMgr.ResetAll();
-            // scrubberMgr.SetProgress(0);
-            // scrubberMgr.SetPlayback();
         }
 
         for (uint i = nbGhosts; i < mgr2.Ghosts.Length; i++) {

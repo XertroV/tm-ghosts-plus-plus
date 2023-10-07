@@ -14,7 +14,7 @@ float S_XPosRel = 0.25;
 float S_YPosRel = 0.94;
 
 [Setting category="Scrubber Size / Pos" name="Width (relative to screen)" min=0 max=1]
-float S_XWidth = 0.5;
+float S_XWidth = 0.65;
 
 enum Font {
     Std = 0, Bold = 1, Large = 2, Larger = 3

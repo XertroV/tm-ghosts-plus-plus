@@ -24,7 +24,7 @@ namespace Cache {
         isLoading = true;
         if (!IO::FolderExists(GHOSTS_DIR)) IO::CreateFolder(GHOSTS_DIR);
         PopulateFromFile(Logins, LoginsArr, CACHE_LOGINS_FILE);
-        PopulateFromFile(Favorites, FavoritesArr, CACHE_FAVORITES_FILE);
+        PopulateFromFile(Favorites, FavoritesArr, CACHE_FAVORITES_FILE, true);
         PopulateFromFile(Ghosts, GhostsArr, INDEX_GHOSTS_FILE);
         PopulateFromFile(Maps, MapsArr, CACHE_MAPS_FILE);
         PopulateLoginNames();
@@ -32,7 +32,7 @@ namespace Cache {
         isLoading = false;
     }
 
-    void PopulateFromFile(dictionary@ d, Json::Value@[]@ arr, const string &in path) {
+    void PopulateFromFile(dictionary@ d, Json::Value@[]@ arr, const string &in path, bool checkRemoved = false) {
         if (!IO::FileExists(path)) return;
         IO::File f(path, IO::FileMode::Read);
         while (!f.EOF()) {
@@ -145,7 +145,9 @@ namespace Cache {
     }
 
     void DrawPlayerFavButton(const string &in login) {
-        if (Favorites.Exists(login)) {
+        bool exists = Favorites.Exists(login);
+        bool isFav = exists && bool(FavoritesArr[int(Favorites[login])]['f']);
+        if (isFav) {
             if (UI::ButtonColored(Icons::Star + "##" + login, .3)) {
                 RemoveFromFavorites(login);
             }
@@ -159,6 +161,7 @@ namespace Cache {
     void RemoveFromFavorites(const string &in login) {
         if (!Favorites.Exists(login)) return;
         auto j = FavoritesArr[int(Favorites[login])];
+        Favorites.Delete(login);
         j['f'] = false;
         SaveFavoriteToCache(j);
         g_Favorites.OnFavAdded();
