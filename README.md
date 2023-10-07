@@ -64,7 +64,7 @@ Authors: XertroV
 
 Suggestions/feedback: @XertroV on Openplanet discord
 
-Code/issues: [https://github.com/XertroV/tm-ghost-picker](https://github.com/XertroV/tm-ghost-picker)
+Code/issues: [https://github.com/XertroV/tm-ghosts++](https://github.com/XertroV/tm-ghosts++)
 
 GL HF
 
