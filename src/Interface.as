@@ -27,6 +27,7 @@ Tab@[]@ tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favor
 void RenderInterface() {
     if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
+    if (!g_Initialized) return;
     if (!S_ShowWindow) return;
     // only show a window outside the map in dev mode
 #if DEV

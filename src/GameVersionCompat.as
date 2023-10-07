@@ -17,7 +17,6 @@ void CheckAndSetGameVersionSafe() {
     EnsureGameVersionCompatibility();
     if (!GameVersionSafe) {
         WarnBadGameVersion();
-        return;
     }
 }
 

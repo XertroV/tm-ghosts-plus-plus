@@ -147,6 +147,7 @@ const uint disableTime = 3000;
 void Render() {
     if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
+    if (!g_Initialized) return;
     // if (!S_ShowWindow) return;
     DrawScrubber();
     // if (IsSpectatingGhost()) {
@@ -157,6 +158,7 @@ void Render() {
 void RenderMenu() {
     if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
+    if (!g_Initialized) return;
     if (UI::MenuItem("\\$888" + Icons::HandPointerO + "\\$z " + PluginName, "", S_ShowWindow)) {
         S_ShowWindow = !S_ShowWindow;
     }

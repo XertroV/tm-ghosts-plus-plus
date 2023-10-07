@@ -8,3 +8,4 @@ version  = "0.3.0"
 #__DEFINES__
 dependencies = ["MLHook", "NadeoServices", "VehicleState"]
 optional_dependencies = ["ChampionMedals"]
+blocks = ["GhostScrubber"]
