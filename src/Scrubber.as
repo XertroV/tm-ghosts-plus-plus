@@ -121,7 +121,9 @@ void DrawScrubber() {
         bool expand = UI::Button(Icons::Expand + "##scrubber-expand", vec2(btnWidth, 0));
         UI::SameLine();
         // Backward <<
+        UI::BeginDisabled(!isSpectating);
         bool exit = UI::Button(Icons::Reply + "##scrubber-back", vec2(btnWidth, 0));
+        UI::EndDisabled();
         UI::SameLine();
         bool reset = UI::Button(Icons::Refresh + "##scrubber-toggle", vec2(btnWidth, 0));
         UI::SameLine();

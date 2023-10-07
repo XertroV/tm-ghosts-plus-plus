@@ -25,6 +25,8 @@ Tab@[]@ tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favor
 /** Render function called every frame intended for `UI`.
 */
 void RenderInterface() {
+    if (!GameVersionSafe) return;
+    if (!permissionsOkay) return;
     if (!S_ShowWindow) return;
     // only show a window outside the map in dev mode
 #if DEV
@@ -657,6 +659,7 @@ class LeaderboardTab : Tab {
     }
 
     void DrawInner() override {
+        if (g_GhostFinder is null) return;
         g_GhostFinder.EnsureLoaded();
         if (!g_GhostFinder.IsInitialized) {
             UI::Text("Loading...");

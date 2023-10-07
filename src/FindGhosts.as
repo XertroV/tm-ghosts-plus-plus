@@ -72,16 +72,16 @@ class GhostFinder {
     }
 
     void LoadNbPlayers() {
-        auto resp = MapMonitor::GetNbPlayersForMap(uid);
-        // log_trace(Json::Write(resp));
-        if (resp.GetType() != Json::Type::Object) {
-            log_warn("unknown nb players response: " + Json::Write(resp));
-        }
-        nbPlayers = resp['nb_players'];
-        worstTime = resp["last_highest_score"];
-        gotNbPlayers = true;
-        // if (nbPlayers > 0)
-            // AddTime(nbPlayers, worstTime);
+        // auto resp = MapMonitor::GetNbPlayersForMap(uid);
+        // // log_trace(Json::Write(resp));
+        // if (resp.GetType() != Json::Type::Object) {
+        //     log_warn("unknown nb players response: " + Json::Write(resp));
+        // }
+        // nbPlayers = resp['nb_players'];
+        // worstTime = resp["last_highest_score"];
+        // gotNbPlayers = true;
+        // // if (nbPlayers > 0)
+        //     // AddTime(nbPlayers, worstTime);
         log_trace('done load nb players');
     }
 

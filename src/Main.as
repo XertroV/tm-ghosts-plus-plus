@@ -13,6 +13,12 @@ void Main() {
     trace('ghosts++ checking permissions');
     CheckRequiredPermissions();
     trace('checked permissions');
+    CheckAndSetGameVersionSafe();
+    if (!KnownSafe) {
+        while (!GameVersionSafe) yield();
+        // initialization problems when GameVersionSafe is false in a map
+        while (GetApp().RootMap !is null) yield();
+    }
     startnew(MapCoro);
     startnew(ClearTaskCoro);
     startnew(SetupIntercepts);
@@ -139,6 +145,7 @@ void WatchAndRemoveFadeOut() {
 uint lastRefresh = 0;
 const uint disableTime = 3000;
 void Render() {
+    if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
     // if (!S_ShowWindow) return;
     DrawScrubber();
@@ -148,6 +155,7 @@ void Render() {
 }
 
 void RenderMenu() {
+    if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
     if (UI::MenuItem("\\$888" + Icons::HandPointerO + "\\$z " + PluginName, "", S_ShowWindow)) {
         S_ShowWindow = !S_ShowWindow;
