@@ -19,6 +19,7 @@ void Main() {
         // initialization problems when GameVersionSafe is false in a map
         while (GetApp().RootMap !is null) yield();
     }
+    // startnew(WindowFocusCoro);
     startnew(MapCoro);
     startnew(ClearTaskCoro);
     startnew(SetupIntercepts);
@@ -86,6 +87,13 @@ void CheckRequiredPermissions() {
         while(true) { sleep(10000); } // do nothing forever
     }
 }
+
+// void WindowFocusCoro() {
+//     while (true) {
+//         yield();
+//         if (UI::IsWindowFocused())
+//     }
+// }
 
 string s_currMap = "";
 

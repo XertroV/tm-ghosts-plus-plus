@@ -70,8 +70,13 @@ namespace Cache {
         }
     }
 
-    void AddLogin(const string &in wsid, const string &in login, const string &in name) {
+    void AddLogin(const string &in wsid, const string &in login, const string &in _name) {
         Json::Value@ j;
+        string name = _name;
+        // names of the format "XertroV #2", archivist also makes ghosts like "XertroV (partial) or (segmented)"
+        if (name.Contains(" #")) {
+            name = name.Split(" ")[0];
+        }
         if (LoginNames.Exists(login + name)) return;
         if (Logins.Exists(login)) {
             @j = GetLogin(login);

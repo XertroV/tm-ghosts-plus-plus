@@ -287,7 +287,7 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
         for (uint i = 0; i < ps.DataFileMgr.Ghosts.Length; i++) {
             auto g = ps.DataFileMgr.Ghosts[i];
             if (seenGhosts.Exists(string(g.Nickname) + "|" + g.Result.Time)) {
-                ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, m_NewGhostOffset * -1);
+                ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, int(m_NewGhostOffset) * -1);
             }
         }
         lastSetGhostOffset = m_NewGhostOffset;

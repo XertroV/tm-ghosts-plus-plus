@@ -11,7 +11,7 @@ string WSIDToLogin(const string &in wsid) {
 
 MemoryBuffer@ HexToBuffer(const string &in hex) {
     MemoryBuffer@ buf = MemoryBuffer();
-    for (uint i = 0; i < hex.Length; i+=2) {
+    for (int i = 0; i < hex.Length; i += 2) {
         buf.Write(Hex2ToUint8(hex.SubStr(i, 2)));
     }
     buf.Seek(0);

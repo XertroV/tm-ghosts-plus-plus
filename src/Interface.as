@@ -342,10 +342,19 @@ class PlayersTab : Tab {
         return Cache::LoginsArr;
     }
 
+    bool loadingWsid = false;
     void DrawInner() override {
         bool changed;
+        UI::BeginDisabled(loadingWsid);
         UI::SetNextItemWidth(UI::GetWindowContentRegionWidth() * .5);
         m_PlayerFilter = UI::InputText("Filter", m_PlayerFilter, changed);
+        if (m_PlayerFilter.Length == 36 && IsWSID(m_PlayerFilter)) {
+            UI::SameLine();
+            if (UI::Button(Icons::Plus+"##add-wsid")) {
+                startnew(CoroutineFuncUserdataString(this.AddWSID), m_PlayerFilter);
+            }
+        }
+        UI::EndDisabled();
         UI::SameLine();
         if (UI::Button("Reset##playersfilter")) {
             m_PlayerFilter = "";
@@ -407,6 +416,23 @@ class PlayersTab : Tab {
         }
 
         UI::PopStyleColor(1);
+    }
+
+    void AddWSID(const string &in wsid) {
+        string login;
+        try {
+            login = WSIDToLogin(wsid);
+        } catch {
+            NotifyError("Invalid WSID: " + wsid);
+            return;
+        }
+        loadingWsid = true;
+        auto name = NadeoServices::GetDisplayNameAsync(wsid);
+        Cache::AddLogin(wsid, login, name);
+        NotifySuccess("Added player to player cache: " + name);
+        loadingWsid = false;
+        m_PlayerFilter = name;
+        startnew(CoroutineFunc(UpdatePlayerFilter));
     }
 
     void OnClickFindGhost(Json::Value@ j) {
@@ -855,4 +881,15 @@ bool IsGhostLoaded(Json::Value@ j) {
         }
     }
     return false;
+}
+
+
+bool IsWSID(const string &in wsid) {
+    if (wsid.Length != 36) return false;
+    // check dashes assume the best (we error later in case of problem)
+    if (wsid[8] != 0x2d) return false;
+    if (wsid[13] != 0x2d) return false;
+    if (wsid[18] != 0x2d) return false;
+    if (wsid[23] != 0x2d) return false;
+    return true;
 }

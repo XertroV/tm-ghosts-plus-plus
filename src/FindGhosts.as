@@ -79,7 +79,7 @@ class GhostFinder {
         // }
         // nbPlayers = resp['nb_players'];
         // worstTime = resp["last_highest_score"];
-        // gotNbPlayers = true;
+        gotNbPlayers = true;
         // // if (nbPlayers > 0)
         //     // AddTime(nbPlayers, worstTime);
         log_trace('done load nb players');
