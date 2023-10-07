@@ -64,11 +64,11 @@ Authors: XertroV
 
 Suggestions/feedback: @XertroV on Openplanet discord
 
-Code/issues: [https://github.com/XertroV/tm-ghosts++](https://github.com/XertroV/tm-ghosts++)
+Code/issues: [https://github.com/XertroV/tm-ghosts-plus-plus](https://github.com/XertroV/tm-ghosts-plus-plus)
 
 GL HF
 
-
+---------
 
 todo:
 - ~~ free cam / cinematic
