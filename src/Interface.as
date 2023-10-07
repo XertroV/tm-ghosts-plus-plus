@@ -18,8 +18,9 @@ DebugGhostsTab@ g_DebugTab = DebugGhostsTab();
 DebugCacheTab@ g_DebugCacheTab = DebugCacheTab();
 DebugClipsTab@ g_DebugClips = DebugClipsTab();
 ScrubberDebugTab@ g_ScrubDebug = ScrubberDebugTab();
+UrlTab@ g_UrlTab = UrlTab();
 
-Tab@[]@ tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug};
+Tab@[]@ tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug, g_UrlTab, g_LeaderboardTab};
 
 /** Render function called every frame intended for `UI`.
 */
@@ -309,12 +310,13 @@ class LoadGhostsTab : Tab {
     }
 
     void DrawInner() override {
-        UI::BeginTabBar("ghost picker tabs");
+        UI::BeginTabBar("ghosts++ load tabs");
         g_Favorites.Draw();
         g_Players.Draw();
         g_Saved.Draw();
         g_Medals.Draw();
         g_LeaderboardTab.Draw();
+        g_UrlTab.Draw();
         // g_PBTab.Draw();
         // g_NearTimeTab.Draw();
         // g_AroundRankTab.Draw();
@@ -736,6 +738,38 @@ class LeaderboardTab : Tab {
 
     void OnMapChange() override {
         loading.RemoveRange(0, loading.Length);
+    }
+}
+
+class UrlTab : Tab {
+    UrlTab() {
+        super("URL");
+    }
+    string m_URL = "";
+    void DrawInner() override {
+        UI::BeginDisabled(loading);
+        bool pEnter;
+        m_URL = UI::InputText("URL", m_URL, pEnter, UI::InputTextFlags::EnterReturnsTrue);
+        UI::SameLine();
+        pEnter = UI::Button("Load##url") || pEnter;
+        if (pEnter) {
+            startnew(CoroutineFunc(this.LoadURL));
+        }
+        UI::EndDisabled();
+    }
+
+    bool loading = false;
+    void LoadURL() {
+        loading = true;
+        string url = m_URL;
+        log_info("Loading ghost from URL: " + url);
+        Core::LoadGhostFromUrl(url, url);
+        m_URL = "";
+        loading = false;
+    }
+
+    void OnMapChange() override {
+        m_URL = "";
     }
 }
 

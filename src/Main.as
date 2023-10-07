@@ -10,7 +10,7 @@ UI::Font@ g_fontLarge;
 UI::Font@ g_fontLarger;
 
 void Main() {
-    trace('ghost picker checking permissions');
+    trace('ghosts++ checking permissions');
     CheckRequiredPermissions();
     trace('checked permissions');
     startnew(MapCoro);
@@ -61,13 +61,13 @@ void InitGP() {
 bool g_Initialized = false;
 
 void Unload() {
-    trace('unloading ghost picker #1 paused');
+    trace('unloading ghosts++ #1 paused');
     // if (scrubberPaused) GhostClipsMgr::UnpauseClipPlayers(GhostClipsMgr::Get(GetApp()), 0., 60.0);
     if (scrubberMgr !is null)
         scrubberMgr.ResetAll();
-    trace('unloading ghost picker #2 mlhook');
+    trace('unloading ghosts++ #2 mlhook');
     MLHook::UnregisterMLHooksAndRemoveInjectedML();
-    trace('unloading ghost picker #3 done');
+    trace('unloading ghosts++ #3 done');
 }
 void OnDestroyed() { Unload(); }
 void OnDisabled() { Unload(); }

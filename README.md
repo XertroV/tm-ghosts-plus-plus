@@ -19,7 +19,7 @@ Note: if you need to unload a ghost and can't do it through the records UI, open
 
 # Manual
 
-## Scurbber
+## Scrubber
 
 Main Toolbar:
 
@@ -55,6 +55,7 @@ Load Ghosts
 * Load ghosts you've saved in the past (for that map)
 * Load ghosts for medals: CM, AT, Gold, Silver, Bronze
 * Load ghosts from the the leaderboard
+* Load a ghost from a URL
 
 
 License: Public Domain
@@ -84,7 +85,8 @@ todo:
 - ~~ leaderboard
 - DB compaction (for favs particularly)
 - name filters async
-- force / customize char skins + helmet color
+- force / customize char skins + helmet color (possible?)
+- ~~ load ghost from URL
 
 
 ------------

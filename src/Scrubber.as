@@ -218,7 +218,7 @@ void DrawScrubber() {
             // makes pausing smoother
             // t += 10 * scrubberMgr.playbackSpeed;
             scrubberMgr.TogglePause(scrubberMgr.pauseAt + 10 * scrubberMgr.playbackSpeed);
-        } else if (t > 0. && Math::Abs(t - setProg) / t * 1000. >= 1.0) {
+        } else if ((t == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) / t * 1000. >= 1.0)) {
             // trace('t and setProg different: ' + vec2(t, setProg).ToString());
             scrubberMgr.SetProgress(setProg);
             t = setProg;

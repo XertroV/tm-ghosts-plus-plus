@@ -32,6 +32,12 @@ class GameCamera {
             warn_every_60_s("Active cam value on GameCamera struct seems wrong: " + Text::Format("0x%08x", ac));
         }
     }
+
+    // void SetOffset(uint16 offset, uint value) {
+    //     auto gc = GetSelf();
+    //     if (gc is null) return;
+    //     Dev::SetOffset(gc, offset, value);
+    // }
 }
 
 
@@ -47,3 +53,10 @@ void warn_every_60_s(const string &in msg) {
     warnTracker[msg] = Time::Now;
     warn(msg);
 }
+
+
+/**
+ * 0x240: quaternion?
+ *
+ *
+ */

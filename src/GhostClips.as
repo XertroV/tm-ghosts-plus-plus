@@ -170,14 +170,28 @@ vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSp
 }
 
 
+// CGameCtnMediaClipPlayer
+
+// 0x50 - CgameCtnMediaBlockEntity
+// - CGameCtnInterfaceViewer
+// - CGameCtnMediaClip
+
 
 
 // 0x1ac - float time
 // 0x1b0 - some scaling thing? 1.0 normally
+// 0x1b8 - CPlugAudioBalance
+
+// 0x2f8 - CGameEditorMediaTrackerPluginAPI
+
+// 0x308 - CPlugAudiobalance
+
 // 0x310, delta?
 // 0x314, ?
 // 0x318 - time speed
 // 0x324 - flag 2?
+// 0x328 - CGameEditorMediaTracker
+
   // set to 0 (1 does motion interpolation or something)
 // 0x328 - flag? (test rdx,rdx)
 // 0x330 - test
@@ -230,3 +244,10 @@ void SetGhostClipPlayerUnpaused(CGameCtnMediaClipPlayer@ player, float timestamp
     Dev::SetOffset(player, 0x348, uint8(1));
     Dev::SetOffset(player, 0x33C, uint32(0));
 }
+
+// To get clip from EditorMediaTracker
+// offsets: 0x228, 0x80 (maybe 0x0 then?)
+
+
+// CGameCtnMediaBlockEntity
+// 0xB8: changes with skin

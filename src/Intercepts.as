@@ -95,6 +95,7 @@ bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {
     auto mgr = GhostClipsMgr::Get(GetApp());
     auto ghost = mgr is null ? null : GhostClipsMgr::GetGhostFromInstanceId(mgr, lastSpectatedGhostInstanceId.Value);
     lastSpectatedGhostRaceTime = (ghost is null) ? 0 : ghost.GhostModel.RaceTime;
+
     if (ghost !is null) {
         trace('SetForcedTarget_Ghost: ' + (ghost is null ? "null" : string(ghost.GhostModel.GhostNickname)) + " / InstanceId: " + lastSpectatedGhostInstanceId.Value + " / RaceTime: " + lastSpectatedGhostRaceTime);
     }

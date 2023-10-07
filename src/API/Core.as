@@ -84,7 +84,7 @@ namespace Core {
         print('Instance ID: ' + instId.GetName() + " / " + Text::Format("%08x", instId.Value));
     }
 
-    void LoadGhost(const string &in filename, bool onlyFirst = false) {
+    void LoadGhost_Replay(const string &in filename, bool onlyFirst = false) {
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         auto dfm = ps.DataFileMgr;
         auto gm = ps.GhostMgr;
