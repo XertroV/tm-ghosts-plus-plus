@@ -87,7 +87,7 @@ todo:
 - name filters async
 - force / customize char skins + helmet color (possible?)
 - ~~ load ghost from URL
-
+- force remove skidmarks from vehicles?
 
 ------------
 

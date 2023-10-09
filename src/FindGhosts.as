@@ -173,17 +173,13 @@ class GhostFinder {
         auto recs = resp['tops'][0]['top'];
         log_debug('SearchForRanks found: ' + Json::Write(recs));
         Json::Value@[] ret;
-        if (nb == 1 && recs.Length == 3) {
-            auto j = recs[1];
+        for (uint i = 0; i < recs.Length; i++) {
+            auto j = recs[i];
             auto accountId = string(j['accountId']);
             auto login = WSIDToLogin(accountId);
             j['time'] = int(j['score']);
             j['login'] = login;
             j['name'] = NadeoServices::GetDisplayNameAsync(accountId);
-            ret.InsertLast(j);
-            return ret;
-        }
-        for (uint i = 0; i < recs.Length; i++) {
             // accountId for medal times via surround LB
             if (recs[i]['accountId'] == "07386a4c-f744-40f6-82a6-7b8a037f3500") continue;
             ret.InsertLast(recs[i]);

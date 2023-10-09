@@ -540,12 +540,17 @@ class ScrubberDebugTab : Tab {
     }
 
     void DrawInner() override {
+        auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         UI::Columns(2);
         DrawValLabel(tostring(scrubberMgr.mode), "scrubberMgr.mode");
         DrawValLabel(scrubberMgr.pauseAt, "scrubberMgr.pauseAt");
         DrawValLabel(scrubberMgr.playbackSpeed, "scrubberMgr.playbackSpeed");
         DrawValLabel(scrubberMgr.subSecondOffset, "scrubberMgr.subSecondOffset");
         DrawValLabel(scrubberMgr.unpausedFlag, "scrubberMgr.unpausedFlag");
+        DrawValLabel(lastSpectatedGhostRaceTime, "lastSpectatedGhostRaceTime");
+        DrawValLabel(lastLoadedGhostRaceTime, "lastLoadedGhostRaceTime");
+        if (ps !is null)
+            DrawValLabel(ps.Now, "ps.Now");
         UI::Columns(1);
     }
 }
