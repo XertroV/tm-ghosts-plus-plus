@@ -176,6 +176,9 @@ class SaveGhostsTab : Tab {
         UI::TableNextColumn();
         UI::AlignTextToFramePadding();
         UI::Text(Text::Format("%02d. ", i+1)); // + Text::Format("%08x", id));
+#if SIG_DEVELOPER
+        AddSimpleTooltip("InstanceId: " + Text::Format("0x%08x", id));
+#endif
 
         UI::TableNextColumn();
         UI::Text(gm.GhostNickname);
