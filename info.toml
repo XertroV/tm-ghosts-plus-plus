@@ -3,6 +3,7 @@ name     = "Ghosts++"
 author   = "XertroV"
 category = "MLHook"
 version  = "0.3.0"
+siteid = 444
 
 [script]
 #__DEFINES__
