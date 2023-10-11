@@ -88,6 +88,8 @@ todo:
 - force / customize char skins + helmet color (possible?)
 - ~~ load ghost from URL
 - force remove skidmarks from vehicles?
+- cam control bw cycle
+- show spectator cam status on button + bw cycle
 
 ------------
 

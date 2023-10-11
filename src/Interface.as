@@ -29,6 +29,7 @@ void RenderInterface() {
     if (!permissionsOkay) return;
     if (!g_Initialized) return;
     if (!S_ShowWindow) return;
+    if (!S_EnableInEditor && GetApp().Editor !is null) return;
     // only show a window outside the map in dev mode
 #if DEV
 #else
@@ -210,6 +211,7 @@ class SaveGhostsTab : Tab {
         if (ps is null) throw("null playground script");
         auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
 
+        if (S_SetGhostAlphaTo1) ps.Ghosts_SetMaxAlpha(1.0);
         startnew(CoroutineFunc(this.WatchGhostsToLoopThem));
 
         // auto cmap = GetApp().Network.ClientManiaAppPlayground;

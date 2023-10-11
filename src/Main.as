@@ -156,10 +156,10 @@ void Render() {
     if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
     if (!g_Initialized) return;
+    if (!S_EnableInEditor && GetApp().Editor !is null) return;
+    if (S_DrawLetterboxBars) UpdateDrawLetterboxBars();
     // if (!S_ShowWindow) return;
     DrawScrubber();
-    // if (IsSpectatingGhost()) {
-    // }
     return;
 }
 

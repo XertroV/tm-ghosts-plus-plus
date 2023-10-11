@@ -16,6 +16,17 @@ LogLevel S_LogLevel = LogLevel::Info;
 [Setting category="General" name="Show Ghost Save Nofitications?"]
 bool S_ShowSaveNotifications = true;
 
+[Setting category="General" name="Enable in Editor"]
+bool S_EnableInEditor = false;
+
+[Setting category="General" name="Set Ghosts Maximum Alpha to Opaque"]
+bool S_SetGhostAlphaTo1 = false;
+
+[Setting category="General" name="Draw Letterbox Bars (hides gliched gfx)"]
+bool S_DrawLetterboxBars = true;
+
+
+
 
 enum KeyboardShape
 {
@@ -34,13 +45,13 @@ bool S_ShowInputsWhenUIHidden = false;
 bool S_HideInputsIfOnlyGhost = true;
 
 [Setting category="Ghost Inputs" name="Height (relative to screen)" min=0 max=1 drag]
-float S_InputsHeight = 0.07;
+float S_InputsHeight = 0.147;
 
 [Setting category="Ghost Inputs" name="Position X (relative to screen)" min=0 max=1 drag]
 float S_InputsPosX = 0.5;
 
 [Setting category="Ghost Inputs" name="Position Y (relative to screen)" min=0 max=1 drag]
-float S_InputsPosY = 0.02;
+float S_InputsPosY = 0.03;
 
 [Setting category="Ghost Inputs" name="Shape"]
 KeyboardShape Setting_Keyboard_Shape = KeyboardShape::Rectangle;
