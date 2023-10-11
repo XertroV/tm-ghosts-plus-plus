@@ -264,6 +264,7 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
             S_SpecCamera == ScrubberSpecCamera::None ? ScrubberSpecCamera::Cam1
             : S_SpecCamera == ScrubberSpecCamera::Cam1 ? ScrubberSpecCamera::Cam2
             : S_SpecCamera == ScrubberSpecCamera::Cam2 ? ScrubberSpecCamera::Cam3
+            : S_SpecCamera == ScrubberSpecCamera::Cam3 ? ScrubberSpecCamera::CamBw
             : ScrubberSpecCamera::None
             ;
     } else if (clickCamera) {
@@ -317,7 +318,7 @@ enum ScrubberMode {
 }
 
 enum ScrubberSpecCamera {
-    None = 0x0, Cam1 = 0x12, Cam2 = 0x13, Cam3 = 0x14
+    None = 0x0, Cam1 = 0x12, Cam2 = 0x13, Cam3 = 0x14, CamBw = 0x15
 }
 
 [Setting category="Camera" name="Force Ghost Camera"]

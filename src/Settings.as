@@ -23,7 +23,7 @@ bool S_EnableInEditor = false;
 bool S_SetGhostAlphaTo1 = false;
 
 [Setting category="General" name="Draw Letterbox Bars (hides gliched gfx)"]
-bool S_DrawLetterboxBars = true;
+bool S_DrawLetterboxBars = false;
 
 
 
