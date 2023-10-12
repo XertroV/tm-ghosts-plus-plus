@@ -4,7 +4,7 @@ bool S_ScrubberWhenUIOff = true;
 [Setting category="Scrubber Size / Pos" name="Show when Overlay off"]
 bool S_ScrubberWhenOverlayOff = true;
 
-[Setting category="Scrubber Size / Pos" name="Center Scrubber (X)"]
+[Setting category="Scrubber Size / Pos" name="Center Scrubber (X axis; \\$f80Overrides X Position\\$z)"]
 bool S_ScrubberCenterX = true;
 
 [Setting category="Scrubber Size / Pos" name="X position (relative to screen)" min=0 max=1]
@@ -109,6 +109,9 @@ void DrawScrubber() {
         }
     }
 
+    bool drawAdvOnTop = pos.y + ySize * 2. > screen.y;
+    if (drawAdvOnTop && showAdvanced) pos.y -= ySize - spacing.y - fp.y;
+
     UI::SetNextWindowSize(int(size.x), 0 /*int(size.y)*/, UI::Cond::Always);
     UI::SetNextWindowPos(int(pos.x), int(pos.y), UI::Cond::Always);
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
@@ -117,6 +120,9 @@ void DrawScrubber() {
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
             * (GetCurrFontSize() / 16.);
         auto btnWidthFull = btnWidth + spacing.x;
+        if (showAdvanced && drawAdvOnTop) {
+            DrawAdvancedScrubberExtras(ps, btnWidth);
+        }
 
         bool expand = UI::Button(Icons::Expand + "##scrubber-expand", vec2(btnWidth, 0));
         UI::SameLine();
@@ -178,7 +184,13 @@ void DrawScrubber() {
             showAdvanced = !showAdvanced;
         }
         if (showAdvanced) {
-            DrawAdvancedScrubberExtras(ps, btnWidth);
+            if (!drawAdvOnTop)
+                DrawAdvancedScrubberExtras(ps, btnWidth);
+            else if (toggleAdv) {
+                // draw an empty line when we toggle to avoid flash
+                UI::AlignTextToFramePadding();
+                UI::Text("");
+            }
         }
 
         if (startedScrub) {
@@ -326,10 +338,11 @@ void UpdateGhostsSetOffsets(CSmArenaRulesMode@ ps) {
         bool spectateThisGhost = spectating == key;
         if (spectateThisGhost || seenGhosts.Exists(key)) {
             auto _id = ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, int(m_NewGhostOffset) * -1);
-            auto marker = ps.UIManager.UIAll.AddMarkerGhost(_id);
-            marker.Label = g.Nickname;
-            marker.HudVisibility = CGameHud3dMarkerConfig::EHudVisibility::WhenVisible;
-            ExploreNod(marker);
+
+            // auto marker = ps.UIManager.UIAll.AddMarkerGhost(_id);
+            // marker.Label = g.Nickname;
+            // marker.HudVisibility = CGameHud3dMarkerConfig::EHudVisibility::WhenVisible;
+            // ExploreNod(marker);
         }
         if (spectateThisGhost) {
             g_SaveGhostTab.SpectateGhost(mgr.Ghosts.Length - 1);
