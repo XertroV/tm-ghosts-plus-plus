@@ -29,6 +29,18 @@ enum Font {
 [Setting category="Scrubber Size / Pos" name="Font Size"]
 Font S_FontSize = Font::Large;
 
+[Setting category="Scrubber Size / Pos" name="Show the advanced tools above the scrubber"]
+bool S_ForceShowAdvOnTop = false;
+
+[Setting category="Scrubber Size / Pos" name="After hover hide delay" min=0 max=10000 description="When driving, the scrubber will auto-disappear after this many miliseconds."]
+uint S_HoverHideDelay = 2500;
+
+[Setting category="Scrubber Size / Pos" name="Never hide the scrubber" description="Overrides hover hide delay"]
+bool S_NeverHideScrubber = false;
+
+
+
+
 UI::Font@ GetCurrFont() {
     if (S_FontSize == Font::Std) return g_fontStd;
     if (S_FontSize == Font::Bold) return g_fontBold;
@@ -68,11 +80,11 @@ void DrawScrubber() {
     vec2 size = screen * vec2(S_XWidth, 0);
     size.y = ySize;
 
-    if (Within(UI::GetMousePos(), vec4(pos, size))) {
+    if (S_NeverHideScrubber || Within(UI::GetMousePos() / UI::GetScale(), vec4(pos, size))) {
         lastHover = Time::Now;
     }
 
-    bool showScrubber = isSpectating || (int(ps.StartTime) - ps.Now) > 0 || (Time::Now - lastHover) < 5000;
+    bool showScrubber = isSpectating || (int(ps.StartTime) - ps.Now) > 0 || (Time::Now - lastHover) < S_HoverHideDelay;
     auto @mgr = GhostClipsMgr::Get(GetApp());
     showScrubber = showScrubber && scrubberMgr !is null;
     showScrubber = showScrubber && mgr !is null;
@@ -112,11 +124,10 @@ void DrawScrubber() {
                     nvg::ResetTransform();
                 }
             }
-
         }
     }
 
-    bool drawAdvOnTop = pos.y + (ySize * 2.) / UI::GetScale() > screen.y;
+    bool drawAdvOnTop = S_ForceShowAdvOnTop || (pos.y + (ySize * 2.) / UI::GetScale() > screen.y);
     if (drawAdvOnTop && showAdvanced) pos.y -= (ySize - (spacing.y + fp.y) / UI::GetScale());
 
     auto bgCol = UI::GetStyleColor(UI::Col::WindowBg);
