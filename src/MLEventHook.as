@@ -65,8 +65,8 @@ class SpectateHook : MLHook::HookMLEventsByType {
             auto currSpecId = GetCurrentlySpecdGhostInstanceId(ps);
             NGameGhostClips_SClipPlayerGhost@ g = GhostClipsMgr::GetGhostFromInstanceId(mgr, currSpecId);
             if (g !is null) {
+                // we want to unspectate this player, but not load a ghost.
                 if (LoginToWSID(g.GhostModel.GhostLogin) == wsid) {
-                    // we want to unspectate this player, but not load a ghost.
                     // sleep(100);
                     ExitSpectatingGhost();
                     if (scrubberMgr !is null) scrubberMgr.ResetAll();
@@ -86,8 +86,14 @@ class SpectateHook : MLHook::HookMLEventsByType {
         // wait a bit to give ML time to process request
         // sleep(100);
 
-        // this abadons the load + spectate ghost request on ML size
+        // this abadons the load + spectate ghost request on ML size; we then want to re-spectate the ghost
+        auto currSpec = GetCurrentlySpecdGhostInstanceId(ps);
+        g_BlockNextGhostsSetTimeReset = true;
+        g_BlockNextGhostsSetTimeAny = true;
+        g_BlockNextClearForcedTarget = true;
         ExitSpectatingGhost();
+        startnew(CoroutineFuncUserdataUint64(this.FindAndSpec), uint64(currSpec));
+
         // while (GetApp().PlaygroundScript !is null && mgr.Ghosts.Length == nbGhosts) yield();
         Cache::LoadGhostsForWsids({wsid}, CurrentMap);
         // ghost was added
@@ -95,9 +101,9 @@ class SpectateHook : MLHook::HookMLEventsByType {
         auto ps2 = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (mgr2 is null || ps2 is null) return;
 
-        if (scrubberMgr !is null) {
-            scrubberMgr.ResetAll();
-        }
+        // if (scrubberMgr !is null) {
+        //     scrubberMgr.ResetAll();
+        // }
 
         for (uint i = nbGhosts; i < mgr2.Ghosts.Length; i++) {
             if (wsid == LoginToWSID(mgr2.Ghosts[i].GhostModel.GhostLogin)) {
@@ -112,6 +118,27 @@ class SpectateHook : MLHook::HookMLEventsByType {
                 return;
             }
         }
+    }
+
+    void FindAndSpec(uint64 instId64) {
+        yield();
+        yield();
+        yield();
+        yield();
+        auto id = uint(instId64);
+        print("find inst id: " + id);
+        if (id == 0x0FF00000) return;
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        if (mgr is null) return;
+        // scrubberMgr.SetProgress(lastExitPauseAt);
+        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+            if (GhostClipsMgr::GetInstanceIdAtIx(mgr, i) == id) {
+                g_SaveGhostTab.SpectateGhost(i);
+                print('inst id found at ix: ' + i);
+                return;
+            }
+        }
+        print('inst id not found');
     }
 }
 

@@ -1,5 +1,4 @@
 bool permissionsOkay = false;
-uint startTime = uint(-1);
 ResetHook@ resetHook = ResetHook();
 SpectateHook@ spectateHook = SpectateHook();
 ToggleHook@ toggleHook = ToggleHook();
@@ -27,7 +26,6 @@ void Main() {
     startnew(InitGP);
     startnew(LoadFonts);
     trace('started coros');
-    startTime = Time::Now;
     trace('checking spec');
     if (GetApp().PlaygroundScript !is null) {
         trace('in playground! getting current values');
@@ -238,11 +236,17 @@ bool IsSpectatingGhost() {
     return ps.UIManager.UIAll.ForceSpectator;
 }
 
+double lastExitPauseAt;
 void ExitSpectatingGhost() {
+    if (scrubberMgr !is null) lastExitPauseAt = scrubberMgr.pauseAt;
     auto ps = GetApp().PlaygroundScript;
     if (ps is null || ps.UIManager is null) return;
-    MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {""});
+    SendEvent_TMGame_Record_Spectate_None();
     Update_ML_SetSpectateID("");
+}
+
+void SendEvent_TMGame_Record_Spectate_None() {
+    MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {""});
 }
 
 void ExitSpectatingGhostAndCleanUp() {

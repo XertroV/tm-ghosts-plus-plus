@@ -1,10 +1,12 @@
 void SetupIntercepts() {
     Dev::InterceptProc("CSmArenaRulesMode", "Ghosts_SetStartTime", _Ghosts_SetStartTime);
+    Dev::InterceptProc("CSmArenaRulesMode", "SpawnPlayer", _SpawnPlayer);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Add", _Ghost_Add);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_AddWaypointSynced", _Ghost_AddWaypointSynced);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Remove", _Ghost_Remove);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_RemoveAll", _Ghost_RemoveAll);
     Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Ghost", _Spectator_SetForcedTarget_Ghost);
+    Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Clear", _Spectator_SetForcedTarget_Clear);
     Dev::InterceptProc("CGameScriptHandlerPlaygroundInterface", "CloseInGameMenu", _CGSHPI_CloseInGameMenu);
     // Dev::InterceptProc("CTrackMania", "TerminateGame", _OnExit);
     // Dev::InterceptProc("CTrackMania", "BackToMainMenu", _OnExit);
@@ -18,6 +20,16 @@ bool _OnExit(CMwStack &in stack) {
     return true;
 }
 
+bool g_BlockNextSpawnPlayer;
+bool _SpawnPlayer(CMwStack &in stack) {
+    if (g_BlockNextSpawnPlayer) {
+        warn("Blocking spawn player");
+        g_BlockNextSpawnPlayer = false;
+        return false;
+    }
+    // warn("SpawnPlayer");
+    return true;
+}
 bool _CGSHPI_CloseInGameMenu(CMwStack &in stack) {
     auto result = CGameScriptHandlerPlaygroundInterface::EInGameMenuResult(stack.CurrentEnum(0));
     bool isExiting = result == CGameScriptHandlerPlaygroundInterface::EInGameMenuResult::Quit;
@@ -79,9 +91,24 @@ bool _Ghost_RemoveAll(CMwStack &in stack) {
     return true;
 }
 
+bool g_BlockNextGhostsSetTimeReset;
+bool g_BlockNextGhostsSetTimeAny;
 int lastSetStartTime = 5000;
 bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
-    lastSetStartTime = stack.CurrentInt(0);
+    auto ghostStartTime = stack.CurrentInt(0);
+    if (g_BlockNextGhostsSetTimeReset && int(ghostStartTime) < 0) {
+        warn("blocking ghost SetStartTime reset");
+        g_BlockNextGhostsSetTimeReset = false;
+        return false;
+    }
+    if (g_BlockNextGhostsSetTimeAny) {
+        warn("blocking ghost SetStartTime any");
+        g_BlockNextGhostsSetTimeAny = false;
+        return false;
+    }
+
+    lastSetStartTime = ghostStartTime;
+
     if (lastSetStartTime < 0) {
         auto ps = cast<CSmArenaRulesMode>(nod);
         lastSetStartTime = ps.Now;
@@ -105,6 +132,17 @@ bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {
     return true;
 }
 
+bool g_BlockNextClearForcedTarget;
+bool _Spectator_SetForcedTarget_Clear(CMwStack &in stack) {
+    if (g_BlockNextClearForcedTarget) {
+        warn("Blocking clear forced target");
+        g_BlockNextClearForcedTarget = false;
+        return false;
+    }
+    warn("SetForcedTarget_Clear");
+    return true;
+
+}
 
 
 // update values set by intercepts
