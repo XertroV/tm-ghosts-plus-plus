@@ -265,7 +265,7 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
     UI::SameLine();
     UI::SetNextItemWidth(btnWidth * 4.0);
     m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, lastLoadedGhostRaceTime == 0 ? 10000 : Math::Min(lastLoadedGhostRaceTime / 10, 60000));
-    m_NewGhostOffset = Math::Clamp(m_NewGhostOffset, 0, lastLoadedGhostRaceTime == 0 ? 9999999 : lastLoadedGhostRaceTime * 2.);
+    m_NewGhostOffset = Math::Clamp(m_NewGhostOffset, 0, lastLoadedGhostRaceTime == 0 ? 9999999 : (lastLoadedGhostRaceTime * 2));
     UI::SameLine();
     bool clickSetOffset = UI::Button("Set Offset: " + Time::Format(m_NewGhostOffset));
     UI::SameLine();
