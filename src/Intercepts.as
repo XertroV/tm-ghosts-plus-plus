@@ -1,7 +1,9 @@
 void SetupIntercepts() {
     Dev::InterceptProc("CSmArenaRulesMode", "Ghosts_SetStartTime", _Ghosts_SetStartTime);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Add", _Ghost_Add);
+    Dev::InterceptProc("CGameGhostMgrScript", "Ghost_AddWaypointSynced", _Ghost_AddWaypointSynced);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Remove", _Ghost_Remove);
+    Dev::InterceptProc("CGameGhostMgrScript", "Ghost_RemoveAll", _Ghost_RemoveAll);
     Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Ghost", _Spectator_SetForcedTarget_Ghost);
     Dev::InterceptProc("CGameScriptHandlerPlaygroundInterface", "CloseInGameMenu", _CGSHPI_CloseInGameMenu);
     // Dev::InterceptProc("CTrackMania", "TerminateGame", _OnExit);
@@ -48,26 +50,27 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
             Cache::CheckForNameToAddSoon(ghost.Nickname, ghost.Result.Time);
     }
 
-    // an attempt to get the end of ghosts to load faster than normal -- didn't work
-    // auto ps = GetApp().PlaygroundScript;
-    // if (ps !is null) {
-    //     auto gm = cast<CGameGhostMgrScript>(nod);
-    //     auto ghost = cast<CGameGhostScript>(stack.CurrentNod(1));
-    //     auto ghostLayer = stack.CurrentBool(0);
-    //     if (ghost !is null) {
-    //         lastLoadedGhostRaceTime = ghost.Result.Time;
-    //         trace('Ghost_Add: ' + (ghost is null ? "null" : string(ghost.Nickname)) + " / RaceTime: " + lastLoadedGhostRaceTime);
-    //         ghostAddSkipIntercept = true;
-    //         auto instId = gm.Ghost_Add(ghost, ghostLayer, ghost.Result.Time - 60000);
-    //         // gm.Ghost_Remove(instId);
-    //         ghostAddSkipIntercept = false;
-    //     }
-    // }
+    return true;
+}
 
+bool _Ghost_AddWaypointSynced(CMwStack &in stack) {
+    if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
+        scrubberMgr.DoUnpause();
+        startnew(CoroutineFunc(scrubberMgr.DoPause));
+    }
     return true;
 }
 
 bool _Ghost_Remove(CMwStack &in stack) {
+    // having ghosts in the paused state can crash the game when removing a ghost
+    if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
+        scrubberMgr.DoUnpause();
+        startnew(CoroutineFunc(scrubberMgr.DoPause));
+    }
+    return true;
+}
+
+bool _Ghost_RemoveAll(CMwStack &in stack) {
     // having ghosts in the paused state can crash the game when removing a ghost
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();

@@ -280,22 +280,33 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
         // CGameCtnGhost@[] ghosts;
         dictionary seenGhosts;
         auto mgr = GhostClipsMgr::Get(GetApp());
+        uint[] instanceIds;
+        uint spectatingId = GetCurrentlySpecdGhostInstanceId(ps);
+        string spectating;
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
             auto gm = mgr.Ghosts[i].GhostModel;
             seenGhosts[gm.GhostNickname + "|" + gm.RaceTime] = true;
-        }
-        ps.GhostMgr.Ghost_RemoveAll();
-        for (uint i = 0; i < ps.DataFileMgr.Ghosts.Length; i++) {
-            auto g = ps.DataFileMgr.Ghosts[i];
-            if (seenGhosts.Exists(string(g.Nickname) + "|" + g.Result.Time)) {
-                ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, int(m_NewGhostOffset) * -1);
+            auto _id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
+            instanceIds.InsertLast(_id);
+            if (spectatingId == _id) {
+                spectating = gm.GhostNickname + "|" + gm.RaceTime;
             }
         }
+        for (uint i = 0; i < ps.DataFileMgr.Ghosts.Length; i++) {
+            auto g = ps.DataFileMgr.Ghosts[i];
+            auto key = string(g.Nickname) + "|" + g.Result.Time;
+            bool spectateThisGhost = spectating == key;
+            if (spectateThisGhost || seenGhosts.Exists(key)) {
+                ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, int(m_NewGhostOffset) * -1);
+            }
+            if (spectateThisGhost) {
+                g_SaveGhostTab.SpectateGhost(mgr.Ghosts.Length - 1);
+            }
+        }
+        for (uint i = 0; i < instanceIds.Length; i++) {
+            ps.GhostMgr.Ghost_Remove(MwId(instanceIds[i]));
+        }
         lastSetGhostOffset = m_NewGhostOffset;
-        // for (uint i = 0; i < ghosts.Length; i++) {
-        //     auto item = ghosts[i];
-        //     // ps.GhostMgr.Ghost_Add(ghosts[i]);
-        // }
     }
 }
 
