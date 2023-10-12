@@ -16,6 +16,12 @@ float S_YPosRel = 0.94;
 [Setting category="Scrubber Size / Pos" name="Width (relative to screen)" min=0 max=1]
 float S_XWidth = 0.65;
 
+[Setting category="Scrubber Size / Pos" name="Background Alpha" min=0 max=1]
+float S_ScrubberBgAlpha = 1.0;
+
+[Setting category="Scrubber Size / Pos" name="Text Color" color]
+vec4 S_TextColor = vec4(1);
+
 enum Font {
     Std = 0, Bold = 1, Large = 2, Larger = 3
 }
@@ -38,6 +44,7 @@ float GetCurrFontSize() {
     if (S_FontSize == Font::Larger) return 26.;
     return 16.;
 }
+
 
 
 float maxTime = 0.;
@@ -112,6 +119,19 @@ void DrawScrubber() {
     bool drawAdvOnTop = pos.y + ySize * 2. > screen.y;
     if (drawAdvOnTop && showAdvanced) pos.y -= ySize - spacing.y - fp.y;
 
+    auto bgCol = UI::GetStyleColor(UI::Col::WindowBg);
+    auto frameBgCol = UI::GetStyleColor(UI::Col::FrameBg);
+    auto frameABgCol = UI::GetStyleColor(UI::Col::FrameBgActive);
+    auto frameHBgCol = UI::GetStyleColor(UI::Col::FrameBgHovered);
+    bgCol.w *= S_ScrubberBgAlpha;
+    frameBgCol.w *= S_ScrubberBgAlpha;
+    frameHBgCol.w *= S_ScrubberBgAlpha;
+    frameABgCol.w *= S_ScrubberBgAlpha;
+    UI::PushStyleColor(UI::Col::WindowBg, bgCol);
+    UI::PushStyleColor(UI::Col::Text, S_TextColor);
+    UI::PushStyleColor(UI::Col::FrameBg, frameBgCol);
+    UI::PushStyleColor(UI::Col::FrameBgActive, frameABgCol);
+    UI::PushStyleColor(UI::Col::FrameBgHovered, frameHBgCol);
     UI::SetNextWindowSize(int(size.x), 0 /*int(size.y)*/, UI::Cond::Always);
     UI::SetNextWindowPos(int(pos.x), int(pos.y), UI::Cond::Always);
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
@@ -242,6 +262,7 @@ void DrawScrubber() {
         }
     }
     UI::End();
+    UI::PopStyleColor(5);
 
     UI::PopFont();
 }
