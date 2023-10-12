@@ -123,10 +123,7 @@ void OnMapChange() {
     }
     if (scrubberMgr is null) return;
     scrubberMgr.ResetAll();
-    // auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
-    // if (ps is null) return;
-    // Dev::SetOffset(ps, GetOffset(ps, "Now"), 0x000FFFFF);
-    // Dev::SetOffset(Dev::GetOffsetNod(GetApp(), GetOffset("CGameCtnApp", "GameScene") + 0x8), 0x918, 0x000FFFFF);
+    EngineSounds::Unapply();
 }
 
 

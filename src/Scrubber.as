@@ -60,10 +60,10 @@ void DrawScrubber() {
 
     UI::PushFont(GetCurrFont());
 
-    vec2 screen = vec2(Draw::GetWidth(), Draw::GetHeight());
+    vec2 screen = vec2(Draw::GetWidth(), Draw::GetHeight()) / UI::GetScale();
     auto spacing = UI::GetStyleVarVec2(UI::StyleVar::ItemSpacing);
     auto fp = UI::GetStyleVarVec2(UI::StyleVar::FramePadding);
-    auto ySize = UI::GetFrameHeightWithSpacing() + spacing.y + fp.y;;
+    auto ySize = (UI::GetFrameHeightWithSpacing() + spacing.y + fp.y) / UI::GetScale();
     vec2 pos = (screen - vec2(S_XWidth * screen.x, ySize)) * vec2(S_ScrubberCenterX ? 0.5 : S_XPosRel, S_YPosRel);
     vec2 size = screen * vec2(S_XWidth, 0);
     size.y = ySize;
@@ -116,8 +116,8 @@ void DrawScrubber() {
         }
     }
 
-    bool drawAdvOnTop = pos.y + ySize * 2. > screen.y;
-    if (drawAdvOnTop && showAdvanced) pos.y -= ySize - spacing.y - fp.y;
+    bool drawAdvOnTop = pos.y + (ySize * 2.) / UI::GetScale() > screen.y;
+    if (drawAdvOnTop && showAdvanced) pos.y -= (ySize - (spacing.y + fp.y) / UI::GetScale());
 
     auto bgCol = UI::GetStyleColor(UI::Col::WindowBg);
     auto frameBgCol = UI::GetStyleColor(UI::Col::FrameBg);
@@ -138,7 +138,7 @@ void DrawScrubber() {
         double t = double(ps.Now - lastSetStartTime) + scrubberMgr.subSecondOffset;
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
-            * (GetCurrFontSize() / 16.);
+            * (GetCurrFontSize() / 16.) * UI::GetScale();
         auto btnWidthFull = btnWidth + spacing.x;
         if (showAdvanced && drawAdvOnTop) {
             DrawAdvancedScrubberExtras(ps, btnWidth);
@@ -162,7 +162,7 @@ void DrawScrubber() {
             lastLoadedGhostRaceTime = mgr.Ghosts[0].GhostModel.RaceTime;
         }
 
-        UI::SetNextItemWidth(UI::GetWindowContentRegionWidth() - btnWidthFull * nbBtns);
+        UI::SetNextItemWidth((UI::GetWindowContentRegionWidth() - btnWidthFull * nbBtns) / UI::GetScale());
         maxTime = 0;
         maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
         maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
