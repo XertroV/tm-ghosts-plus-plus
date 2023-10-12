@@ -76,6 +76,7 @@ void Unload() {
     trace('unloading ghosts++ #2 mlhook');
     MLHook::UnregisterMLHooksAndRemoveInjectedML();
     trace('unloading ghosts++ #3 done');
+    EngineSounds::Unapply();
 }
 void OnDestroyed() { Unload(); }
 void OnDisabled() { Unload(); }

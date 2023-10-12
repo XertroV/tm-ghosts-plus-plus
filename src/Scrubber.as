@@ -200,6 +200,13 @@ void DrawScrubber() {
         // bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
         bool toggleAdv = UI::Button(Icons::Cogs + "##scrubber-toggle-adv", vec2(btnWidth, 0));
 
+        bool shouldSoftenEngineSounds = scrubberMgr.IsPaused || scrubberMgr.playbackSpeed < 0.5 || scrubberMgr.isScrubbing;
+        if (shouldSoftenEngineSounds) {
+            if (EngineSounds::Apply()) EngineSounds::SetEngineSoundVolumeDB(S_EngineSoundsDB);
+        } else {
+            EngineSounds::Unapply();
+        }
+
         if (toggleAdv) {
             showAdvanced = !showAdvanced;
         }

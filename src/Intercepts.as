@@ -6,10 +6,9 @@ void SetupIntercepts() {
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Remove", _Ghost_Remove);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_RemoveAll", _Ghost_RemoveAll);
     Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Ghost", _Spectator_SetForcedTarget_Ghost);
-    Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Clear", _Spectator_SetForcedTarget_Clear);
+    // not a proc
+    // Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Clear", _Spectator_SetForcedTarget_Clear);
     Dev::InterceptProc("CGameScriptHandlerPlaygroundInterface", "CloseInGameMenu", _CGSHPI_CloseInGameMenu);
-    // Dev::InterceptProc("CTrackMania", "TerminateGame", _OnExit);
-    // Dev::InterceptProc("CTrackMania", "BackToMainMenu", _OnExit);
 }
 
 bool _OnExit(CMwStack &in stack) {

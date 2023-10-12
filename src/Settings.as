@@ -25,6 +25,11 @@ bool S_SetGhostAlphaTo1 = false;
 [Setting category="General" name="Draw Letterbox Bars (hides gliched gfx)"]
 bool S_DrawLetterboxBars = false;
 
+[Setting category="General" name="Mute / Soften Engine Sounds when Scrubbing"]
+bool S_SoftenEngineSounds = true;
+
+[Setting category="General" name="Volume DB: Engine Sounds when Scrubbing" min=-60 max=0]
+float S_EngineSoundsDB = -10.;
 
 
 
