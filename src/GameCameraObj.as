@@ -51,7 +51,7 @@ class GameCamera {
         if (gc is null) return;
         auto offset = O_GAMECAM_USE_ALT + cam123 - 1;
         auto _alt = Dev::GetOffsetUint8(gc, offset);
-        if (_alt == 0 || _alt > 2) {
+        if (_alt > 2) {
             warn_every_60_s("Alt cam value on GameCamera struct seems wrong: " + Text::Format("0x%02x", _alt));
         } else {
             Dev::SetOffset(gc, offset, uint8(alt ? 0x2 : 0x1));
