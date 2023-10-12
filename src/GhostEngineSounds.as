@@ -7,7 +7,7 @@ namespace EngineSounds {
 
     bool Apply() {
         if (applied) return false;
-        setVolumePtr = Dev::FindPattern(CAudioSourceEngine_SetVolumeDB_Pattern);
+        if (setVolumePtr == 0) setVolumePtr = Dev::FindPattern(CAudioSourceEngine_SetVolumeDB_Pattern);
         if (setVolumePtr == 0) return false;
         setVolumeOrigBytes = Dev::Patch(setVolumePtr, "90 90 90 90");
         applied = true;

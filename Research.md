@@ -15,6 +15,13 @@
   - ptr to 0x50 bytes into CGameCtnGhost (uint4 time, uint4 score, uint4 respawns, uint4 spwan landmark id, checkpoints buf)
 
 
+# CPlugVehicleVisModel
+
+- 0x58
+  - ptr to struct
+  - 0x0
+    - ptr to NPlugModelKit_SDataBase
+
 # CAudioSourceEngine
 
 code that writes to volumeDB:

@@ -368,6 +368,9 @@ void UpdateGhostsSetOffsets() {
         ghosts.InsertLast(ps.DataFileMgr.Ghosts[i]);
     }
 
+    scrubberMgr.ForceUnpause();
+    scrubberMgr.SetPlayback();
+
     for (uint i = 0; i < ghosts.Length; i++) {
         auto g = ghosts[i];
         auto key = string(g.Nickname) + "|" + g.Result.Time;
@@ -375,21 +378,18 @@ void UpdateGhostsSetOffsets() {
         if (spectateThisGhost || seenGhosts.Exists(key)) {
             // this can be quite expensive time-wise
             auto _id = ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, int(m_NewGhostOffset) * -1);
-            // ps.UIManager.UIAll.M
-            // auto marker = ps.UIManager.UIAll.AddMarkerGhost(_id);
-            // marker.Label = g.Nickname;
-            // marker.HudVisibility = CGameHud3dMarkerConfig::EHudVisibility::WhenVisible;
-            // ExploreNod(marker);
         }
         if (spectateThisGhost) {
             g_SaveGhostTab.SpectateGhost(mgr.Ghosts.Length - 1);
         }
+        yield();
         yield();
         if (GetApp().PlaygroundScript is null) return;
     }
     if (!m_KeepGhostsWhenOffsetting) {
         for (uint i = 0; i < instanceIds.Length; i++) {
             ps.GhostMgr.Ghost_Remove(MwId(instanceIds[i]));
+            yield();
             yield();
             if (GetApp().PlaygroundScript is null) return;
         }
