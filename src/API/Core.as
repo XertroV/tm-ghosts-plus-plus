@@ -85,6 +85,7 @@ namespace Core {
         WaitAndClearTaskLater(task, dfm);
         if (task.HasFailed || !task.HasSucceeded) {
             log_warn('Ghost_Download failed: ' + task.ErrorCode + ", " + task.ErrorType + ", " + task.ErrorDescription);
+            LoadingGhosts_GhostError(1);
             return;
         }
         auto instId = gm.Ghost_Add(task.Ghost, S_UseGhostLayer);
@@ -124,8 +125,14 @@ void LoadingGhosts_GhostDone(uint nbGhosts) {
 }
 void LoadingGhosts_GhostError(uint nbGhosts) {
     LoadingGhosts_NbError += nbGhosts;
+    LoadingGhosts_NbTotal -= nbGhosts;
 }
 void LoadingGhosts_LodingDone() {
+    startnew(_LoadingDoneCoro);
+}
+
+void _LoadingDoneCoro() {
+    yield();
     LoadingGhosts_Loading--;
     if (LoadingGhosts_Loading == 0) {
         LoadingGhosts_NbDone = 0;
@@ -136,22 +143,28 @@ void LoadingGhosts_LodingDone() {
     }
 }
 
+uint lastRenderLoadingInProg = 0;
+nat3 lastRenderLoadingCounts;
 void RenderLoadingGhostsMsg() {
-    if (LoadingGhosts_Loading <= 0) return;
+    if (LoadingGhosts_Loading > 0) {
+        lastRenderLoadingInProg = Time::Now;
+        lastRenderLoadingCounts = nat3(LoadingGhosts_NbDone, LoadingGhosts_NbTotal, LoadingGhosts_NbError);
+    }
+    if (LoadingGhosts_Loading <= 0 && Time::Now > lastRenderLoadingInProg + 500) return;
 
     auto screen = vec2(Draw::GetWidth(), Draw::GetHeight());
     auto pos = screen * vec2(.5, .2);
 
-    string _loadingStr = "Loading: " + LoadingGhosts_NbDone + " / " + LoadingGhosts_NbTotal;
-    if (LoadingGhosts_NbError > 0) {
-        _loadingStr += " (Failed: "+LoadingGhosts_NbError+")";
+    string _loadingStr = "Loading: " + lastRenderLoadingCounts.x + " / " + lastRenderLoadingCounts.y;
+    if (lastRenderLoadingCounts.z > 0) {
+        _loadingStr += " (Failed: "+lastRenderLoadingCounts.z+")";
     }
     float fs = 0.03 * screen.y;
 
     nvg::Reset();
     nvg::BeginPath();
 
-    nvg::FontFace(Inputs::g_NvgFont);
+    nvg::FontFace(Inputs::g_NvgFontBold);
     nvg::FontSize(fs);
     nvg::TextAlign(nvg::Align::Center | nvg::Align::Middle);
 

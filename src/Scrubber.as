@@ -331,13 +331,15 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
             SetDrivableCamFlag(gt, false);
         }
     } else if (clickSetOffset) {
-        UpdateGhostsSetOffsets(ps);
+        startnew(UpdateGhostsSetOffsets);
     }
 }
 
-void UpdateGhostsSetOffsets(CSmArenaRulesMode@ ps) {
+void UpdateGhostsSetOffsets() {
+    auto app = GetApp();
+    CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(app.PlaygroundScript);
     dictionary seenGhosts;
-    auto mgr = GhostClipsMgr::Get(GetApp());
+    auto mgr = GhostClipsMgr::Get(app);
     uint[] instanceIds;
     uint spectatingId = GetCurrentlySpecdGhostInstanceId(ps);
     string spectating;
@@ -364,8 +366,9 @@ void UpdateGhostsSetOffsets(CSmArenaRulesMode@ ps) {
         auto key = string(g.Nickname) + "|" + g.Result.Time;
         bool spectateThisGhost = spectating == key;
         if (spectateThisGhost || seenGhosts.Exists(key)) {
+            // this can be quite expensive time-wise
             auto _id = ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, int(m_NewGhostOffset) * -1);
-
+            // ps.UIManager.UIAll.M
             // auto marker = ps.UIManager.UIAll.AddMarkerGhost(_id);
             // marker.Label = g.Nickname;
             // marker.HudVisibility = CGameHud3dMarkerConfig::EHudVisibility::WhenVisible;
@@ -374,10 +377,14 @@ void UpdateGhostsSetOffsets(CSmArenaRulesMode@ ps) {
         if (spectateThisGhost) {
             g_SaveGhostTab.SpectateGhost(mgr.Ghosts.Length - 1);
         }
+        yield();
+        if (GetApp().PlaygroundScript is null) return;
     }
     if (!m_KeepGhostsWhenOffsetting) {
         for (uint i = 0; i < instanceIds.Length; i++) {
             ps.GhostMgr.Ghost_Remove(MwId(instanceIds[i]));
+            yield();
+            if (GetApp().PlaygroundScript is null) return;
         }
     }
     lastSetGhostOffset = m_NewGhostOffset;

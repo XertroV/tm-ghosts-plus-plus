@@ -10,3 +10,4 @@ siteid = 444
 dependencies = ["MLHook", "NadeoServices", "VehicleState"]
 optional_dependencies = ["ChampionMedals"]
 # blocks = ["GhostScrubber"]
+timeout = 4000

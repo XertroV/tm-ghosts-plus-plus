@@ -19,14 +19,15 @@ class ToggleHook : MLHook::HookMLEventsByType {
         if (event.type.EndsWith("PB")) {
             OnTogglePB();
         } else {
-            OnToggleGhost();
+            OnToggleGhost(event.data[0]);
         }
     }
 
     void OnTogglePB() {
 
     }
-    void OnToggleGhost() {
+    void OnToggleGhost(const string &in wsid) {
+        // we want to find the fastest ghost with this WSID so we can remove all instances of it
 
     }
 
@@ -66,7 +67,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
             if (g !is null) {
                 if (LoginToWSID(g.GhostModel.GhostLogin) == wsid) {
                     // we want to unspectate this player, but not load a ghost.
-                    sleep(100);
+                    // sleep(100);
                     ExitSpectatingGhost();
                     if (scrubberMgr !is null) scrubberMgr.ResetAll();
                     return;
@@ -83,7 +84,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
 
         // since we got a request to spectate a ghost, we want to undo that and manage it ourselves
         // wait a bit to give ML time to process request
-        sleep(100);
+        // sleep(100);
 
         // this abadons the load + spectate ghost request on ML size
         ExitSpectatingGhost();

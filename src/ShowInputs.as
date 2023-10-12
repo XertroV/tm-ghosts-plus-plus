@@ -3,6 +3,7 @@
 namespace Inputs {
 
     int g_NvgFont = nvg::LoadFont("DroidSans.ttf", true, true);
+    int g_NvgFontBold = nvg::LoadFont("DroidSans-bold.ttf", true, true);
     float padding = -1;
 
     void DrawInputs(CSceneVehicleVisState@ vis, const vec2 &in size) {
@@ -81,5 +82,4 @@ namespace Inputs {
         nvg::TextAlign(nvg::Align::Middle | nvg::Align::Center);
         nvg::TextBox(pos.x, pos.y + size.y / 2, size.x, text);
     }
-
 }
