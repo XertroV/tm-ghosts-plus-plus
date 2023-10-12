@@ -152,7 +152,7 @@ void DrawScrubber() {
         if (t < 0) labelTime = "-" + labelTime;
         auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t),  labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset)));
         bool startedScrub = UI::IsItemClicked();
-        bool clickTogglePause = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
+        bool clickTogglePause = UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right);
 
         UI::SameLine();
         bool stepFwd = UI::Button((scrubberMgr.IsPaused ? Icons::StepForward : Icons::Forward) + "##scrubber-step-fwd", vec2(btnWidth, 0));

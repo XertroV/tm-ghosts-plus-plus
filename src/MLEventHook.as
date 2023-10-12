@@ -10,6 +10,33 @@ class ResetHook : MLHook::HookMLEventsByType {
     }
 }
 
+class ToggleHook : MLHook::HookMLEventsByType {
+    ToggleHook() {
+        super("TMGame_Record_ToggleGhost");
+    }
+
+    void OnEvent(MLHook::PendingEvent@ event) override {
+        if (event.type.EndsWith("PB")) {
+            OnTogglePB();
+        } else {
+            OnToggleGhost();
+        }
+    }
+
+    void OnTogglePB() {
+
+    }
+    void OnToggleGhost() {
+
+    }
+
+    /**
+     * research re finding ghost offset
+     * from CPlugEntRecordData (0x911f000): 0x40,0x10
+     *
+     */
+}
+
 class SpectateHook : MLHook::HookMLEventsByType {
     SpectateHook() {
         super("TMGame_Record_Spectate");

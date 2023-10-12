@@ -2,6 +2,7 @@ bool permissionsOkay = false;
 uint startTime = uint(-1);
 ResetHook@ resetHook = ResetHook();
 SpectateHook@ spectateHook = SpectateHook();
+ToggleHook@ toggleHook = ToggleHook();
 const string SetFocusedRecord_PageUID = "SetFocusedRecord";
 
 UI::Font@ g_fontStd;
@@ -59,6 +60,8 @@ void InitGP() {
     MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_Exit", true);
     // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_SpectateGhost", true);
     MLHook::RegisterMLHook(spectateHook, "TMGame_Record_Spectate", true);
+    MLHook::RegisterMLHook(toggleHook, "TMGame_Record_ToggleGhost", true);
+    MLHook::RegisterMLHook(toggleHook, "TMGame_Record_TogglePB", true);
     MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
     startnew(WatchAndRemoveFadeOut);
     trace('init done');
