@@ -235,6 +235,9 @@ class SaveGhostsTab : Tab {
         ps.UIManager.UIAll.SpectatorForceCameraType = 3;
         ps.UIManager.UIAll.Spectator_SetForcedTarget_Ghost(MwId(id));
         ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::EndRound;
+
+        if (scrubberMgr !is null && !scrubberMgr.IsStdPlayback)
+            EngineSounds::SetEngineSoundVdBFromSettings_SpawnCoro();
     }
 
     bool watchLoopActive = false;
@@ -258,6 +261,7 @@ class SaveGhostsTab : Tab {
                     if (!scrubberMgr.IsStdPlayback) {
                         scrubberMgr.DoUnpause();
                         startnew(CoroutineFunc(scrubberMgr.DoPause));
+                        EngineSounds::SetEngineSoundVdBFromSettings_SpawnCoro();
                     }
                     scrubberMgr.SetProgress(0);
                 }

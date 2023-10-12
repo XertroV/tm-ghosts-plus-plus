@@ -21,15 +21,19 @@ namespace EngineSounds {
         applied = false;
     }
 
-    void SetEngineSoundVolumeDB(float volumeDb) {
-        volumeDb = Math::Clamp(volumeDb, -60., 0.);
+    void SetEngineSoundVolumeDB(double volumeDb) {
+        auto volumeDbF = Math::Clamp(float(volumeDb), -60., 0.);
         auto app = GetApp();
         auto audio = app.AudioPort;
         CAudioSourceEngine@ engineSource = null;
         for (uint i = 0; i < audio.Sources.Length; i++) {
             if ((@engineSource = cast<CAudioSourceEngine>(audio.Sources[i])) !is null) {
-                engineSource.VolumedB = volumeDb;
+                engineSource.VolumedB = volumeDbF;
             }
         }
+    }
+
+    void SetEngineSoundVdBFromSettings_SpawnCoro() {
+        startnew(CoroutineFuncUserdataDouble(EngineSounds::SetEngineSoundVolumeDB), S_EngineSoundsDB);
     }
 }
