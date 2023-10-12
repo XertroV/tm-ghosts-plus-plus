@@ -234,15 +234,26 @@ void DrawScrubber() {
     UI::PopFont();
 }
 
-uint m_NewGhostOffset = 0;
+int m_NewGhostOffset = 0;
 uint lastSetGhostOffset = 0;
 bool m_UseAltCam = false;
+bool m_KeepGhostsWhenOffsetting = true;
+
 void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
     bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
+    bool rmbCamera = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
     AddSimpleTooltip("While spectating, cycle between cimenatic cam, free cam, and the player camera.");
     UI::SameLine();
     bool clickCycleCams = UI::Button(CurrCamLabel() + "##scrubber-spec-cam", vec2(btnWidth, 0));
     AddSimpleTooltip("Force the camera you spectate ghosts with (1, 2, 3) -- does not override mediatracker.");
+    if (UI::BeginPopupContextItem("ctx-ghost-cams")) {
+        if (UI::MenuItem("None", "", S_SpecCamera == ScrubberSpecCamera::None)) S_SpecCamera = ScrubberSpecCamera::None;
+        if (UI::MenuItem("Cam1", "", S_SpecCamera == ScrubberSpecCamera::Cam1)) S_SpecCamera = ScrubberSpecCamera::Cam1;
+        if (UI::MenuItem("Cam2", "", S_SpecCamera == ScrubberSpecCamera::Cam2)) S_SpecCamera = ScrubberSpecCamera::Cam2;
+        if (UI::MenuItem("Cam3", "", S_SpecCamera == ScrubberSpecCamera::Cam3)) S_SpecCamera = ScrubberSpecCamera::Cam3;
+        if (UI::MenuItem("BW", "", S_SpecCamera == ScrubberSpecCamera::BW)) S_SpecCamera = ScrubberSpecCamera::BW;
+        UI::EndPopup();
+    }
     // UI::SameLine();
     // m_UseAltCam = UI::Checkbox("Alt", m_UseAltCam);
     UI::SameLine();
@@ -253,9 +264,12 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
     AddSimpleTooltip("This can be used to exceed the usual limits on ghosts.");
     UI::SameLine();
     UI::SetNextItemWidth(btnWidth * 4.0);
-    m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, 60000);
+    m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, lastLoadedGhostRaceTime == 0 ? 10000 : Math::Min(lastLoadedGhostRaceTime / 10, 60000));
+    m_NewGhostOffset = Math::Clamp(m_NewGhostOffset, 0, lastLoadedGhostRaceTime == 0 ? 9999999 : lastLoadedGhostRaceTime * 2.);
     UI::SameLine();
     bool clickSetOffset = UI::Button("Set Offset: " + Time::Format(m_NewGhostOffset));
+    UI::SameLine();
+    m_KeepGhostsWhenOffsetting = UI::Checkbox("Keep Existing?", m_KeepGhostsWhenOffsetting);
     UI::SameLine();
     UI::Dummy(vec2(10, 0));
 
@@ -264,50 +278,69 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
             S_SpecCamera == ScrubberSpecCamera::None ? ScrubberSpecCamera::Cam1
             : S_SpecCamera == ScrubberSpecCamera::Cam1 ? ScrubberSpecCamera::Cam2
             : S_SpecCamera == ScrubberSpecCamera::Cam2 ? ScrubberSpecCamera::Cam3
-            : S_SpecCamera == ScrubberSpecCamera::Cam3 ? ScrubberSpecCamera::CamBw
+            : S_SpecCamera == ScrubberSpecCamera::Cam3 ? ScrubberSpecCamera::BW
             : ScrubberSpecCamera::None
             ;
-    } else if (clickCamera) {
+    } else if (clickCamera || rmbCamera) {
+        bool fwd = !rmbCamera;
         auto cam = ps.UIManager.UIAll.SpectatorForceCameraType;
         auto newCam = cam;
         // we use 0x3 instead of 0x1 b/c it's the same but avoids ghost scrubber blocking our calls to Ghosts_SetStartTime
-        if (cam == 0) newCam = 2;
-        if (cam == 1) newCam = 2;
-        if (cam == 2) newCam = 3;
-        if (cam >= 3) newCam = 0;
+        if (cam == 0) newCam = fwd ? 2 : 3;
+        if (cam == 1) newCam = fwd ? 0 : 2;
+        if (cam == 2) newCam = fwd ? 3 : 0;
+        if (cam >= 3) newCam = fwd ? 0 : 2;
         ps.UIManager.UIAll.SpectatorForceCameraType = newCam;
     } else if (clickSetOffset) {
-        // CGameCtnGhost@[] ghosts;
-        dictionary seenGhosts;
-        auto mgr = GhostClipsMgr::Get(GetApp());
-        uint[] instanceIds;
-        uint spectatingId = GetCurrentlySpecdGhostInstanceId(ps);
-        string spectating;
-        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
-            auto gm = mgr.Ghosts[i].GhostModel;
-            seenGhosts[gm.GhostNickname + "|" + gm.RaceTime] = true;
-            auto _id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
-            instanceIds.InsertLast(_id);
-            if (spectatingId == _id) {
-                spectating = gm.GhostNickname + "|" + gm.RaceTime;
-            }
+        UpdateGhostsSetOffsets(ps);
+    }
+}
+
+void UpdateGhostsSetOffsets(CSmArenaRulesMode@ ps) {
+    dictionary seenGhosts;
+    auto mgr = GhostClipsMgr::Get(GetApp());
+    uint[] instanceIds;
+    uint spectatingId = GetCurrentlySpecdGhostInstanceId(ps);
+    string spectating;
+    for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+        auto gm = mgr.Ghosts[i].GhostModel;
+        seenGhosts[gm.GhostNickname + "|" + gm.RaceTime] = true;
+        auto _id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
+        instanceIds.InsertLast(_id);
+        if (spectatingId == _id) {
+            spectating = gm.GhostNickname + "|" + gm.RaceTime;
         }
-        for (uint i = 0; i < ps.DataFileMgr.Ghosts.Length; i++) {
-            auto g = ps.DataFileMgr.Ghosts[i];
-            auto key = string(g.Nickname) + "|" + g.Result.Time;
-            bool spectateThisGhost = spectating == key;
-            if (spectateThisGhost || seenGhosts.Exists(key)) {
-                ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, int(m_NewGhostOffset) * -1);
-            }
-            if (spectateThisGhost) {
-                g_SaveGhostTab.SpectateGhost(mgr.Ghosts.Length - 1);
-            }
+    }
+    CGameGhostScript@[] ghosts;
+    auto cmap = GetApp().Network.ClientManiaAppPlayground;
+    for (uint i = 0; i < cmap.DataFileMgr.Ghosts.Length; i++) {
+        ghosts.InsertLast(cmap.DataFileMgr.Ghosts[i]);
+    }
+    for (uint i = 0; i < ps.DataFileMgr.Ghosts.Length; i++) {
+        ghosts.InsertLast(ps.DataFileMgr.Ghosts[i]);
+    }
+
+    for (uint i = 0; i < ghosts.Length; i++) {
+        auto g = ghosts[i];
+        auto key = string(g.Nickname) + "|" + g.Result.Time;
+        bool spectateThisGhost = spectating == key;
+        if (spectateThisGhost || seenGhosts.Exists(key)) {
+            auto _id = ps.GhostMgr.Ghost_Add(g, S_UseGhostLayer, int(m_NewGhostOffset) * -1);
+            auto marker = ps.UIManager.UIAll.AddMarkerGhost(_id);
+            marker.Label = g.Nickname;
+            marker.HudVisibility = CGameHud3dMarkerConfig::EHudVisibility::WhenVisible;
+            ExploreNod(marker);
         }
+        if (spectateThisGhost) {
+            g_SaveGhostTab.SpectateGhost(mgr.Ghosts.Length - 1);
+        }
+    }
+    if (!m_KeepGhostsWhenOffsetting) {
         for (uint i = 0; i < instanceIds.Length; i++) {
             ps.GhostMgr.Ghost_Remove(MwId(instanceIds[i]));
         }
-        lastSetGhostOffset = m_NewGhostOffset;
     }
+    lastSetGhostOffset = m_NewGhostOffset;
 }
 
 
@@ -329,7 +362,7 @@ enum ScrubberMode {
 }
 
 enum ScrubberSpecCamera {
-    None = 0x0, Cam1 = 0x12, Cam2 = 0x13, Cam3 = 0x14, CamBw = 0x15
+    None = 0x0, Cam1 = 0x12, Cam2 = 0x13, Cam3 = 0x14, BW = 0x15
 }
 
 [Setting category="Camera" name="Force Ghost Camera"]
