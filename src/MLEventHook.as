@@ -13,22 +13,67 @@ class ResetHook : MLHook::HookMLEventsByType {
 class ToggleHook : MLHook::HookMLEventsByType {
     ToggleHook() {
         super("TMGame_Record_ToggleGhost");
+        startnew(CoroutineFunc(this.ClearDebounce)).WithRunContext(Meta::RunContext::BeforeScripts);
+    }
+
+    dictionary debounceToggles;
+    void ClearDebounce() {
+        while (true) {
+            yield();
+            debounceToggles.DeleteAll();
+        }
     }
 
     void OnEvent(MLHook::PendingEvent@ event) override {
+        log_debug('got event: ' + event.type);
         if (event.type.EndsWith("PB")) {
             OnTogglePB();
         } else {
-            OnToggleGhost(event.data[0]);
+            startnew(CoroutineFuncUserdataString(OnToggleGhost), event.data[0]);
         }
     }
 
     void OnTogglePB() {
 
     }
-    void OnToggleGhost(const string &in wsid) {
-        // we want to find the fastest ghost with this WSID so we can remove all instances of it
 
+    void OnToggleGhost(const string &in wsid) {
+        if (debounceToggles.Exists(wsid)) return;
+        debounceToggles[wsid] = true;
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        if (mgr is null) return;
+
+        if (!ghostWsidsLoaded.Exists(wsid)) {
+            // then we are adding it
+            // Update_ML_SetGhostLoading(wsid);
+            // log_debug("DEBUG toggling ghost loading: " + wsid);
+            yield();
+            startnew(Update_ML_SyncAll);
+            return;
+        }
+        log_debug("DEBUG on toggle ghost: " + wsid);
+        // we want to find the fastest ghost with this WSID so we can remove all instances of it
+        int bestTime = -1;
+        int[] bestIds;
+        string login = WSIDToLogin(wsid);
+        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+            auto g = mgr.Ghosts[i].GhostModel;
+            if (g.GhostLogin != login) continue;
+            if (bestTime < 0 || g.RaceTime < bestTime) {
+                bestIds.RemoveRange(0, bestIds.Length);
+                bestIds.InsertLast(GhostClipsMgr::GetInstanceIdAtIx(mgr, i));
+            } else if (g.RaceTime == bestTime) {
+                bestIds.InsertLast(GhostClipsMgr::GetInstanceIdAtIx(mgr, i));
+            }
+        }
+        // now remove all ghosts at these ixs but do it backwards
+        auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+        for (int i = bestIds.Length - 1; i >= 0; i--) {
+            ps.GhostMgr.Ghost_Remove(bestIds[i]);
+        }
+        Update_ML_SetGhostUnloaded(wsid);
+        yield();
+        startnew(Update_ML_SyncAll);
     }
 
     /**
@@ -121,9 +166,9 @@ class SpectateHook : MLHook::HookMLEventsByType {
     }
 
     void FindAndSpec(uint64 instId64) {
-        yield();
-        yield();
-        yield();
+        // yield();
+        // yield();
+        // yield();
         yield();
         auto id = uint(instId64);
         print("find inst id: " + id);
@@ -146,14 +191,36 @@ void Update_ML_SetSpectateID(const string &in wsid) {
     MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetSpectating", wsid});
 }
 
+dictionary ghostWsidsLoading;
+dictionary ghostWsidsLoaded;
+
 void Update_ML_SetGhostLoading(const string &in wsid) {
+    if (ghostWsidsLoaded.Exists(wsid)) ghostWsidsLoaded.Delete(wsid);
+    ghostWsidsLoading[wsid] = true;
     MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetGhostLoading", wsid});
 }
 
 void Update_ML_SetGhostLoaded(const string &in wsid) {
+    if (ghostWsidsLoading.Exists(wsid)) ghostWsidsLoading.Delete(wsid);
+    ghostWsidsLoaded[wsid] = true;
     MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetGhostLoaded", wsid});
 }
 
 void Update_ML_SetGhostUnloaded(const string &in wsid) {
+    if (ghostWsidsLoaded.Exists(wsid)) ghostWsidsLoaded.Delete(wsid);
     MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetGhostUnloaded", wsid});
+}
+
+void Update_ML_SyncAll() {
+    ghostWsidsLoaded.DeleteAll();
+    auto mgr = GhostClipsMgr::Get(GetApp());
+    if (mgr is null) return;
+    for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+        auto wsid = LoginToWSID(mgr.Ghosts[i].GhostModel.GhostLogin);
+        ghostWsidsLoaded[wsid] = true;
+    }
+    auto wsids = ghostWsidsLoaded.GetKeys();
+    for (uint i = 0; i < wsids.Length; i++) {
+        Update_ML_SetGhostLoaded(wsids[i]);
+    }
 }

@@ -59,7 +59,7 @@ void InitGP() {
     // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_SpectateGhost", true);
     MLHook::RegisterMLHook(spectateHook, "TMGame_Record_Spectate", true);
     MLHook::RegisterMLHook(toggleHook, "TMGame_Record_ToggleGhost", true);
-    MLHook::RegisterMLHook(toggleHook, "TMGame_Record_TogglePB", true);
+    // MLHook::RegisterMLHook(toggleHook, "TMGame_Record_TogglePB", true);
     MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
     startnew(WatchAndRemoveFadeOut);
     trace('init done');

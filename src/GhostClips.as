@@ -251,3 +251,7 @@ void SetGhostClipPlayerUnpaused(CGameCtnMediaClipPlayer@ player, float timestamp
 
 // CGameCtnMediaBlockEntity
 // 0xB8: changes with skin
+
+CGameCtnGhost@ GetCtnGhost(CGameGhostScript@ ghost) {
+    return cast<CGameCtnGhost>(Dev::GetOffsetNod(ghost, 0x20));
+}

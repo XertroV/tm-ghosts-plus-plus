@@ -57,9 +57,18 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
     if (ps !is null) {
         // auto gm = cast<CGameGhostMgrScript>(nod);
         auto ghost = cast<CGameGhostScript>(stack.CurrentNod(1));
-        if (ghost !is null)
+        if (ghost !is null) {
             Cache::CheckForNameToAddSoon(ghost.Nickname, ghost.Result.Time);
+            auto ctnGhost = GetCtnGhost(ghost);
+            if (ctnGhost !is null) {
+                // trace('ctnGhost not null');
+                Update_ML_SetGhostLoaded(LoginToWSID(ctnGhost.GhostLogin));
+            } else {
+                // trace('ctnGhost null');
+            }
+        }
     }
+    startnew(Update_ML_SyncAll);
 
     return true;
 }
@@ -78,6 +87,7 @@ bool _Ghost_Remove(CMwStack &in stack) {
         scrubberMgr.DoUnpause();
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
+    startnew(Update_ML_SyncAll);
     return true;
 }
 
@@ -138,7 +148,7 @@ bool _Spectator_SetForcedTarget_Clear(CMwStack &in stack) {
         g_BlockNextClearForcedTarget = false;
         return false;
     }
-    warn("SetForcedTarget_Clear");
+    // warn("SetForcedTarget_Clear");
     return true;
 
 }
