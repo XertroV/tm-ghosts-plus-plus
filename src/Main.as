@@ -163,6 +163,7 @@ void Render() {
     if (S_DrawLetterboxBars) UpdateDrawLetterboxBars();
     // if (!S_ShowWindow) return;
     DrawScrubber();
+    RenderLoadingGhostsMsg();
     return;
 }
 

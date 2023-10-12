@@ -37,24 +37,30 @@ namespace Core {
     }
 
     void LoadGhostOfPlayer(const string &in wsid, const string &in uid, const string &in name = "") {
+        LoadingGhosts_New(1);
         auto recs = GetMapPlayerListRecordList({wsid}, uid);
         if (recs is null || recs.Length == 0) {
             NotifyWarning("Could not load ghost of " + (name.Length > 0 ? name : wsid));
-            return;
+            LoadingGhosts_GhostError(1);
+        } else {
+            auto rec = recs[0];
+            LoadGhostFromUrl(rec.FileName, rec.ReplayUrl);
         }
-        auto rec = recs[0];
-        LoadGhostFromUrl(rec.FileName, rec.ReplayUrl);
+        LoadingGhosts_LodingDone();
     }
 
     void LoadGhostOfPlayers(string[]@ wsids, const string &in uid) {
+        LoadingGhosts_New(wsids.Length);
         log_trace('Getting ghosts for ' + wsids.Length + ' players');
         auto recs = GetMapPlayerListRecordList(wsids, uid);
         if (recs is null || recs.Length == 0) {
             NotifyWarning("Could not load ghosts for " + string::Join(wsids, ', '));
-            return;
+            LoadingGhosts_GhostError(wsids.Length);
+        } else {
+            log_trace('Found ' + recs.Length + ' ghosts for ' + wsids.Length + ' players');
+            LoadGhostsAsync(recs);
         }
-        log_trace('Found ' + recs.Length + ' ghosts for ' + wsids.Length + ' players');
-        LoadGhostsAsync(recs);
+        LoadingGhosts_LodingDone();
     }
 
     void LoadGhostsAsync(CMapRecord@[]@ recs) {
@@ -70,6 +76,7 @@ namespace Core {
         LoadGhostFromUrl(args[0], args[1]);
     }
 
+    // increments done counter
     void LoadGhostFromUrl(const string &in filename, const string &in url) {
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         auto dfm = ps.DataFileMgr;
@@ -82,6 +89,7 @@ namespace Core {
         }
         auto instId = gm.Ghost_Add(task.Ghost, S_UseGhostLayer);
         print('Instance ID: ' + instId.GetName() + " / " + Text::Format("%08x", instId.Value));
+        LoadingGhosts_GhostDone(1);
     }
 
     void LoadGhost_Replay(const string &in filename, bool onlyFirst = false) {
@@ -100,4 +108,52 @@ namespace Core {
             if (onlyFirst) break;
         }
     }
+}
+
+int LoadingGhosts_Loading = 0;
+int LoadingGhosts_NbTotal = 0;
+int LoadingGhosts_NbDone = 0;
+int LoadingGhosts_NbError = 0;
+
+void LoadingGhosts_New(uint nbGhosts) {
+    LoadingGhosts_Loading++;
+    LoadingGhosts_NbTotal += nbGhosts;
+}
+void LoadingGhosts_GhostDone(uint nbGhosts) {
+    LoadingGhosts_NbDone += nbGhosts;
+}
+void LoadingGhosts_GhostError(uint nbGhosts) {
+    LoadingGhosts_NbError += nbGhosts;
+}
+void LoadingGhosts_LodingDone() {
+    LoadingGhosts_Loading--;
+    if (LoadingGhosts_Loading == 0) {
+        LoadingGhosts_NbDone = 0;
+        LoadingGhosts_NbError = 0;
+        LoadingGhosts_NbTotal = 0;
+    } else if (LoadingGhosts_Loading < 0) {
+        warn_every_60_s('calculated negative number of ghost loading coros!');
+    }
+}
+
+void RenderLoadingGhostsMsg() {
+    if (LoadingGhosts_Loading <= 0) return;
+
+    auto screen = vec2(Draw::GetWidth(), Draw::GetHeight());
+    auto pos = screen * vec2(.5, .2);
+
+    string _loadingStr = "Loading: " + LoadingGhosts_NbDone + " / " + LoadingGhosts_NbTotal;
+    if (LoadingGhosts_NbError > 0) {
+        _loadingStr += " (Failed: "+LoadingGhosts_NbError+")";
+    }
+    float fs = 0.03 * screen.y;
+
+    nvg::Reset();
+    nvg::BeginPath();
+
+    nvg::FontFace(Inputs::g_NvgFont);
+    nvg::FontSize(fs);
+    nvg::TextAlign(nvg::Align::Center | nvg::Align::Middle);
+
+    DrawTextWithStroke(pos, _loadingStr, vec4(1), fs / 10.);
 }
