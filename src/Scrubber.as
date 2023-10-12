@@ -266,8 +266,10 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
         if (UI::MenuItem("BW", "", S_SpecCamera == ScrubberSpecCamera::BW)) S_SpecCamera = ScrubberSpecCamera::BW;
         UI::EndPopup();
     }
-    // UI::SameLine();
-    // m_UseAltCam = UI::Checkbox("Alt", m_UseAltCam);
+    UI::SameLine();
+    UI::BeginDisabled(S_SpecCamera == ScrubberSpecCamera::None);
+    m_UseAltCam = UI::Checkbox("Alt", m_UseAltCam);
+    UI::EndDisabled();
     UI::SameLine();
     UI::Dummy(vec2(10, 0));
     UI::SameLine();
@@ -275,7 +277,7 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
     UI::Text("Set Ghosts Offset");
     AddSimpleTooltip("This can be used to exceed the usual limits on ghosts.");
     UI::SameLine();
-    UI::SetNextItemWidth(btnWidth * 4.0);
+    UI::SetNextItemWidth(btnWidth * 3.0);
     m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, lastLoadedGhostRaceTime == 0 ? 10000 : Math::Min(lastLoadedGhostRaceTime / 10, 60000));
     m_NewGhostOffset = Math::Clamp(m_NewGhostOffset, 0, lastLoadedGhostRaceTime == 0 ? 9999999 : (lastLoadedGhostRaceTime * 2));
     UI::SameLine();
@@ -300,9 +302,13 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
         // we use 0x3 instead of 0x1 b/c it's the same but avoids ghost scrubber blocking our calls to Ghosts_SetStartTime
         if (cam == 0) newCam = fwd ? 2 : 3;
         if (cam == 1) newCam = fwd ? 0 : 2;
-        if (cam == 2) newCam = fwd ? 3 : 0;
+        if (cam == 2) newCam = fwd ? 3 : 0; // cam7 / free
         if (cam >= 3) newCam = fwd ? 0 : 2;
         ps.UIManager.UIAll.SpectatorForceCameraType = newCam;
+        if (newCam == 2) {
+            auto gt = GetApp().CurrentPlayground.GameTerminals[0];
+            SetDrivableCamFlag(gt, false);
+        }
     } else if (clickSetOffset) {
         UpdateGhostsSetOffsets(ps);
     }
@@ -528,6 +534,7 @@ class ScrubberMgr {
 
         if (IsSpectatingGhost() && S_SpecCamera != ScrubberSpecCamera::None) {
             GameCamera().ActiveCam = uint(S_SpecCamera);
+            GameCamera().AltCam = m_UseAltCam;
         }
 
         auto mgr = GhostClipsMgr::Get(GetApp());
