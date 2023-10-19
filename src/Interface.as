@@ -275,7 +275,6 @@ class SaveGhostsTab : Tab {
             yield();
         }
         watchLoopActive = false;
-        spectateHook.lastLoadWsid = "";
     }
 
     void UnloadGhost(uint i) {
