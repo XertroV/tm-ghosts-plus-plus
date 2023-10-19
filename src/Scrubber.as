@@ -72,12 +72,13 @@ void DrawScrubber() {
 
     UI::PushFont(GetCurrFont());
 
-    vec2 screen = vec2(Draw::GetWidth(), Draw::GetHeight()) / UI::GetScale();
+    vec2 screen = vec2(Draw::GetWidth(), Draw::GetHeight());
+    vec2 screenScaled = screen / UI::GetScale();
     auto spacing = UI::GetStyleVarVec2(UI::StyleVar::ItemSpacing);
     auto fp = UI::GetStyleVarVec2(UI::StyleVar::FramePadding);
     auto ySize = (UI::GetFrameHeightWithSpacing() + spacing.y + fp.y) / UI::GetScale();
-    vec2 pos = (screen - vec2(S_XWidth * screen.x, ySize)) * vec2(S_ScrubberCenterX ? 0.5 : S_XPosRel, S_YPosRel);
-    vec2 size = screen * vec2(S_XWidth, 0);
+    vec2 pos = (screenScaled - vec2(S_XWidth * screenScaled.x, ySize)) * vec2(S_ScrubberCenterX ? 0.5 : S_XPosRel, S_YPosRel);
+    vec2 size = screenScaled * vec2(S_XWidth, 0);
     size.y = ySize;
 
     if (S_NeverHideScrubber || Within(UI::GetMousePos() / UI::GetScale(), vec4(pos, size))) {
