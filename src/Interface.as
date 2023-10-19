@@ -275,6 +275,7 @@ class SaveGhostsTab : Tab {
             yield();
         }
         watchLoopActive = false;
+        spectateHook.lastLoadWsid = "";
     }
 
     void UnloadGhost(uint i) {
@@ -880,7 +881,10 @@ void _LoadGhostsNear(ref@ r) {
     auto nbGhosts = args[1];
     if (g_GhostFinder is null) return;
     auto wsids = g_GhostFinder.FindAroundTime(time, nbGhosts);
-    Cache::LoadGhostsForWsids(wsids, s_currMap);
+    for (uint i = 0; i < wsids.Length; i++) {
+        SendEvent_TMGame_Record_Toggle(wsids[i]);
+    }
+    // Cache::LoadGhostsForWsids(wsids, s_currMap);
     isLoadingGhosts = false;
 }
 

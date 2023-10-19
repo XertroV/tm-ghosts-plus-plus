@@ -239,7 +239,7 @@ void ExitSpectatingGhost() {
     if (scrubberMgr !is null) lastExitPauseAt = scrubberMgr.pauseAt;
     auto ps = GetApp().PlaygroundScript;
     if (ps is null || ps.UIManager is null) return;
-    // SendEvent_TMGame_Record_Spectate_None();
+    SendEvent_TMGame_Record_Spectate_None();
     // Update_ML_SetSpectateID("");
 }
 
@@ -259,7 +259,8 @@ void ExitSpectatingGhostAndCleanUp() {
     auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
     auto cp = GetApp().CurrentPlayground;
     if (ps is null || ps.UIManager is null || cp is null) return;
-    SendEvent_TMGame_Record_Spectate(spectateHook.lastLoadWsid);
+    if (spectateHook.lastLoadWsid.Length > 0)
+        SendEvent_TMGame_Record_Spectate(spectateHook.lastLoadWsid);
     spectateHook.lastLoadWsid = "";
     // return;
     // auto speccing = GetCurrentlySpecdGhostInstanceId(ps);
@@ -269,14 +270,14 @@ void ExitSpectatingGhostAndCleanUp() {
     // string wsid = g is null ? "" : LoginToWSID(g.GhostModel.GhostLogin);
     // SendEvent_TMGame_Record_Spectate(wsid);
     // lastSpectatedGhostInstanceId
-    ps.Ghosts_SetStartTime(-1);
+    Call_Ghosts_SetStartTime(ps, -1);
     ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::Playing;
-    // ps.RespawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
-    ps.SpawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI), 0, 0, GetDefaultMapSpawn(ps), ps.Now);
     ps.UIManager.UIAll.ForceSpectator = false;
     ps.UIManager.UIAll.SpectatorForceCameraType = 15;
     ps.UIManager.UIAll.Spectator_SetForcedTarget_Clear();
-    // ExitSpectatingGhost();
+    ps.SpawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI), 0, 0, GetDefaultMapSpawn(ps), ps.Now);
+    ps.RespawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
+    ExitSpectatingGhost();
 }
 
 
