@@ -109,8 +109,8 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     auto ps = cast<CSmArenaRulesMode>(nod);
 
     if (g_BlockAllGhostsSetTimeNow && IsSpectatingGhost()) {
-        bool isNearlyNow = ghostStartTime == ps.Now - 1;
-        if (ghostStartTime == ps.Now || isNearlyNow) {
+        bool isNearlyNow = ghostStartTime == int(ps.Now) - 1;
+        if (ghostStartTime == int(ps.Now) || isNearlyNow) {
             warn("blocking ghost SetStartTime Now" + (isNearlyNow ? "-1" : ""));
             lastBlockedSetStartTimeNow = Time::Now;
             return false;
@@ -132,7 +132,7 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     return true;
 }
 
-void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, uint startTime) {
+void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, int startTime) {
     g_BlockAllGhostsSetTimeNow = false;
     ps.Ghosts_SetStartTime(startTime);
     g_BlockAllGhostsSetTimeNow = true;
@@ -206,6 +206,8 @@ void SetCurrentGhostValues() {
     lastLoadedGhostRaceTime = maxTime;
     lastSetStartTime = GhostClipsMgr::GetCurrentGhostTime(mgr);
     trace('Set current ghost values: ' + lastSetStartTime + ' / ' + lastSpectatedGhostRaceTime); // + ' / ' + Text::Format("%08x", instId));
+    lastSpectatedGhostInstanceId = GetCurrentlySpecdGhostInstanceId(ps);
+    lastSpectatedGhostRaceTime = GhostClipsMgr::GetGhostFromInstanceId(mgr, lastSpectatedGhostInstanceId.Value).GhostModel.RaceTime;
 }
 
 // ! clip pausing and unpausing moved to GhostClips.as

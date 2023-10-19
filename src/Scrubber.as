@@ -153,6 +153,8 @@ void DrawScrubber() {
     UI::SetNextWindowSize(int(size.x), 0 /*int(size.y)*/, UI::Cond::Always);
     UI::SetNextWindowPos(int(pos.x), int(pos.y), UI::Cond::Always);
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
+        bool ghostsNotVisible = !GetGhostVisibility();
+
         double t = double(ps.Now - lastSetStartTime) + scrubberMgr.subSecondOffset;
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
@@ -194,7 +196,9 @@ void DrawScrubber() {
         maxTime = Math::Min(maxTime, ps.Now);
         string labelTime = Time::Format(int64(Math::Abs(t) + lastSetGhostOffset));
         if (t < 0) labelTime = "-" + labelTime;
-        auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t),  labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset)));
+        auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
+            + (ghostsNotVisible ? " (Ghosts Off)" : "");
+        auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t), fmtString);
         bool startedScrub = UI::IsItemClicked();
         clickTogglePause = (UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right)) || clickTogglePause;
 

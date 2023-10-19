@@ -61,7 +61,9 @@ void InitGP() {
     MLHook::RegisterMLHook(toggleHook, "TMGame_Record_ToggleGhost", true);
     // MLHook::RegisterMLHook(toggleHook, "TMGame_Record_TogglePB", true);
     MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
+    SetCurrentGhostValues();
     startnew(WatchAndRemoveFadeOut);
+    startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
     trace('init done');
     g_Initialized = true;
 }
