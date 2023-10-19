@@ -105,6 +105,11 @@ void DrawScrubber() {
         if (g !is null) {
             auto ghostVisId = Dev::GetOffsetUint32(g, 0x0);
             if (ghostVisId < 0x0F000000 && ghostVisId & 0x04000000 != 0) {
+#if DEPENDENCY_DASHBOARD && ENABLE_NEW_DASHBOARD
+                if (Meta::GetPluginFromID("Dashboard").Enabled) {
+                    Dashboard::InformCurrentEntityId(ghostVisId);
+                }
+#else
                 CSceneVehicleVis@[] viss = VehicleState::GetAllVis(GetApp().GameScene);
                 CSceneVehicleVis@ found;
                 for (uint i = 0; i < viss.Length; i++) {
@@ -123,6 +128,7 @@ void DrawScrubber() {
                     Inputs::DrawInputs(found.AsyncState, inputsSize);
                     nvg::ResetTransform();
                 }
+#endif
             }
         }
     }
@@ -305,9 +311,9 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
         if (UI::MenuItem("BW", "", S_SpecCamera == ScrubberSpecCamera::BW)) S_SpecCamera = ScrubberSpecCamera::BW;
         UI::EndPopup();
     }
-    UI::SameLine();
     UI::BeginDisabled(S_SpecCamera == ScrubberSpecCamera::None);
-    m_UseAltCam = UI::Checkbox("Alt", m_UseAltCam);
+    // UI::SameLine();
+    // m_UseAltCam = UI::Checkbox("Alt", m_UseAltCam);
     UI::EndDisabled();
     UI::SameLine();
     UI::Dummy(vec2(10, 0));
@@ -490,7 +496,7 @@ class ScrubberMgr {
         pauseAt = setProg;
         auto newStartTime = ps.Now - pauseAt;
         if (ps !is null) {
-            ps.Ghosts_SetStartTime(int(newStartTime));
+            Call_Ghosts_SetStartTime(ps, int(newStartTime));
         }
         if (!IsStdPlayback || !unpausedFlag) {
             auto mgr = GhostClipsMgr::Get(GetApp());
@@ -580,7 +586,7 @@ class ScrubberMgr {
 
         if (IsSpectatingGhost() && S_SpecCamera != ScrubberSpecCamera::None) {
             GameCamera().ActiveCam = uint(S_SpecCamera);
-            GameCamera().AltCam = m_UseAltCam;
+            // GameCamera().AltCam = m_UseAltCam;
         }
 
         auto mgr = GhostClipsMgr::Get(GetApp());
@@ -593,7 +599,7 @@ class ScrubberMgr {
         //     newStartTime -= 100;
         // }
         if (IsPaused) {
-            ps.Ghosts_SetStartTime(newStartTime);
+            Call_Ghosts_SetStartTime(ps, newStartTime);
         } else if (!unpausedFlag && !isScrubbing && IsCustPlayback) {
             auto td = GhostClipsMgr::AdvanceClipPlayersByDelta(mgr, playbackSpeed);
             if (td.x < 0) {
@@ -603,7 +609,7 @@ class ScrubberMgr {
                 pauseAt = double(td.x) * 1000.;
                 subSecondOffset = pauseAt - Math::Floor(pauseAt);
             }
-            ps.Ghosts_SetStartTime(newStartTime);
+            Call_Ghosts_SetStartTime(ps, newStartTime);
         } else {
             pauseAt = ps.Now - lastSetStartTime;
         }

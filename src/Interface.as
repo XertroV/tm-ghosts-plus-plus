@@ -220,15 +220,18 @@ class SaveGhostsTab : Tab {
         auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
         auto g = mgr.Ghosts[i].GhostModel;
 
+        // SendEvent_TMGame_Record_Spectate(LoginToWSID(g.GhostLogin));
         Update_ML_SetSpectateID(LoginToWSID(g.GhostLogin));
 
         auto ghostPlayTime = int(ps.Now) - lastSetStartTime;
         // if we choose a ghost that has already finished, restart ghosts
         if (int(g.RaceTime) < ghostPlayTime) {
-            ps.Ghosts_SetStartTime(ps.Now);
+            Call_Ghosts_SetStartTime(ps, ps.Now);
         }
+        g_BlockNextGhostsSetTimeAny = true;
 
         log_info("spectating ghost with instance id: " + id);
+        //cast<CSmPlayer>(cp.Players[0]).;
         ps.UnspawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
         ps.UIManager.UIAll.ForceSpectator = true;
         // normally 1 but this works and prevents ghost scrubber doing annoying things
@@ -454,6 +457,7 @@ class PlayersTab : Tab {
         string login = j['key'];
         string wsid = j['wsid'];
         auto names = j['names'].GetKeys();
+
         Update_ML_SetGhostLoading(wsid);
         Core::LoadGhostOfPlayer(wsid, s_currMap, string::Join(names, ", "));
         Update_ML_SetGhostLoaded(wsid);
@@ -597,6 +601,7 @@ class SavedTab : Tab {
         auto j = cast<Json::Value>(r);
         string key = j['key'];
         string name = j['name'];
+        // string wsid = j['wsid'];
         string time = Time::Format(int(j['time']));
         loading.InsertLast(key);
         Notify("Loading ghost: " + name + " / " + time);
@@ -669,8 +674,8 @@ class MedalsTab : Tab {
 
     void PopulateMedalTimes() {
         // give some time for other things to catch up, like CM
+        while (GetApp().PlaygroundScript !is null && GetApp().PlaygroundScript.Now < 5000) yield();
         if (GetApp().PlaygroundScript is null) return;
-        while (GetApp().PlaygroundScript.Now < 10000) yield();
 
         auto map = GetApp().RootMap;
         if (map is null) return;
@@ -679,10 +684,12 @@ class MedalsTab : Tab {
         medals[2] = map.TMObjective_GoldTime;
         medals[3] = map.TMObjective_AuthorTime;
 #if DEPENDENCY_CHAMPIONMEDALS
-        medals[4] = ChampionMedals::GetCMTime();
-        if (medals[4] < 1) {
-            sleep(2500);
+        if (Meta::GetPluginFromID("ChampionMedals").Enabled) {
             medals[4] = ChampionMedals::GetCMTime();
+            if (medals[4] < 1) {
+                sleep(2500);
+                medals[4] = ChampionMedals::GetCMTime();
+            }
         }
 #else
         medals[4] = -1;
@@ -761,7 +768,8 @@ class LeaderboardTab : Tab {
             Notify("Ghost already loaded: " + string(j['name']) + " / " + Time::Format(int(j['time'])));
             sleep(1000);
         } else {
-            Cache::LoadGhostsForWsids({wsid}, s_currMap);
+            SendEvent_TMGame_Record_Toggle(wsid);
+            // Cache::LoadGhostsForWsids({wsid}, s_currMap);
         }
         RemoveFromLoading(wsid);
     }

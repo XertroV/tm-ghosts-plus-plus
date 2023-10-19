@@ -35,7 +35,7 @@ class GameCamera {
     }
 
     void set_AltCam(bool alt) {
-        _SetAltCam(alt, 0);
+        _SetAltCam(alt, Math::Clamp(ActiveCam - 0x11, 1, 3));
     }
 
     // set alt status on cam 1, 2, or 3 -- 0 will set on all
@@ -85,7 +85,7 @@ void SetDrivableCamFlag(CGameTerminal@ gt, bool canDrive) {
     Dev::SetOffset(gt, GetOffset(gt, "GUIPlayer") + 0x40, canDrive ? 0x0 : 0x1);
 }
 
-void SetAltCamFlag(CGameTerminal@ gt, bool isAlt) {
-    if (gt is null) return;
-    Dev::SetOffset(gt, GetOffset(gt, "GUIPlayer") + 0x10, isAlt ? 0x0 : 0x1);
-}
+// void SetAltCamFlag(CGameTerminal@ gt, bool isAlt) {
+//     if (gt is null) return;
+//     Dev::SetOffset(gt, GetOffset(gt, "GUIPlayer") + 0x10, isAlt ? 0x0 : 0x1);
+// }

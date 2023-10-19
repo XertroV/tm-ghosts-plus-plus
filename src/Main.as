@@ -239,36 +239,77 @@ void ExitSpectatingGhost() {
     if (scrubberMgr !is null) lastExitPauseAt = scrubberMgr.pauseAt;
     auto ps = GetApp().PlaygroundScript;
     if (ps is null || ps.UIManager is null) return;
-    SendEvent_TMGame_Record_Spectate_None();
-    Update_ML_SetSpectateID("");
+    // SendEvent_TMGame_Record_Spectate_None();
+    // Update_ML_SetSpectateID("");
 }
 
 void SendEvent_TMGame_Record_Spectate_None() {
-    MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {""});
+    SendEvent_TMGame_Record_Spectate("");
+}
+
+void SendEvent_TMGame_Record_Spectate(const string &in wsid) {
+    MLHook::Queue_PG_SendCustomEvent("TMGame_Record_Spectate", {wsid});
+}
+
+void SendEvent_TMGame_Record_Toggle(const string &in wsid) {
+    MLHook::Queue_SH_SendCustomEvent("TMGame_Record_ToggleGhost", {wsid});
 }
 
 void ExitSpectatingGhostAndCleanUp() {
     auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
     auto cp = GetApp().CurrentPlayground;
     if (ps is null || ps.UIManager is null || cp is null) return;
+    SendEvent_TMGame_Record_Spectate(spectateHook.lastLoadWsid);
+    spectateHook.lastLoadWsid = "";
+    // return;
+    // auto speccing = GetCurrentlySpecdGhostInstanceId(ps);
+    // speccing =
+    // auto mgr = GhostClipsMgr::Get(GetApp());
+    // auto g = GhostClipsMgr::GetGhostFromInstanceId(mgr, speccing);
+    // string wsid = g is null ? "" : LoginToWSID(g.GhostModel.GhostLogin);
+    // SendEvent_TMGame_Record_Spectate(wsid);
+    // lastSpectatedGhostInstanceId
     ps.Ghosts_SetStartTime(-1);
     ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::Playing;
-    ps.RespawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
+    // ps.RespawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
+    ps.SpawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI), 0, 0, GetDefaultMapSpawn(ps), ps.Now);
     ps.UIManager.UIAll.ForceSpectator = false;
     ps.UIManager.UIAll.SpectatorForceCameraType = 15;
     ps.UIManager.UIAll.Spectator_SetForcedTarget_Clear();
-    ExitSpectatingGhost();
+    // ExitSpectatingGhost();
+}
+
+
+// From Titles/Trackmania/Scripts/Libs/Nadeo/TMGame/Modes/Map.Script.txt, Void LoadMap()
+CGameScriptMapSpawn@ GetDefaultMapSpawn(CSmArenaRulesMode@ ps) {
+    bool spawnIsMultilap = false;
+    CGameScriptMapSpawn@ spawn;
+    for (uint i = 0; i < ps.MapLandmarks.Length; i++) {
+        auto lm = ps.MapLandmarks[i];
+        bool isMultilap = lm.Tag == "StartFinish";
+        if (!(lm.Tag == "Spawn" || isMultilap)) continue;
+        if (isMultilap) {
+            if (lm.PlayerSpawn !is null && lm.Waypoint !is null && lm.Waypoint.IsMultiLap) {
+                spawnIsMultilap = true;
+                @spawn = lm.PlayerSpawn;
+            }
+        } else if (spawn is null || spawnIsMultilap) {
+            spawnIsMultilap = false;
+            @spawn = lm.PlayerSpawn;
+        }
+    }
+    return spawn;
 }
 
 /** Called whenever a key is pressed on the keyboard. See the documentation for the [`VirtualKey` enum](https://openplanet.dev/docs/api/global/VirtualKey).
 */
 UI::InputBlocking OnKeyPress(bool down, VirtualKey key) {
-    if (down && key == VirtualKey::Escape && IsSpectatingGhost()) {
-        ExitSpectatingGhost();
-        if (scrubberMgr !is null) scrubberMgr.ResetAll();
-        // GetApp().Network.PlaygroundInterfaceScriptHandler.CloseInGameMenu(CGameScriptHandlerPlaygroundInterface::EInGameMenuResult::Resume);
-        return UI::InputBlocking::Block;
-    }
+    // if (down && key == VirtualKey::Escape && IsSpectatingGhost()) {
+    //     ExitSpectatingGhost();
+    //     if (scrubberMgr !is null) scrubberMgr.ResetAll();
+    //     // GetApp().Network.PlaygroundInterfaceScriptHandler.CloseInGameMenu(CGameScriptHandlerPlaygroundInterface::EInGameMenuResult::Resume);
+    //     return UI::InputBlocking::Block;
+    // }
     return UI::InputBlocking::DoNothing;
 }
 

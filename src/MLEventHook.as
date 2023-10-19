@@ -59,10 +59,10 @@ class ToggleHook : MLHook::HookMLEventsByType {
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
             auto g = mgr.Ghosts[i].GhostModel;
             if (g.GhostLogin != login) continue;
-            if (bestTime < 0 || g.RaceTime < bestTime) {
+            if (bestTime < 0 || int(g.RaceTime) < bestTime) {
                 bestIds.RemoveRange(0, bestIds.Length);
                 bestIds.InsertLast(GhostClipsMgr::GetInstanceIdAtIx(mgr, i));
-            } else if (g.RaceTime == bestTime) {
+            } else if (int(g.RaceTime) == bestTime) {
                 bestIds.InsertLast(GhostClipsMgr::GetInstanceIdAtIx(mgr, i));
             }
         }
@@ -89,12 +89,14 @@ class SpectateHook : MLHook::HookMLEventsByType {
     }
 
     void OnEvent(MLHook::PendingEvent@ event) override {
+        print("TMGame_Record_Spectate: " + event.data[0]);
         startnew(CoroutineFuncUserdata(this.AfterSpectate), event);
     }
 
     uint lastLoadSpectate = Time::Now;
     string lastLoadWsid = "";
     void AfterSpectate(ref@ r) {
+        startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (ps is null) return;
 
@@ -113,7 +115,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
                 // we want to unspectate this player, but not load a ghost.
                 if (LoginToWSID(g.GhostModel.GhostLogin) == wsid) {
                     // sleep(100);
-                    ExitSpectatingGhost();
+                    // ExitSpectatingGhost();
                     if (scrubberMgr !is null) scrubberMgr.ResetAll();
                     return;
                 }
@@ -133,19 +135,22 @@ class SpectateHook : MLHook::HookMLEventsByType {
 
         // this abadons the load + spectate ghost request on ML size; we then want to re-spectate the ghost
         auto currSpec = GetCurrentlySpecdGhostInstanceId(ps);
-        g_BlockNextGhostsSetTimeReset = true;
-        g_BlockNextGhostsSetTimeAny = true;
-        g_BlockNextClearForcedTarget = true;
-        ExitSpectatingGhost();
-        startnew(CoroutineFuncUserdataUint64(this.FindAndSpec), uint64(currSpec));
+        if (IsSpectatingGhost()) {
+            g_BlockNextGhostsSetTimeReset = true;
+            g_BlockNextGhostsSetTimeAny = true;
+            g_BlockNextClearForcedTarget = true;
+        }
+        // ExitSpectatingGhost();
+
 
         // while (GetApp().PlaygroundScript !is null && mgr.Ghosts.Length == nbGhosts) yield();
-        Cache::LoadGhostsForWsids({wsid}, CurrentMap);
+        // Cache::LoadGhostsForWsids({wsid}, CurrentMap);
         // ghost was added
         auto mgr2 = GhostClipsMgr::Get(GetApp());
         auto ps2 = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (mgr2 is null || ps2 is null) return;
 
+        // return;
         // if (scrubberMgr !is null) {
         //     scrubberMgr.ResetAll();
         // }
@@ -163,6 +168,11 @@ class SpectateHook : MLHook::HookMLEventsByType {
                 return;
             }
         }
+
+        g_AllowNextForceGhostDespiteNowBlock = true;
+
+        // otherwise keep current spec
+        // startnew(CoroutineFuncUserdataUint64(this.FindAndSpec), uint64(currSpec));
     }
 
     void FindAndSpec(uint64 instId64) {
@@ -187,8 +197,9 @@ class SpectateHook : MLHook::HookMLEventsByType {
     }
 }
 
+// disable this for now,
 void Update_ML_SetSpectateID(const string &in wsid) {
-    MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetSpectating", wsid});
+    // MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetSpectating", wsid});
 }
 
 dictionary ghostWsidsLoading;
@@ -216,7 +227,9 @@ void Update_ML_SyncAll() {
     auto mgr = GhostClipsMgr::Get(GetApp());
     if (mgr is null) return;
     for (uint i = 0; i < mgr.Ghosts.Length; i++) {
-        auto wsid = LoginToWSID(mgr.Ghosts[i].GhostModel.GhostLogin);
+        auto g = mgr.Ghosts[i].GhostModel;
+        if (g.GhostNickname.EndsWith("Personal best")) continue;
+        auto wsid = LoginToWSID(g.GhostLogin);
         ghostWsidsLoaded[wsid] = true;
     }
     auto wsids = ghostWsidsLoaded.GetKeys();

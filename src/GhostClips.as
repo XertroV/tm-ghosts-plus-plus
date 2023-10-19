@@ -70,14 +70,14 @@ namespace GhostClipsMgr {
     }
 
     NGameGhostClips_SClipPlayerGhost@ GetGhostFromInstanceId(NGameGhostClips_SMgr@ mgr, uint instanceId) {
-        auto lsb = instanceId & 0x00FFFFFF;
+        auto lsb = instanceId & 0x000FFFFF;
         auto bufOffset = GhostInstIdsOffset;
         // auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
         // auto nextIdOrSomething = Dev::GetOffsetUint32(mgr, bufOffset + 0x8);
         // auto bufLen = Dev::GetOffsetUint32(mgr, bufOffset + 0xC);
         auto bufCapacity = Dev::GetOffsetUint32(mgr, bufOffset + 0x10);
         if (lsb > bufCapacity) {
-            warn('unexpectedly high ghost instance ID');
+            warn('unexpectedly high ghost instance ID: ' + Text::Format("0x%08x", lsb));
             return null;
         }
         for (uint i = 0; i < bufCapacity; i++) {

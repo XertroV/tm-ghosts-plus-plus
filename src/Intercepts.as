@@ -11,14 +11,6 @@ void SetupIntercepts() {
     Dev::InterceptProc("CGameScriptHandlerPlaygroundInterface", "CloseInGameMenu", _CGSHPI_CloseInGameMenu);
 }
 
-bool _OnExit(CMwStack &in stack) {
-    print("got OnExit intercept");
-    if (scrubberMgr !is null) {
-        scrubberMgr.ResetAll();
-    }
-    return true;
-}
-
 bool g_BlockNextSpawnPlayer;
 bool _SpawnPlayer(CMwStack &in stack) {
     if (g_BlockNextSpawnPlayer) {
@@ -102,6 +94,9 @@ bool _Ghost_RemoveAll(CMwStack &in stack) {
 
 bool g_BlockNextGhostsSetTimeReset;
 bool g_BlockNextGhostsSetTimeAny;
+bool g_BlockAllGhostsSetTimeNow = true;
+bool g_AllowNextForceGhostDespiteNowBlock = true;
+uint lastBlockedSetStartTimeNow = 1;
 int lastSetStartTime = 5000;
 bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     auto ghostStartTime = stack.CurrentInt(0);
@@ -110,6 +105,18 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
         g_BlockNextGhostsSetTimeReset = false;
         return false;
     }
+
+    auto ps = cast<CSmArenaRulesMode>(nod);
+
+    if (g_BlockAllGhostsSetTimeNow && IsSpectatingGhost()) {
+        bool isNearlyNow = ghostStartTime == ps.Now - 1;
+        if (ghostStartTime == ps.Now || isNearlyNow) {
+            warn("blocking ghost SetStartTime Now" + (isNearlyNow ? "-1" : ""));
+            lastBlockedSetStartTimeNow = Time::Now;
+            return false;
+        }
+    }
+
     if (g_BlockNextGhostsSetTimeAny) {
         warn("blocking ghost SetStartTime any");
         g_BlockNextGhostsSetTimeAny = false;
@@ -119,25 +126,41 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     lastSetStartTime = ghostStartTime;
 
     if (lastSetStartTime < 0) {
-        auto ps = cast<CSmArenaRulesMode>(nod);
         lastSetStartTime = ps.Now;
     }
     // trace('ghost set start time: ' + lastSetStartTime);
     return true;
 }
 
+void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, uint startTime) {
+    g_BlockAllGhostsSetTimeNow = false;
+    ps.Ghosts_SetStartTime(startTime);
+    g_BlockAllGhostsSetTimeNow = true;
+}
+
 MwId lastSpectatedGhostInstanceId = MwId(uint(-1));
 uint lastSpectatedGhostRaceTime = 0;
 
 bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {
-    lastSpectatedGhostInstanceId = stack.CurrentId(0);
+    auto ghostInstId = stack.CurrentId(0);
     auto mgr = GhostClipsMgr::Get(GetApp());
-    auto ghost = mgr is null ? null : GhostClipsMgr::GetGhostFromInstanceId(mgr, lastSpectatedGhostInstanceId.Value);
-    lastSpectatedGhostRaceTime = (ghost is null) ? 0 : ghost.GhostModel.RaceTime;
+    auto ghost = mgr is null ? null : GhostClipsMgr::GetGhostFromInstanceId(mgr, ghostInstId.Value);
 
     if (ghost !is null) {
-        trace('SetForcedTarget_Ghost: ' + (ghost is null ? "null" : string(ghost.GhostModel.GhostNickname)) + " / InstanceId: " + lastSpectatedGhostInstanceId.Value + " / RaceTime: " + lastSpectatedGhostRaceTime);
+        trace('SetForcedTarget_Ghost: ' + (ghost is null ? "null" : string(ghost.GhostModel.GhostNickname)) + " / InstanceId: " + Text::Format("#%08x", lastSpectatedGhostInstanceId.Value) + " / RaceTime: " + lastSpectatedGhostRaceTime);
+    } else {
+        warn("SetForcedTarget_Ghost called for a ghost that does not exist; inst id: " + Text::Format("#%08x", ghostInstId.Value));
     }
+
+    if (lastBlockedSetStartTimeNow == Time::Now && !g_AllowNextForceGhostDespiteNowBlock) {
+        warn("Blocking set forced target ghost due to blocked set start time now");
+        return false;
+    }
+    g_AllowNextForceGhostDespiteNowBlock = false;
+
+    lastSpectatedGhostInstanceId = ghostInstId;
+    lastSpectatedGhostRaceTime = (ghost is null) ? 0 : ghost.GhostModel.RaceTime;
+
     return true;
 }
 
@@ -194,7 +217,7 @@ uint GetCurrentlySpecdGhostInstanceId(CSmArenaRulesMode@ ps) {
     // 0 none, 1 all players, 2 all map, 3 clan, ? entity, ? landmark, 6 ghost
     uint specFlag = Dev::GetOffsetUint32(ps.UIManager.UIAll, currInstIdOffset - 0x4);
     if (specFlag != 6) {
-        log_trace('spec target type == ' + specFlag + ' (not ghost)');
+        log_trace('spec target type == ' + specFlag + ' (not ghost); ghost inst id is: ' + Text::Format("#%08x", instId));
         return 0x0FF00000;
     }
     return instId;
