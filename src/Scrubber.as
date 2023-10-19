@@ -162,6 +162,8 @@ void DrawScrubber() {
             DrawAdvancedScrubberExtras(ps, btnWidth);
         }
 
+        bool reset = false, clickTogglePause = false;
+
         bool expand = UI::Button(Icons::Expand + "##scrubber-expand", vec2(btnWidth, 0));
         UI::SameLine();
         // Backward <<
@@ -169,7 +171,11 @@ void DrawScrubber() {
         bool exit = UI::Button(Icons::Reply + "##scrubber-back", vec2(btnWidth, 0));
         UI::EndDisabled();
         UI::SameLine();
-        bool reset = UI::Button(Icons::Refresh + "##scrubber-toggle", vec2(btnWidth, 0));
+        if (S_SwapPauseAndRestart) {
+            clickTogglePause = DrawPlayPauseButton(btnWidth) || clickTogglePause;
+        } else {
+            reset = DrawResetButton(btnWidth);
+        }
         UI::SameLine();
         bool stepBack = UI::Button(scrubberMgr.IsPaused ? Icons::StepBackward : Icons::Backward + "##scrubber-step-back", vec2(btnWidth, 0));
         UI::SameLine();
@@ -190,7 +196,7 @@ void DrawScrubber() {
         if (t < 0) labelTime = "-" + labelTime;
         auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t),  labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset)));
         bool startedScrub = UI::IsItemClicked();
-        bool clickTogglePause = UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right);
+        clickTogglePause = (UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right)) || clickTogglePause;
 
         UI::SameLine();
         bool stepFwd = UI::Button((scrubberMgr.IsPaused ? Icons::StepForward : Icons::Forward) + "##scrubber-step-fwd", vec2(btnWidth, 0));
@@ -199,21 +205,12 @@ void DrawScrubber() {
         bool currSpeedBw = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
         // bool currSpeedCtx = UI::IsItemHovered() && UI::IsMouseDown(UI::MouseButton::Middle);
 
-        // if (UI::BeginPopupContextItem("curr speed")) {
-        //     UI::SetNextItemWidth(100.);
-        //     scrubberMgr.SetPlaybackSpeed(
-        //         UI::InputFloat("Playback Speed", scrubberMgr.playbackSpeed, .1),
-        //         !scrubberMgr.IsPaused
-        //     );
-        //     UI::EndPopup();
-        // }
-
-        // auto dragDelta = UI::GetMouseDragDelta(UI::MouseButton::Left, 10);
-        // trace(dragDelta.ToString());
-        vec2 dragDelta;
-
         UI::SameLine();
-        clickTogglePause = UI::Button((scrubberMgr.IsPaused ? Icons::Play : Icons::Pause) + "##scrubber-toggle", vec2(btnWidth, 0)) || clickTogglePause;
+        if (S_SwapPauseAndRestart) {
+            reset = DrawResetButton(btnWidth);
+        } else {
+            clickTogglePause = DrawPlayPauseButton(btnWidth) || clickTogglePause;
+        }
         UI::SameLine();
         // bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
         bool toggleAdv = UI::Button(Icons::Cogs + "##scrubber-toggle-adv", vec2(btnWidth, 0));
@@ -290,6 +287,14 @@ void DrawScrubber() {
     UI::PopStyleColor(5);
 
     UI::PopFont();
+}
+
+bool DrawPlayPauseButton(float btnWidth) {
+    return UI::Button((scrubberMgr.IsPaused ? Icons::Play : Icons::Pause) + "##scrubber-toggle", vec2(btnWidth, 0));
+}
+
+bool DrawResetButton(float btnWidth) {
+    return UI::Button(Icons::Refresh + "##scrubber-toggle", vec2(btnWidth, 0));
 }
 
 int m_NewGhostOffset = 0;
