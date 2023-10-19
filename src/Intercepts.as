@@ -160,6 +160,7 @@ bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {
 
     lastSpectatedGhostInstanceId = ghostInstId;
     lastSpectatedGhostRaceTime = (ghost is null) ? 0 : ghost.GhostModel.RaceTime;
+    startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
 
     return true;
 }
