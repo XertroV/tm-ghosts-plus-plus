@@ -156,7 +156,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         // }
 
         for (uint i = nbGhosts; i < mgr2.Ghosts.Length; i++) {
-            if (mgr2.Ghosts[i].GhostModel.GhostNickname.EndsWith("Personal best")) continue;
+            if (mgr2.Ghosts[i].GhostModel.GhostNickname.StartsWith("$")) continue;
             if (wsid == LoginToWSID(mgr2.Ghosts[i].GhostModel.GhostLogin)) {
                 g_SaveGhostTab.SpectateGhost(i);
                 return;
@@ -164,7 +164,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         }
         // test from 0 now instead of nbGhosts
         for (uint i = 0; i < mgr2.Ghosts.Length; i++) {
-            if (mgr2.Ghosts[i].GhostModel.GhostNickname.EndsWith("Personal best")) continue;
+            if (mgr2.Ghosts[i].GhostModel.GhostNickname.StartsWith("$")) continue;
             if (wsid == LoginToWSID(mgr2.Ghosts[i].GhostModel.GhostLogin)) {
                 g_SaveGhostTab.SpectateGhost(i);
                 return;
@@ -230,7 +230,7 @@ void Update_ML_SyncAll() {
     if (mgr is null) return;
     for (uint i = 0; i < mgr.Ghosts.Length; i++) {
         auto g = mgr.Ghosts[i].GhostModel;
-        if (g.GhostNickname.EndsWith("Personal best")) continue;
+        if (g.GhostNickname.StartsWith("$")) continue;
         auto wsid = LoginToWSID(g.GhostLogin);
         ghostWsidsLoaded[wsid] = true;
     }
