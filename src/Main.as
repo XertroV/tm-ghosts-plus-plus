@@ -276,14 +276,16 @@ void ExitSpectatingGhostAndCleanUp() {
     // string wsid = g is null ? "" : LoginToWSID(g.GhostModel.GhostLogin);
     // SendEvent_TMGame_Record_Spectate(wsid);
     // lastSpectatedGhostInstanceId
+    ExitSpectatingGhost();
     Call_Ghosts_SetStartTime(ps, -1);
     ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::Playing;
     ps.UIManager.UIAll.ForceSpectator = false;
     ps.UIManager.UIAll.SpectatorForceCameraType = 15;
     ps.UIManager.UIAll.Spectator_SetForcedTarget_Clear();
     ps.SpawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI), 0, 0, GetDefaultMapSpawn(ps), ps.Now);
-    ps.RespawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
-    ExitSpectatingGhost();
+    // yield();
+    // ps.SpawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI), 0, 0, GetDefaultMapSpawn(ps), ps.Now);
+    // ps.RespawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
 }
 
 

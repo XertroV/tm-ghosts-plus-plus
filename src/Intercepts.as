@@ -1,6 +1,7 @@
 void SetupIntercepts() {
     Dev::InterceptProc("CSmArenaRulesMode", "Ghosts_SetStartTime", _Ghosts_SetStartTime);
     Dev::InterceptProc("CSmArenaRulesMode", "SpawnPlayer", _SpawnPlayer);
+    Dev::InterceptProc("CSmArenaRulesMode", "RespawnPlayer", _RespawnPlayer);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Add", _Ghost_Add);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_AddWaypointSynced", _Ghost_AddWaypointSynced);
     Dev::InterceptProc("CGameGhostMgrScript", "Ghost_Remove", _Ghost_Remove);
@@ -12,13 +13,32 @@ void SetupIntercepts() {
 }
 
 bool g_BlockNextSpawnPlayer;
-bool _SpawnPlayer(CMwStack &in stack) {
+uint lastSpawnTime;
+bool _SpawnPlayer(CMwStack &in stack, CMwNod@ nod) {
+    auto pg = cast<CSmArenaRulesMode>(nod);
+    if (pg !is null) lastSpawnTime = pg.Now;
     if (g_BlockNextSpawnPlayer) {
         warn("Blocking spawn player");
         g_BlockNextSpawnPlayer = false;
         return false;
     }
-    // warn("SpawnPlayer");
+    warn("SpawnPlayer: resetting scrubber state");
+    if (scrubberMgr !is null) scrubberMgr.ResetAll();
+    startnew(SetGhostStartTimeToMatchPlayer);
+    return true;
+}
+
+void SetGhostStartTimeToMatchPlayer() {
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
+    if (ps is null || cp is null || cp.Players.Length == 0) return;
+    auto p = cast<CSmPlayer>(cp.Players[0]);
+    if (p is null) return;
+    Call_Ghosts_SetStartTime(ps, p.StartTime);
+}
+
+bool _RespawnPlayer(CMwStack &in stack) {
+    warn("RespawnPlayer: resetting scrubber state");
     if (scrubberMgr !is null) scrubberMgr.ResetAll();
     return true;
 }
@@ -119,16 +139,16 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     }
 
     if (g_BlockNextGhostsSetTimeAny) {
-        warn("blocking ghost SetStartTime any");
+        warn("blocking ghost SetStartTime any: " + ghostStartTime);
         g_BlockNextGhostsSetTimeAny = false;
         return false;
     }
 
     lastSetStartTime = ghostStartTime;
-
-    if (lastSetStartTime < 0) {
-        lastSetStartTime = ps.Now;
-    }
+    print("ghosts set start time: " + ghostStartTime);
+    // if (lastSetStartTime < 0) {
+    //     lastSetStartTime = ps.Now;
+    // }
     // trace('ghost set start time: ' + lastSetStartTime);
     return true;
 }

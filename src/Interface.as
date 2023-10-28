@@ -182,7 +182,7 @@ class SaveGhostsTab : Tab {
 #endif
 
         UI::TableNextColumn();
-        UI::Text(gm.GhostNickname);
+        UI::Text(ColoredString(gm.GhostNickname));
 
         UI::TableNextColumn();
         UI::Text(rt);

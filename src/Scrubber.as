@@ -167,7 +167,7 @@ void DrawScrubber() {
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
         bool ghostsNotVisible = !GetGhostVisibility();
 
-        double t = double(ps.Now - lastSetStartTime) + scrubberMgr.subSecondOffset;
+        double t = double(ps.Now - Math::Max(lastSetStartTime, lastSpawnTime)) + scrubberMgr.subSecondOffset;
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
             * (GetCurrFontSize() / 16.) * UI::GetScale();
@@ -205,7 +205,7 @@ void DrawScrubber() {
         maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
         maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime);
-        maxTime = Math::Min(maxTime, ps.Now);
+        maxTime = Math::Min(maxTime, ps.Now - lastSpawnTime);
         string labelTime = Time::Format(int64(Math::Abs(t) + lastSetGhostOffset));
         if (t < 0) labelTime = "-" + labelTime;
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
@@ -291,7 +291,7 @@ void DrawScrubber() {
             // t += 10 * scrubberMgr.playbackSpeed;
             scrubberMgr.TogglePause(scrubberMgr.pauseAt + 10 * scrubberMgr.playbackSpeed);
         } else if ((t == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) / t * 1000. >= 1.0)) {
-            // trace('t and setProg different: ' + vec2(t, setProg).ToString());
+            trace('t and setProg different: ' + vec2(t, setProg).ToString());
             scrubberMgr.SetProgress(setProg);
             t = setProg;
         }
@@ -494,8 +494,10 @@ class ScrubberMgr {
     void ResetAll() {
         m_NewGhostOffset = 0;
         lastSetGhostOffset = 0;
-        scrubberMgr.ForceUnpause();
-        scrubberMgr.SetPlayback();
+        pauseAt = -1;
+        ForceUnpause();
+        SetPlayback();
+        warn("Reset, playback speed: " + Text::Format("%.7f", playbackSpeed));
     }
 
     void ForceUnpause() {
@@ -633,7 +635,7 @@ class ScrubberMgr {
             }
             Call_Ghosts_SetStartTime(ps, newStartTime);
         } else {
-            pauseAt = ps.Now - lastSetStartTime;
+            pauseAt = ps.Now - Math::Max(lastSetStartTime, lastSpawnTime);
         }
     }
 

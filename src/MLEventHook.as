@@ -96,7 +96,8 @@ class SpectateHook : MLHook::HookMLEventsByType {
     uint lastLoadSpectate = Time::Now;
     string lastLoadWsid = "";
     void AfterSpectate(ref@ r) {
-        g_SaveGhostTab.StartWatchGhostsLoopLoop();
+        if (g_SaveGhostTab is null) warn("AfterSpectate got null g_SaveGhostTab?!");
+        else g_SaveGhostTab.StartWatchGhostsLoopLoop();
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (ps is null) return;
 
