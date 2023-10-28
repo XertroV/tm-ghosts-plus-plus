@@ -38,7 +38,7 @@ void Main() {
         @g_GhostFinder = GhostFinder();
     }
 
-#if DEV
+#if FALSE
     startnew(RunGhostTest);
 #endif
 }

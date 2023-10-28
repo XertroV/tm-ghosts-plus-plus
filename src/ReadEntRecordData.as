@@ -1,3 +1,4 @@
+#if FALSE
 const uint16 O_CTN_GHOST_ENT_RECORD_DATA = GetOffset("CGameCtnGhost", "Validate_ExtraTool_Info") + (0x2E0 - 0x220);
 
 CSceneVehicleVis::EntRecordDelta@[]@ GetSamplesFromGhost(CGameCtnGhost@ ghost) {
@@ -224,3 +225,4 @@ void nvgMoveToWorldPos(vec3 pos) {
     nvg::MoveTo(uv.xy);
     nvgWorldPosLastVisible = true;
 }
+#endif
