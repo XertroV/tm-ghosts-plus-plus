@@ -53,7 +53,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
         if (ghost !is null) {
             Cache::CheckForNameToAddSoon(ghost.Nickname, ghost.Result.Time);
             auto ctnGhost = GetCtnGhost(ghost);
-            if (ctnGhost !is null && !ctnGhost.GhostNickname.EndsWith("Personal best")) {
+            if (ctnGhost !is null && !ctnGhost.GhostNickname.StartsWith("$")) {
                 // trace('ctnGhost not null');
                 Update_ML_SetGhostLoaded(LoginToWSID(ctnGhost.GhostLogin));
             } else {
