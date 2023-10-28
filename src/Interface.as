@@ -212,7 +212,7 @@ class SaveGhostsTab : Tab {
         auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
 
         if (S_SetGhostAlphaTo1) ps.Ghosts_SetMaxAlpha(1.0);
-        startnew(CoroutineFunc(this.WatchGhostsToLoopThem));
+        g_SaveGhostTab.StartWatchGhostsLoopLoop();
 
         // auto cmap = GetApp().Network.ClientManiaAppPlayground;
         // if (cmap is null) throw("null cmap");
@@ -241,6 +241,10 @@ class SaveGhostsTab : Tab {
 
         if (scrubberMgr !is null && !scrubberMgr.IsStdPlayback)
             EngineSounds::SetEngineSoundVdBFromSettings_SpawnCoro();
+    }
+
+    void StartWatchGhostsLoopLoop() {
+        startnew(CoroutineFunc(this.WatchGhostsToLoopThem)); // .WithRunContext(Meta::RunContext::NetworkAfterMainLoop);
     }
 
     bool watchLoopActive = false;

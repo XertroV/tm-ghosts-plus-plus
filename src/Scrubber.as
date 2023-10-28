@@ -58,6 +58,14 @@ float GetCurrFontSize() {
 }
 
 
+bool IsPauseMenuOpen() {
+    auto net = GetApp().Network;
+    try {
+        return net.PlaygroundClientScriptAPI.IsInGameMenuDisplayed;
+    } catch {}
+    return false;
+}
+
 
 float maxTime = 0.;
 uint lastHover;
@@ -69,6 +77,10 @@ void DrawScrubber() {
     bool isSpectating = IsSpectatingGhost();
     auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
     if (ps is null) return;
+    // don't show during finish sequence
+    if (ps.UIManager.UIAll.UISequence == CGamePlaygroundUIConfig::EUISequence::Finish) return;
+    if (IsPauseMenuOpen()) return;
+    if (UI::CurrentActionMap() == "MenuInputsMap") return;
 
     UI::PushFont(GetCurrFont());
 

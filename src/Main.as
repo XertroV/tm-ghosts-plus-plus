@@ -33,7 +33,7 @@ void Main() {
         SetCurrentGhostValues();
         if (IsSpectatingGhost()) {
             trace("starting watch loop on init because we're spectating a ghost");
-            startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
+            g_SaveGhostTab.StartWatchGhostsLoopLoop();
         }
         @g_GhostFinder = GhostFinder();
     }
@@ -67,7 +67,7 @@ void InitGP() {
     MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
     SetCurrentGhostValues();
     startnew(WatchAndRemoveFadeOut);
-    startnew(CoroutineFunc(g_SaveGhostTab.WatchGhostsToLoopThem));
+    g_SaveGhostTab.StartWatchGhostsLoopLoop();
     trace('init done');
     g_Initialized = true;
 }
