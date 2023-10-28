@@ -37,6 +37,10 @@ void Main() {
         }
         @g_GhostFinder = GhostFinder();
     }
+
+#if DEV
+    startnew(RunGhostTest);
+#endif
 }
 
 void LoadFonts() {

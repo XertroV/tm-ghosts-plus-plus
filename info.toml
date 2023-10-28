@@ -7,8 +7,9 @@ siteid = 444
 
 [script]
 #__DEFINES__
-dependencies = ["MLHook", "NadeoServices", "VehicleState"]
+dependencies = ["MLHook", "NadeoServices", "VehicleState", "Camera"]
 optional_dependencies = ["ChampionMedals", "Dashboard"]
 # blocks = ["GhostScrubber"]
 timeout = 4444
 exports = ["Exports.as"]
+module = "Ghosts_PP"

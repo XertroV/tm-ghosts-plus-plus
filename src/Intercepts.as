@@ -52,7 +52,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
         if (ghost !is null) {
             Cache::CheckForNameToAddSoon(ghost.Nickname, ghost.Result.Time);
             auto ctnGhost = GetCtnGhost(ghost);
-            if (ctnGhost !is null) {
+            if (ctnGhost !is null && !ctnGhost.GhostNickname.EndsWith("Personal best")) {
                 // trace('ctnGhost not null');
                 Update_ML_SetGhostLoaded(LoginToWSID(ctnGhost.GhostLogin));
             } else {
@@ -206,8 +206,10 @@ void SetCurrentGhostValues() {
     lastLoadedGhostRaceTime = maxTime;
     lastSetStartTime = GhostClipsMgr::GetCurrentGhostTime(mgr);
     trace('Set current ghost values: ' + lastSetStartTime + ' / ' + lastSpectatedGhostRaceTime); // + ' / ' + Text::Format("%08x", instId));
-    lastSpectatedGhostInstanceId = GetCurrentlySpecdGhostInstanceId(ps);
-    lastSpectatedGhostRaceTime = GhostClipsMgr::GetGhostFromInstanceId(mgr, lastSpectatedGhostInstanceId.Value).GhostModel.RaceTime;
+    if (IsSpectatingGhost()) {
+        lastSpectatedGhostInstanceId = GetCurrentlySpecdGhostInstanceId(ps);
+        lastSpectatedGhostRaceTime = GhostClipsMgr::GetGhostFromInstanceId(mgr, lastSpectatedGhostInstanceId.Value).GhostModel.RaceTime;
+    }
 }
 
 // ! clip pausing and unpausing moved to GhostClips.as

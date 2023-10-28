@@ -156,6 +156,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         // }
 
         for (uint i = nbGhosts; i < mgr2.Ghosts.Length; i++) {
+            if (mgr2.Ghosts[i].GhostModel.GhostNickname.EndsWith("Personal best")) continue;
             if (wsid == LoginToWSID(mgr2.Ghosts[i].GhostModel.GhostLogin)) {
                 g_SaveGhostTab.SpectateGhost(i);
                 return;
@@ -163,6 +164,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         }
         // test from 0 now instead of nbGhosts
         for (uint i = 0; i < mgr2.Ghosts.Length; i++) {
+            if (mgr2.Ghosts[i].GhostModel.GhostNickname.EndsWith("Personal best")) continue;
             if (wsid == LoginToWSID(mgr2.Ghosts[i].GhostModel.GhostLogin)) {
                 g_SaveGhostTab.SpectateGhost(i);
                 return;

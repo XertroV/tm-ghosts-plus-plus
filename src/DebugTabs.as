@@ -53,16 +53,20 @@ class DebugGhostsTab : Tab {
         auto zcc = gc.GhostZoneCountryCache;
         auto clip = gc.Clip;
         if (UI::TreeNode(gm.GhostNickname + "( "+Time::Format(gm.RaceTime)+" )" + "##" + i, UI::TreeNodeFlags::None)) {
-            if (UI::TreeNode("GhostZoneCountryCache##" + i, UI::TreeNodeFlags::DefaultOpen)) {
-                UI::Columns(2);
-                DrawValLabel(zcc.Description, "Description");
-                DrawValLabel(zcc.IdName, "IdName");
-                DrawValLabel(tostring(zcc.IsGroup), "IsGroup");
-                DrawValLabel(zcc.Name, "Name");
-                DrawValLabel(zcc.Login, "Login");
-                DrawValLabel(zcc.Path, "Path");
-                UI::Columns(1);
-                UI::TreePop();
+            if (zcc is null) {
+                UI::Text("GhostZoneCountryCache is null");
+            } else {
+                if (UI::TreeNode("GhostZoneCountryCache##" + i, UI::TreeNodeFlags::DefaultOpen)) {
+                    UI::Columns(2);
+                    DrawValLabel(zcc.Description, "Description");
+                    DrawValLabel(zcc.IdName, "IdName");
+                    DrawValLabel(tostring(zcc.IsGroup), "IsGroup");
+                    DrawValLabel(zcc.Name, "Name");
+                    DrawValLabel(zcc.Login, "Login");
+                    DrawValLabel(zcc.Path, "Path");
+                    UI::Columns(1);
+                    UI::TreePop();
+                }
             }
             if (UI::TreeNode("CGameCtnMediaClip##" + i, UI::TreeNodeFlags::DefaultOpen)) {
                 UI::Columns(2);
