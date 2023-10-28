@@ -275,6 +275,7 @@ class SaveGhostsTab : Tab {
             yield();
         }
         watchLoopActive = false;
+        g_BlockNextGhostsSetTimeAny = false;
     }
 
     void UnloadGhost(uint i) {
