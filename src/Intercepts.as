@@ -101,11 +101,11 @@ uint lastBlockedSetStartTimeNow = 1;
 int lastSetStartTime = 5000;
 bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     auto ghostStartTime = stack.CurrentInt(0);
-    if (g_BlockNextGhostsSetTimeReset && int(ghostStartTime) < 0) {
-        warn("blocking ghost SetStartTime reset");
-        g_BlockNextGhostsSetTimeReset = false;
-        return false;
-    }
+    // if (false && g_BlockNextGhostsSetTimeReset && int(ghostStartTime) < 0) {
+    //     warn("blocking ghost SetStartTime reset");
+    //     g_BlockNextGhostsSetTimeReset = false;
+    //     return false;
+    // }
 
     auto ps = cast<CSmArenaRulesMode>(nod);
 

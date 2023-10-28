@@ -136,7 +136,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         // this abadons the load + spectate ghost request on ML size; we then want to re-spectate the ghost
         auto currSpec = GetCurrentlySpecdGhostInstanceId(ps);
         if (IsSpectatingGhost()) {
-            g_BlockNextGhostsSetTimeReset = true;
+            // g_BlockNextGhostsSetTimeReset = true;
             g_BlockNextGhostsSetTimeAny = true;
             g_BlockNextClearForcedTarget = true;
         }
