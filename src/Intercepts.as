@@ -19,6 +19,7 @@ bool _SpawnPlayer(CMwStack &in stack) {
         return false;
     }
     // warn("SpawnPlayer");
+    if (scrubberMgr !is null) scrubberMgr.ResetAll();
     return true;
 }
 bool _CGSHPI_CloseInGameMenu(CMwStack &in stack) {
