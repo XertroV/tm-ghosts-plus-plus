@@ -237,7 +237,7 @@ class SaveGhostsTab : Tab {
         // normally 1 but this works and prevents ghost scrubber doing annoying things
         ps.UIManager.UIAll.SpectatorForceCameraType = 3;
         ps.UIManager.UIAll.Spectator_SetForcedTarget_Ghost(MwId(id));
-        ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::EndRound;
+        // ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::EndRound;
 
         if (scrubberMgr !is null && !scrubberMgr.IsStdPlayback)
             EngineSounds::SetEngineSoundVdBFromSettings_SpawnCoro();

@@ -100,7 +100,7 @@ namespace GhostClipsMgr {
             return uint(-1);
         }
         // this nod is 0x350 bytes large => memory will always be allocated
-        return Dev::GetOffsetUint32(clipPlayer, 0x320);
+        return Dev::GetOffsetUint32(clipPlayer, O_GHOSTCLIPPLAYER_START_TIME);
     }
 
     void PauseClipPlayers(NGameGhostClips_SMgr@ mgr, float currTime) {
@@ -145,19 +145,19 @@ namespace GhostClipsMgr {
 // Utils for CGameCtnMediaClipPlayer
 
 float ClipPlayer_GetCurrSeconds(CGameCtnMediaClipPlayer@ player) {
-    return Dev::GetOffsetFloat(player, 0x1AC);
+    return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_CURR_TIME);
 }
 
 void ClipPlayer_SetCurrSeconds(CGameCtnMediaClipPlayer@ player, float t) {
-    Dev::SetOffset(player, 0x1AC, t);
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME, t);
 }
 
 float ClipPlayer_GetFrameDelta(CGameCtnMediaClipPlayer@ player) {
-    return Dev::GetOffsetFloat(player, 0x310);
+    return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_FRAME_DELTA);
 }
 
 float ClipPlayer_GetTotalTime(CGameCtnMediaClipPlayer@ player) {
-    return Dev::GetOffsetFloat(player, 0x338);
+    return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TOTAL_TIME);
 }
 
 // returns vec2(time, delta)
@@ -189,6 +189,7 @@ vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSp
 // 0x310, delta?
 // 0x314, ?
 // 0x318 - time speed
+// 0x320 - ghost start time
 // 0x324 - flag 2?
 // 0x328 - CGameEditorMediaTracker
 
@@ -214,35 +215,58 @@ vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSp
 // set 1ac to set the position of the ghost
 // set 33c > 0
 
+// ! Game update 2023-11-21
+// size ? -> 840 or 0x348
+// 0x1AC -> 0x1A4
+// 0x308 -> 0x300 (Audio Balance)
+// expect: offsets to decrease by 0x8
+
+// main offsets we touch
+uint16 O_GHOSTCLIPPLAYER_CURR_TIME = 0x1A4;
+uint16 O_GHOSTCLIPPLAYER_DO_MOTION_INTERP = 0x31C; // not correctly labeled, something to do with this but not exactly as named
+uint16 O_GHOSTCLIPPLAYER_TOTAL_TIME = 0x330;
+uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_3 = 0x334;
+uint16 O_GHOSTCLIPPLAYER_SMOOTH_PAUSE = 0x340;
+
+// other offsets
+uint16 O_GHOSTCLIPPLAYER_FRAME_DELTA = 0x308;
+uint16 O_GHOSTCLIPPLAYER_CURR_TIME2 = 0x30C;
+uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_1 = 0x1A8;
+uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_2 = 0x310;
+uint16 O_GHOSTCLIPPLAYER_START_TIME = 0x318;
+// editing this toggles the play/pause button in MT but does not actually pause playback. maybe it is a flat like CanPause
+uint16 O_GHOSTCLIPPLAYER_IS_PLAYING = 0x31C;
+
 
 string[] GetGhostClipPlayerDebugValues(CGameCtnMediaClipPlayer@ player) {
     if (player is null) return {"not found"};
-    float totalTime = Dev::GetOffsetFloat(player, 0x338);
-    float curTime = Dev::GetOffsetFloat(player, 0x1AC);
-    uint8 doMotionInterp = Dev::GetOffsetUint8(player, 0x324);
-    uint8 otherGhostsVisible = Dev::GetOffsetUint8(player, 0x348);
-    float timeSpeed_33C = Dev::GetOffsetFloat(player, 0x33C);
-    float timeSpeed_318 = Dev::GetOffsetFloat(player, 0x318);
-    float timeSpeed_1B0 = Dev::GetOffsetFloat(player, 0x1B0);
-    return {tostring(totalTime), tostring(curTime), tostring(doMotionInterp), tostring(otherGhostsVisible), "1B0: " + timeSpeed_1B0, "318: " + timeSpeed_318, "33C: " + timeSpeed_33C};
+    float curTime = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_CURR_TIME);
+    float totalTime = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TOTAL_TIME);
+    uint8 doMotionInterp = Dev::GetOffsetUint32(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP);
+    uint8 otherGhostsVisible = Dev::GetOffsetUint32(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE);
+    float timeSpeed_33C = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3);
+    float timeSpeed_318 = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TIME_SPEED_2);
+    float timeSpeed_1B0 = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TIME_SPEED_1);
+    float isPlayingFlag = Dev::GetOffsetUint32(player, O_GHOSTCLIPPLAYER_IS_PLAYING);
+    return {"totalTime:", tostring(totalTime), "curTime:", tostring(curTime), "doMotionInterp:", tostring(doMotionInterp), "otherGhostsVisible:", tostring(otherGhostsVisible), "1B0: " + timeSpeed_1B0, "318: " + timeSpeed_318, "33C: " + timeSpeed_33C, "CanPause:", tostring(isPlayingFlag)};
 }
 
 void SetGhostClipPlayerPaused(CGameCtnMediaClipPlayer@ player, float timestamp) {
     if (player is null) return;
-    Dev::SetOffset(player, 0x1AC, timestamp);
-    Dev::SetOffset(player, 0x338, float(-100.0));
-    Dev::SetOffset(player, 0x324, uint8(0));
-    Dev::SetOffset(player, 0x348, uint8(1));
-    Dev::SetOffset(player, 0x33C, float(1.0));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME, timestamp);
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TOTAL_TIME, float(-100.0));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP, uint8(0));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE, uint8(1));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3, float(1.0));
 }
 
 void SetGhostClipPlayerUnpaused(CGameCtnMediaClipPlayer@ player, float timestamp, float totalTime) {
     if (player is null) return;
-    Dev::SetOffset(player, 0x1AC, timestamp);
-    Dev::SetOffset(player, 0x338, float(totalTime));
-    Dev::SetOffset(player, 0x324, uint8(1));
-    Dev::SetOffset(player, 0x348, uint8(1));
-    Dev::SetOffset(player, 0x33C, uint32(0));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME, timestamp);
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TOTAL_TIME, float(totalTime));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP, uint8(1));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE, uint8(1));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3, uint32(0));
 }
 
 // To get clip from EditorMediaTracker
