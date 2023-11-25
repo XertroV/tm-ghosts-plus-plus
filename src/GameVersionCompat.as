@@ -77,11 +77,15 @@ bool RetryGetStatus(uint delay) {
 }
 
 [SettingsTab name="Game Version Check" icon="ExclamationTriangle"]
-void OverrideGameSafetyCheck() {
+void OverrideGameSafetyCheck_Settings() {
     UI::Text("Game version safe? " + tostring(GameVersionSafe));
     UI::Text("Check request started: " + tostring(requestStarted));
     UI::Text("Check request ended: " + tostring(requestEnded));
     if (!GameVersionSafe && UI::Button("Disable safety features and run anyway")) {
-        GameVersionSafe = true;
+        OverrideGameSafetyCheck_GhostsPP();
     }
+}
+
+void OverrideGameSafetyCheck_GhostsPP() {
+    GameVersionSafe = true;
 }
