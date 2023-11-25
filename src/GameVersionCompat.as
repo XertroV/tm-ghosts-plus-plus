@@ -89,3 +89,7 @@ void OverrideGameSafetyCheck_Settings() {
 void OverrideGameSafetyCheck_GhostsPP() {
     GameVersionSafe = true;
 }
+
+bool IsGameVersionSafe_GhostsPP() {
+    return GameVersionSafe;
+}
