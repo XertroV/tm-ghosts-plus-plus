@@ -86,8 +86,8 @@ void OverrideGameSafetyCheck_Settings() {
     }
 }
 
-void OverrideGameSafetyCheck_GhostsPP() {
-    GameVersionSafe = true;
+void OverrideGameSafetyCheck_GhostsPP(bool safe = true) {
+    GameVersionSafe = safe;
 }
 
 bool IsGameVersionSafe_GhostsPP() {
