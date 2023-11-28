@@ -76,7 +76,7 @@ bool RetryGetStatus(uint delay) {
     return GetStatusFromOpenplanet();
 }
 
-[SettingsTab name="Game Version Check" icon="ExclamationTriangle"]
+[SettingsTab name="Game Version Check" icon="ExclamationTriangle" order=99]
 void OverrideGameSafetyCheck_Settings() {
     UI::Text("Game version safe? " + tostring(GameVersionSafe));
     UI::Text("Check request started: " + tostring(requestStarted));

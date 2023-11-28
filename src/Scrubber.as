@@ -172,29 +172,19 @@ void DrawScrubber() {
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
             * (GetCurrFontSize() / 16.) * UI::GetScale();
         auto btnWidthFull = btnWidth + spacing.x;
+        float setProg = scrubberMgr.pauseAt;
         if (showAdvanced && drawAdvOnTop) {
-            DrawAdvancedScrubberExtras(ps, btnWidth);
+            setProg = DrawAdvancedScrubberExtras(ps, btnWidth, isSpectating, setProg);
         }
 
-        bool reset = false, clickTogglePause = false;
+        bool clickTogglePause = false;
 
         bool expand = UI::Button(Icons::Expand + "##scrubber-expand", vec2(btnWidth, 0));
         UI::SameLine();
-        // Backward <<
-        UI::BeginDisabled(!isSpectating);
-        bool exit = UI::Button(Icons::Reply + "##scrubber-back", vec2(btnWidth, 0));
-        UI::EndDisabled();
-        UI::SameLine();
-        if (S_SwapPauseAndRestart) {
-            clickTogglePause = DrawPlayPauseButton(btnWidth) || clickTogglePause;
-        } else {
-            reset = DrawResetButton(btnWidth);
-        }
-        UI::SameLine();
-        bool stepBack = UI::Button(scrubberMgr.IsPaused ? Icons::StepBackward : Icons::Backward + "##scrubber-step-back", vec2(btnWidth, 0));
+        clickTogglePause = DrawPlayPauseButton(btnWidth) || clickTogglePause;
         UI::SameLine();
 
-        auto nbBtns = 8;
+        auto nbBtns = 4;
 
         if (lastLoadedGhostRaceTime == 0 && mgr.Ghosts.Length > 0) {
             lastLoadedGhostRaceTime = mgr.Ghosts[0].GhostModel.RaceTime;
@@ -210,24 +200,17 @@ void DrawScrubber() {
         if (t < 0) labelTime = "-" + labelTime;
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
             + (ghostsNotVisible ? " (Ghosts Off)" : "");
-        auto setProg = UI::SliderFloat("##ghost-scrub", scrubberMgr.pauseAt, 0, Math::Max(maxTime, t), fmtString);
+        setProg = UI::SliderFloat("##ghost-scrub", setProg, 0, Math::Max(maxTime, t), fmtString);
         bool startedScrub = UI::IsItemClicked();
         clickTogglePause = (UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right)) || clickTogglePause;
 
-        UI::SameLine();
-        bool stepFwd = UI::Button((scrubberMgr.IsPaused ? Icons::StepForward : Icons::Forward) + "##scrubber-step-fwd", vec2(btnWidth, 0));
         UI::SameLine();
         bool changeCurrSpeed = UI::Button(currSpeedLabel + "##scrubber-next-speed", vec2(btnWidth, 0));
         bool currSpeedBw = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
         // bool currSpeedCtx = UI::IsItemHovered() && UI::IsMouseDown(UI::MouseButton::Middle);
 
         UI::SameLine();
-        if (S_SwapPauseAndRestart) {
-            reset = DrawResetButton(btnWidth);
-        } else {
-            clickTogglePause = DrawPlayPauseButton(btnWidth) || clickTogglePause;
-        }
-        UI::SameLine();
+
         // bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
         bool toggleAdv = UI::Button(Icons::Cogs + "##scrubber-toggle-adv", vec2(btnWidth, 0));
 
@@ -243,7 +226,7 @@ void DrawScrubber() {
         }
         if (showAdvanced) {
             if (!drawAdvOnTop)
-                DrawAdvancedScrubberExtras(ps, btnWidth);
+                setProg = DrawAdvancedScrubberExtras(ps, btnWidth, isSpectating, setProg);
             else if (toggleAdv) {
                 // draw an empty line when we toggle to avoid flash
                 UI::AlignTextToFramePadding();
@@ -265,20 +248,6 @@ void DrawScrubber() {
                 }
             }
         }
-        if (exit) {
-            scrubberMgr.SetPlayback();
-            ExitSpectatingGhostAndCleanUp();
-        }
-        if (reset) setProg = 0;
-        if (stepBack || stepFwd) {
-            if (scrubberMgr.IsPaused) {
-                float progDelta = 10.0 * Math::Abs(scrubberMgr.playbackSpeed);
-                // auto newT = t + progDelta * (stepBack ? -1. : 1.);
-                // trace('newT: ' + newT + '; t: ' + t + "; diff: " + (newT - t) + ' pauseat: ' + scrubberMgr.pauseAt);
-                scrubberMgr.SetPaused(scrubberMgr.pauseAt + progDelta * (stepBack ? -1. : 1.), true);
-            } else {
-                scrubberMgr.SetProgress(scrubberMgr.pauseAt + 5000.0 * Math::Abs(scrubberMgr.playbackSpeed) * (stepBack ? -1. : 1.));
-            }
         // } else if (dragDelta.y > 0) {
         //     float dragY = Math::Clamp(dragDelta.y, -100., 100.);
         //     print('' + dragY);
@@ -286,7 +255,7 @@ void DrawScrubber() {
         //     dragY = Math::Max(1, Math::Abs(dragY));
         //     auto dyl = sign * Math::Pow(Math::Log(dragY) / Math::Log(100.), 10.);
         //     scrubberMgr.SetPlaybackSpeed(dyl, !scrubberMgr.IsPaused);
-        } else if (clickTogglePause) {
+        if (clickTogglePause) {
             // makes pausing smoother
             // t += 10 * scrubberMgr.playbackSpeed;
             scrubberMgr.TogglePause(scrubberMgr.pauseAt + 10 * scrubberMgr.playbackSpeed);
@@ -318,7 +287,17 @@ uint lastSetGhostOffset = 0;
 bool m_UseAltCam = false;
 bool m_KeepGhostsWhenOffsetting = true;
 
-void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
+float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isSpectating, float setProg) {
+    UI::BeginDisabled(!isSpectating);
+    bool exit = UI::Button(Icons::Reply + "##scrubber-back", vec2(btnWidth, 0));
+    UI::EndDisabled();
+    UI::SameLine();
+    bool reset = DrawResetButton(btnWidth);
+    UI::SameLine();
+    bool stepBack = UI::Button(scrubberMgr.IsPaused ? Icons::StepBackward : Icons::Backward + "##scrubber-step-back", vec2(btnWidth, 0));
+    UI::SameLine();
+    bool stepFwd = UI::Button((scrubberMgr.IsPaused ? Icons::StepForward : Icons::Forward) + "##scrubber-step-fwd", vec2(btnWidth, 0));
+    UI::SameLine();
     bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
     bool rmbCamera = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
     AddSimpleTooltip("While spectating, cycle between cimenatic cam, free cam, and the player camera.");
@@ -354,6 +333,21 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
     UI::SameLine();
     UI::Dummy(vec2(10, 0));
 
+    if (exit) {
+        scrubberMgr.SetPlayback();
+        ExitSpectatingGhostAndCleanUp();
+    }
+    if (reset) setProg = 0;
+    if (stepBack || stepFwd) {
+        if (scrubberMgr.IsPaused) {
+            float progDelta = 10.0 * Math::Abs(scrubberMgr.playbackSpeed);
+            // auto newT = t + progDelta * (stepBack ? -1. : 1.);
+            // trace('newT: ' + newT + '; t: ' + t + "; diff: " + (newT - t) + ' pauseat: ' + scrubberMgr.pauseAt);
+            scrubberMgr.SetPaused(scrubberMgr.pauseAt + progDelta * (stepBack ? -1. : 1.), true);
+        } else {
+            scrubberMgr.SetProgress(scrubberMgr.pauseAt + 5000.0 * Math::Abs(scrubberMgr.playbackSpeed) * (stepBack ? -1. : 1.));
+        }
+    }
     if (clickCycleCams) {
         S_SpecCamera =
             S_SpecCamera == ScrubberSpecCamera::None ? ScrubberSpecCamera::Cam1
@@ -379,6 +373,8 @@ void DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth) {
     } else if (clickSetOffset) {
         startnew(UpdateGhostsSetOffsets);
     }
+
+    return setProg;
 }
 
 void UpdateGhostsSetOffsets() {
