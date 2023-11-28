@@ -1,5 +1,5 @@
 // does not override mediatracker
-const uint16 O_GAMECAM_ACTIVE_CAM_TYPE = 0x188;
+const uint16 O_GAMECAM_ACTIVE_CAM_TYPE = 0x1A8;
 // 0x24: c1, 0x25: c2, 0x26: c3
 const uint16 O_GAMECAM_USE_ALT = 0x24;
 const uint16 O_APP_GAMECAM = GetOffset("CGameCtnApp", "GameScene") + 0x10;
