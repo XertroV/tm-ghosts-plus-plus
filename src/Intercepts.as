@@ -72,13 +72,15 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
         auto ghost = cast<CGameGhostScript>(stack.CurrentNod(1));
         if (ghost !is null) {
             Cache::CheckForNameToAddSoon(ghost.Nickname, ghost.Result.Time);
-            auto ctnGhost = GetCtnGhost(ghost);
-            if (ctnGhost !is null && !ctnGhost.GhostNickname.StartsWith("$")) {
-                // trace('ctnGhost not null');
-                // Update_ML_SetGhostLoaded(LoginToWSID(ctnGhost.GhostLogin));
-            } else {
-                // trace('ctnGhost null');
-            }
+
+            // todo: if doing PB detection in future, we cannot test the ghost name. We should instead use the name of the ghost in clip[0] which is always pb if it's loaded/shown.
+            // auto ctnGhost = GetCtnGhost(ghost);
+            // if (ctnGhost !is null && !ctnGhost.GhostNickname.StartsWith("$")) {
+            //     // trace('ctnGhost not null');
+            //     // Update_ML_SetGhostLoaded(LoginToWSID(ctnGhost.GhostLogin));
+            // } else {
+            //     // trace('ctnGhost null');
+            // }
         }
     }
     startnew(Update_ML_SyncAll);

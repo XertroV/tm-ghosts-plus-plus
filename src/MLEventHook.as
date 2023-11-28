@@ -101,6 +101,8 @@ class SpectateHook : MLHook::HookMLEventsByType {
 
         return;
 
+        // ! unreachable
+
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (ps is null) return;
 
@@ -159,6 +161,8 @@ class SpectateHook : MLHook::HookMLEventsByType {
         //     scrubberMgr.ResetAll();
         // }
 
+        // todo: if doing PB detection in future, we cannot test the ghost name. We should instead use the name of the ghost in clip[0] which is always pb if it's loaded/shown.
+        /*
         for (uint i = nbGhosts; i < mgr2.Ghosts.Length; i++) {
             if (mgr2.Ghosts[i].GhostModel.GhostNickname.StartsWith("$")) continue;
             if (wsid == LoginToWSID(mgr2.Ghosts[i].GhostModel.GhostLogin)) {
@@ -174,6 +178,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
                 return;
             }
         }
+        */
 
         g_AllowNextForceGhostDespiteNowBlock = true;
 
@@ -230,6 +235,7 @@ void Update_ML_SetGhostUnloaded(const string &in wsid) {
     MLHook::Queue_MessageManialinkPlayground(SetFocusedRecord_PageUID, {"SetGhostUnloaded", wsid});
 }
 
+// ! note: ML page disabled atm, so we're only maintaining ghostWsidsLoaded
 void Update_ML_SyncAll() {
     ghostWsidsLoaded.DeleteAll();
     auto mgr = GhostClipsMgr::Get(GetApp());
