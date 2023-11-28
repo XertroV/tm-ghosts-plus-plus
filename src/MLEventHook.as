@@ -98,6 +98,9 @@ class SpectateHook : MLHook::HookMLEventsByType {
     void AfterSpectate(ref@ r) {
         if (g_SaveGhostTab is null) warn("AfterSpectate got null g_SaveGhostTab?!");
         else g_SaveGhostTab.StartWatchGhostsLoopLoop();
+
+        return;
+
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         if (ps is null) return;
 
@@ -178,7 +181,9 @@ class SpectateHook : MLHook::HookMLEventsByType {
         // startnew(CoroutineFuncUserdataUint64(this.FindAndSpec), uint64(currSpec));
     }
 
+    // disabled / unused
     void FindAndSpec(uint64 instId64) {
+        return;
         // yield();
         // yield();
         // yield();

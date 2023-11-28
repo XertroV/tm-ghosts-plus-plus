@@ -205,7 +205,7 @@ void DrawScrubber() {
         maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
         maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime);
-        maxTime = Math::Min(maxTime, ps.Now - lastSpawnTime);
+        maxTime = Math::Min(maxTime, ps.Now);
         string labelTime = Time::Format(int64(Math::Abs(t) + lastSetGhostOffset));
         if (t < 0) labelTime = "-" + labelTime;
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
@@ -464,7 +464,7 @@ ScrubberSpecCamera S_SpecCamera = ScrubberSpecCamera::None;
 
 class ScrubberMgr {
     ScrubberMode mode = ScrubberMode::Playback;
-    // measured in seconds since ghost start
+    // measured in ms since ghost start
     double pauseAt = 0;
     float playbackSpeed = 1.0;
     float subSecondOffset = 0.0;

@@ -60,11 +60,13 @@ void InitGP() {
     MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
     MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_NextMap", true);
     MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_Exit", true);
+
     // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_SpectateGhost", true);
-    MLHook::RegisterMLHook(spectateHook, "TMGame_Record_Spectate", true);
-    MLHook::RegisterMLHook(toggleHook, "TMGame_Record_ToggleGhost", true);
+    // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_Spectate", true);
+    // MLHook::RegisterMLHook(toggleHook, "TMGame_Record_ToggleGhost", true);
     // MLHook::RegisterMLHook(toggleHook, "TMGame_Record_TogglePB", true);
-    MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
+    // MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
+
     SetCurrentGhostValues();
     startnew(WatchAndRemoveFadeOut);
     g_SaveGhostTab.StartWatchGhostsLoopLoop();

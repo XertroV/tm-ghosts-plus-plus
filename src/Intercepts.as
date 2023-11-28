@@ -75,7 +75,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
             auto ctnGhost = GetCtnGhost(ghost);
             if (ctnGhost !is null && !ctnGhost.GhostNickname.StartsWith("$")) {
                 // trace('ctnGhost not null');
-                Update_ML_SetGhostLoaded(LoginToWSID(ctnGhost.GhostLogin));
+                // Update_ML_SetGhostLoaded(LoginToWSID(ctnGhost.GhostLogin));
             } else {
                 // trace('ctnGhost null');
             }
@@ -173,10 +173,10 @@ bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {
         warn("SetForcedTarget_Ghost called for a ghost that does not exist; inst id: " + Text::Format("#%08x", ghostInstId.Value));
     }
 
-    if (lastBlockedSetStartTimeNow == Time::Now && !g_AllowNextForceGhostDespiteNowBlock) {
-        warn("Blocking set forced target ghost due to blocked set start time now");
-        return false;
-    }
+    // if (lastBlockedSetStartTimeNow == Time::Now && !g_AllowNextForceGhostDespiteNowBlock) {
+    //     warn("Blocking set forced target ghost due to blocked set start time now");
+    //     return false;
+    // }
     g_AllowNextForceGhostDespiteNowBlock = false;
 
     lastSpectatedGhostInstanceId = ghostInstId;
@@ -229,7 +229,8 @@ void SetCurrentGhostValues() {
     trace('Set current ghost values: ' + lastSetStartTime + ' / ' + lastSpectatedGhostRaceTime); // + ' / ' + Text::Format("%08x", instId));
     if (IsSpectatingGhost()) {
         lastSpectatedGhostInstanceId = GetCurrentlySpecdGhostInstanceId(ps);
-        lastSpectatedGhostRaceTime = GhostClipsMgr::GetGhostFromInstanceId(mgr, lastSpectatedGhostInstanceId.Value).GhostModel.RaceTime;
+        auto g = GhostClipsMgr::GetGhostFromInstanceId(mgr, lastSpectatedGhostInstanceId.Value);
+        if (g !is null) lastSpectatedGhostRaceTime = g.GhostModel.RaceTime;
     }
 }
 
