@@ -329,7 +329,17 @@ void UnlockPlaygroundTimer(CSmArenaRulesMode @ps) {
     uint newNow = ps.Now + UNLOCK_TIMER_AMOUNT;
     Dev::SetOffset(cp, GetOffset(cp, "PredictionSmooth") + 0x14, newNow);
     ps.StartTime += UNLOCK_TIMER_AMOUNT;
-    Call_Ghosts_SetStartTime(ps, newNow - ghostTime);
+
+    // Call_Ghosts_SetStartTime(ps, newNow - ghostTime);
+    setGhostStartTimeNextFrame = newNow - ghostTime;
+    startnew(SetGhostStartTimeNextFrameAfterUnlock);
+}
+
+int setGhostStartTimeNextFrame = 0;
+void SetGhostStartTimeNextFrameAfterUnlock() {
+    yield();
+    Call_Ghosts_SetStartTime(cast<CSmArenaRulesMode>(GetApp().PlaygroundScript), setGhostStartTimeNextFrame);
+    trace('set ghosts start time to: ' + setGhostStartTimeNextFrame);
 }
 
 

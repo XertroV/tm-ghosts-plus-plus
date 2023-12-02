@@ -155,9 +155,9 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     lastSetStartTime = ghostStartTime;
     lastGhostsStartOrSpawnTime = ghostStartTime;
     // print("ghosts set start time: " + ghostStartTime);
-    // if (lastSetStartTime < 0) {
-    //     lastSetStartTime = ps.Now;
-    // }
+    if (lastSetStartTime < 0) {
+        lastSetStartTime = ps.Now;
+    }
     // trace('ghost set start time: ' + lastSetStartTime);
     return true;
 }
