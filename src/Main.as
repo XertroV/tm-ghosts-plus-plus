@@ -312,6 +312,38 @@ CGameScriptMapSpawn@ GetDefaultMapSpawn(CSmArenaRulesMode@ ps) {
     return spawn;
 }
 
+uint UNLOCK_TIMER_AMOUNT = 0x2000000;
+
+bool IsTimerUnlocked(CSmArenaRulesMode@ ps) {
+    return ps.Now >= UNLOCK_TIMER_AMOUNT;
+}
+
+void UnlockPlaygroundTimer(CSmArenaRulesMode @ps) {
+    if (IsTimerUnlocked(ps)) return;
+    auto app = GetApp();
+    // check a bunch of things that should be false only when in solo
+    auto cp = cast<CSmArenaClient>(app.CurrentPlayground);
+    if (ps is null || cp is null) return;
+    if (app.Editor !is null || app.PlaygroundScript is null) return;
+    auto ghostTime = ps.Now - Math::Max(0, lastSetStartTime);
+    uint newNow = ps.Now + UNLOCK_TIMER_AMOUNT;
+    Dev::SetOffset(cp, GetOffset(cp, "PredictionSmooth") + 0x14, newNow);
+    ps.StartTime += UNLOCK_TIMER_AMOUNT;
+    Call_Ghosts_SetStartTime(ps, newNow - ghostTime);
+}
+
+
+void CheckUnlockTimelinePrompt(uint ghostRaceTime) {
+    if (S_SuppressUnlockTimelinePrompt) return;
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    if (ps is null) return;
+    if (IsTimerUnlocked(ps)) return;
+    if (ghostRaceTime < 90000) return;
+    if (ghostRaceTime < ps.Now + 30000) return;
+    g_ShowUnlockTimerPrompt = true;
+}
+
+
 /** Called whenever a key is pressed on the keyboard. See the documentation for the [`VirtualKey` enum](https://openplanet.dev/docs/api/global/VirtualKey).
 */
 UI::InputBlocking OnKeyPress(bool down, VirtualKey key) {
@@ -335,4 +367,6 @@ vec2 pendingScroll = vec2();
 
 void RenderEarly() {
     pendingScroll = vec2();
+
+    DrawUnlockTimelinePromptWindow();
 }

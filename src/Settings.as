@@ -34,6 +34,11 @@ float S_EngineSoundsDB = -10.;
 // [Setting category="General" name="Swap the play/pause button with the reset ghosts button"]
 // bool S_SwapPauseAndRestart = false;
 
+[Setting category="General" name="Suppress unlock timeline prompt"]
+bool S_SuppressUnlockTimelinePrompt = false;
+
+[Setting category="General" name="Hide set offset in advanced tools"]
+bool S_HideSetOffset = true;
 
 
 enum KeyboardShape

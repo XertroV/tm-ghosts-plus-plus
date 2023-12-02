@@ -14,9 +14,13 @@ void SetupIntercepts() {
 
 bool g_BlockNextSpawnPlayer;
 uint lastSpawnTime;
+uint lastGhostsStartOrSpawnTime;
 bool _SpawnPlayer(CMwStack &in stack, CMwNod@ nod) {
     auto pg = cast<CSmArenaRulesMode>(nod);
-    if (pg !is null) lastSpawnTime = pg.Now;
+    if (pg !is null) {
+        lastSpawnTime = pg.Now;
+        lastGhostsStartOrSpawnTime = lastSpawnTime;
+    }
     if (g_BlockNextSpawnPlayer) {
         warn("Blocking spawn player");
         g_BlockNextSpawnPlayer = false;
@@ -73,6 +77,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
         auto ghost = cast<CGameGhostScript>(stack.CurrentNod(1));
         if (ghost !is null) {
             Cache::CheckForNameToAddSoon(ghost.Nickname, ghost.Result.Time);
+            lastLoadedGhostRaceTime = ghost.Result.Time;
 
             // todo: if doing PB detection in future, we cannot test the ghost name. We should instead use the name of the ghost in clip[0] which is always pb if it's loaded/shown.
             // auto ctnGhost = GetCtnGhost(ghost);
@@ -148,6 +153,7 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     }
 
     lastSetStartTime = ghostStartTime;
+    lastGhostsStartOrSpawnTime = ghostStartTime;
     // print("ghosts set start time: " + ghostStartTime);
     // if (lastSetStartTime < 0) {
     //     lastSetStartTime = ps.Now;
@@ -185,6 +191,9 @@ bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {
     lastSpectatedGhostInstanceId = ghostInstId;
     lastSpectatedGhostRaceTime = (ghost is null) ? 0 : ghost.GhostModel.RaceTime;
     g_SaveGhostTab.StartWatchGhostsLoopLoop();
+    if (lastSpectatedGhostRaceTime > 0) {
+        CheckUnlockTimelinePrompt(lastSpectatedGhostRaceTime);
+    }
 
     return true;
 }

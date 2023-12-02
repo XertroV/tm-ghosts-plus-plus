@@ -167,7 +167,8 @@ void DrawScrubber() {
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
         bool ghostsNotVisible = !GetGhostVisibility();
 
-        double t = double(ps.Now - Math::Max(lastSetStartTime, lastSpawnTime)) + scrubberMgr.subSecondOffset;
+
+        double t = double(ps.Now - Math::Min(ps.Now, lastGhostsStartOrSpawnTime)) + scrubberMgr.subSecondOffset;
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
             * (GetCurrFontSize() / 16.) * UI::GetScale();
@@ -317,21 +318,28 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     // m_UseAltCam = UI::Checkbox("Alt", m_UseAltCam);
     UI::EndDisabled();
     UI::SameLine();
-    UI::Dummy(vec2(10, 0));
-    UI::SameLine();
-    UI::AlignTextToFramePadding();
-    UI::Text("Set Ghosts Offset");
-    AddSimpleTooltip("This can be used to exceed the usual limits on ghosts.");
-    UI::SameLine();
-    UI::SetNextItemWidth(btnWidth * 3.0);
-    m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, lastLoadedGhostRaceTime == 0 ? 10000 : Math::Min(lastLoadedGhostRaceTime / 10, 60000));
-    m_NewGhostOffset = Math::Clamp(m_NewGhostOffset, 0, lastLoadedGhostRaceTime == 0 ? 9999999 : (lastLoadedGhostRaceTime * 2));
-    UI::SameLine();
-    bool clickSetOffset = UI::Button("Set Offset: " + Time::Format(m_NewGhostOffset));
-    UI::SameLine();
-    m_KeepGhostsWhenOffsetting = UI::Checkbox("Keep Existing?", m_KeepGhostsWhenOffsetting);
-    UI::SameLine();
-    UI::Dummy(vec2(10, 0));
+    DrawUnlockTimelineButton(ps);
+    bool clickSetOffset = false;
+
+    if (!S_HideSetOffset) {
+        UI::SameLine();
+        UI::Dummy(vec2(10, 0));
+        UI::SameLine();
+        UI::AlignTextToFramePadding();
+        UI::Text("Set Ghosts Offset");
+        AddSimpleTooltip("This can be used to exceed the usual limits on ghosts.");
+        UI::SameLine();
+        UI::SetNextItemWidth(btnWidth * 3.0);
+        m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, lastLoadedGhostRaceTime == 0 ? 10000 : Math::Min(lastLoadedGhostRaceTime / 10, 60000));
+        m_NewGhostOffset = Math::Clamp(m_NewGhostOffset, 0, lastLoadedGhostRaceTime == 0 ? 9999999 : (lastLoadedGhostRaceTime * 2));
+        UI::SameLine();
+        clickSetOffset = UI::Button("Set Offset: " + Time::Format(m_NewGhostOffset));
+        UI::SameLine();
+        m_KeepGhostsWhenOffsetting = UI::Checkbox("Keep Existing?", m_KeepGhostsWhenOffsetting);
+        UI::SameLine();
+        UI::Dummy(vec2(10, 0));
+    }
+    // UI::SameLine();
 
     if (exit) {
         scrubberMgr.SetPlayback();
@@ -631,7 +639,7 @@ class ScrubberMgr {
             }
             Call_Ghosts_SetStartTime(ps, newStartTime);
         } else {
-            pauseAt = ps.Now - Math::Max(lastSetStartTime, lastSpawnTime);
+            pauseAt = ps.Now - Math::Min(ps.Now, lastGhostsStartOrSpawnTime);
         }
     }
 
