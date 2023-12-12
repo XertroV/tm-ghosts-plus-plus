@@ -25,11 +25,11 @@ namespace Inputs {
         RenderKey(upPos, keySize, Icons::AngleUp, vis.InputGasPedal);
         RenderKey(downPos, keySize, Icons::AngleDown, vis.InputIsBraking ? 1.0f : vis.InputBrakePedal);
 
-        RenderKey(leftPos, sideKeySize, Icons::AngleLeft, steerLeft, -1);
-        RenderKey(rightPos, sideKeySize, Icons::AngleRight, steerRight, 1);
+        RenderKey(leftPos, sideKeySize, Icons::AngleLeft, steerLeft, -1, S_ShowSteeringPct);
+        RenderKey(rightPos, sideKeySize, Icons::AngleRight, steerRight, 1, S_ShowSteeringPct);
     }
 
-    void RenderKey(const vec2 &in pos, const vec2 &in size, const string &in text, float value, int fillDir = 0) {
+    void RenderKey(const vec2 &in pos, const vec2 &in size, const string &in text, float value, int fillDir = 0, bool drawPct = false) {
         // float orientation = Math::ToRad(float(int(ty)) * Math::PI / 2.0);
         vec4 borderColor = Setting_Keyboard_BorderColor;
         if (fillDir == 0) {
@@ -75,11 +75,14 @@ namespace Inputs {
         nvg::StrokeColor(borderColor);
         nvg::Stroke();
 
+        drawPct = drawPct && value > 0.005 && value < 0.995;
+        auto fontSize = size.x / (drawPct ? 4.0 : 2.0);
+
         nvg::BeginPath();
         nvg::FontFace(g_NvgFont);
-        nvg::FontSize(size.x / 2);
+        nvg::FontSize(fontSize);
         nvg::FillColor(borderColor);
         nvg::TextAlign(nvg::Align::Middle | nvg::Align::Center);
-        nvg::TextBox(pos.x, pos.y + size.y / 2, size.x, text);
+        nvg::TextBox(pos.x, pos.y + size.y / 2, size.x, drawPct ? Text::Format("%.0f%%", value * 100.) : text);
     }
 }

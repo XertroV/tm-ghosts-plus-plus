@@ -54,6 +54,9 @@ bool S_ShowInputsWhileSpectatingGhosts = true;
 [Setting category="Ghost Inputs" name="Show Ghost Inputs when UI is hidden?"]
 bool S_ShowInputsWhenUIHidden = false;
 
+[Setting category="Ghost Inputs" name="Show Steering %?"]
+bool S_ShowSteeringPct = true;
+
 [Setting category="Ghost Inputs" name="Hide Ghost Inputs when only 1 ghost is loaded?" description="Because dashboard already shows it in this case."]
 bool S_HideInputsIfOnlyGhost = true;
 

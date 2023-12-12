@@ -52,7 +52,7 @@ bool _CGSHPI_CloseInGameMenu(CMwStack &in stack) {
     // having ghosts in the paused state can crash the game when exiting a map
     if (isExiting && scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.ResetAll();
-        trace("Reseting paused scrubber due to exit map");
+        trace("Reset paused scrubber due to exit map");
         // startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
     return true;

@@ -501,6 +501,7 @@ class ScrubberMgr {
         pauseAt = -1;
         ForceUnpause();
         SetPlayback();
+        DoUnpause();
         // warn("Reset, playback speed: " + Text::Format("%.7f", playbackSpeed));
     }
 
