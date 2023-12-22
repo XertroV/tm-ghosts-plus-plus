@@ -248,7 +248,7 @@ void SetCurrentGhostValues() {
 
 // ! clip pausing and unpausing moved to GhostClips.as
 
-
+// If spectating a ghost, return it's instance ID, otherwise return 0x0FF0000
 uint GetCurrentlySpecdGhostInstanceId(CSmArenaRulesMode@ ps) {
     if (ps is null) return 0x0FF00000;
     auto currInstIdOffset = GetOffset("CGamePlaygroundUIConfig", "SpectatorCamAutoLatitude") - 0x14;

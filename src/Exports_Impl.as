@@ -14,4 +14,20 @@ namespace Ghosts_PP {
         }
         return ghosts;
     }
+
+    bool IsSpectatingGhost() {
+        return ::IsSpectatingGhost();
+    }
+    uint GetSpectatingGhostInstanceId(CGameCtnApp@ app) {
+        return GetCurrentlySpecdGhostInstanceId(cast<CSmArenaRulesMode>(app.PlaygroundScript));
+    }
+    NGameGhostClips_SClipPlayerGhost@ GetGhostFromInstanceId(CGameCtnApp@ app, uint instanceId) {
+        auto mgr = GhostClipsMgr::Get(app);
+        if (mgr is null) return null;
+        return GhostClipsMgr::GetGhostFromInstanceId(mgr, instanceId);
+    }
+    uint GetGhostVisEntityId(NGameGhostClips_SClipPlayerGhost@ g) {
+        if (g is null) return 0x0FF00000;
+        return Dev::GetOffsetUint32(g, 0x0);
+    }
 }
