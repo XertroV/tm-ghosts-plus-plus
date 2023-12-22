@@ -523,7 +523,7 @@ class ScrubberMgr {
     void SetProgress(double setProg) {
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         pauseAt = setProg;
-        auto newStartTime = ps.Now - pauseAt;
+        auto newStartTime = pauseAt == 0.0 ? -1.0 : ps.Now - pauseAt;
         if (ps !is null) {
             Call_Ghosts_SetStartTime(ps, int(newStartTime));
         }

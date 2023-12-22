@@ -38,7 +38,7 @@ void SetGhostStartTimeToMatchPlayer() {
     if (ps is null || cp is null || cp.Players.Length == 0) return;
     auto p = cast<CSmPlayer>(cp.Players[0]);
     if (p is null) return;
-    Call_Ghosts_SetStartTime(ps, p.StartTime);
+    Call_Ghosts_SetStartTime(ps, -1);
 }
 
 bool _RespawnPlayer(CMwStack &in stack) {

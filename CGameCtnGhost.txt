@@ -1,0 +1,97 @@
+CGameCtnGhost
+
+
+0x2e0: CPlugEntRecordData
+
+
+CPlugEntRecordData
+race time: 32258
+
+
+0x20: buffer to something? weird memory
+- EntRecordDescs (7 elems)
+
+0x30: buffer to nat3s?
+- NoticeRecordDesc[] (79 / 0x4f elems)
+
+0x40:
+    - ptr -> to skip to another list thing
+    - looking for byte after to be 0x2
+
+0x40: ptr
+         - ptr -> into struct at 0x58 in parent
+         - 0x2, 0x0200000a (probs vehicle id)
+    0x10 - 0x0, 0xe704 = 32260 (time?)
+         - ptr -> +0x18 (PTR TO SAMPLES1!!)
+
+    0x20 - ptr -> far away (Samples2)
+            - ptr + 0x40
+            - 0x25=37 (type), 3760=0x0E0B (time)
+            - ptr + 0x10
+            - 0x1b=27 (len), 0x78=120
+            - vehicleId, float
+            - vec2
+            -
+         - 0, 0
+
+    # start of Samples1
+    0x30 - ptr-> +0x90 (next; null at end)
+         - 0xA, 0 (time, ?)
+    0x40 - +0x10 data
+         - len, [padded len + 8]
+         - data of len
+    // next elem
+
+
+
+sample1 datas:
+
+F1 17 FF 7F 9C 36 C1 98 73 9A EA 9B C7 9A 7F FF 00 00 00 7C 7F 00 7F 83 10 83 10 83 10 82 10 03 80 2A 00 00 00 00 00 00 00 01 00 53 33 00 00 5A 79 3F 43 CE CC 20 41 48 09 2B 44 F2 3C 1A 40 1A 00 22 0D 00 06 09 F9 7E 84 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 50 09 00 00 00 00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00 00
+
+
+
+
+(ptrs at 0x58 and 0x60 are same)
+
+0x58: ptr
+    - 0 0
+    - ptr
+    - 125899?, 32758 (total len?)
+    - ptr
+    - 0 0
+    - 6 0
+    - 0 32260 (last sample time?)
+    - ptr
+    - ptr
+    - 0 0
+    - 0 0
+    - a 0
+    - buffer? 0x24 0x78
+    - ffffffff 0
+    - 0 0
+    - 0x0FF00000, FFFFFFFF
+    - FFFFFFFF, 0x0FF00000
+    - 0 0
+    - ptr
+    - 0x4d 0x191e
+    - ptr / buf? x22 x78
+    - 0 0x1916
+
+0x60: ptr
+    lots of local pointers, and some vehicle stuff
+
+    0x8 - ptr + 0x18
+    0x18 - ptr to far away
+
+
+
+    0x168 - array (0x30 bytes large)
+        (Is this some kind of ent list? they are in triples and the time stamps match)
+        ptr -> vehicle id (0xd, 0x78)
+
+        vehicle ID, 0
+        time, 1 (0x32, 1)
+        ptr, next (+ 0x30)
+        time2, 0 (0x6e, 0 or vehicle id? ) (last time + 60ms)
+        ptr to next
+        0xd, 0x78
