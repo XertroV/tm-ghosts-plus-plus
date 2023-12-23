@@ -77,6 +77,9 @@ void DrawScrubber() {
     bool isSpectating = IsSpectatingGhost();
     auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
     if (ps is null) return;
+    auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
+    auto player = cp.Players.Length > 0 ? cast<CSmPlayer>(cp.Players[0]) : null;
+    auto playerStartTime = player !is null ? player.StartTime : 0;
     // don't show during finish sequence
     if (ps.UIManager.UIAll.UISequence == CGamePlaygroundUIConfig::EUISequence::Finish) return;
     if (IsPauseMenuOpen()) return;
@@ -167,8 +170,8 @@ void DrawScrubber() {
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
         bool ghostsNotVisible = !GetGhostVisibility();
 
-
-        double t = double(ps.Now - Math::Min(ps.Now, lastGhostsStartOrSpawnTime)) + scrubberMgr.subSecondOffset;
+        auto startTime = Math::Max(playerStartTime, lastGhostsStartOrSpawnTime);
+        double t = double(ps.Now - Math::Min(ps.Now, startTime)) + scrubberMgr.subSecondOffset;
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
             * (GetCurrFontSize() / 16.) * UI::GetScale();
@@ -192,15 +195,21 @@ void DrawScrubber() {
         }
 
         UI::SetNextItemWidth((UI::GetWindowContentRegionWidth() - btnWidthFull * nbBtns) / UI::GetScale());
-        maxTime = 0;
+        maxTime = 0.0;
         maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
-        maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime);
+        auto maxTimePre = maxTime;
+        // maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Min(maxTime, ps.Now);
         string labelTime = Time::Format(int64(Math::Abs(t) + lastSetGhostOffset));
         if (t < 0) labelTime = "-" + labelTime;
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
-            + (ghostsNotVisible ? " (Ghosts Off)" : "");
+            + (ghostsNotVisible ? " (Ghosts Off)" : "")
+            + ", " + lastSpectatedGhostRaceTime
+            + ", " + scrubberMgr.pauseAt
+            + ", " + lastLoadedGhostRaceTime
+            + ", " + maxTimePre
+            ;
         setProg = UI::SliderFloat("##ghost-scrub", setProg, 0, Math::Max(maxTime, t), fmtString);
         bool startedScrub = UI::IsItemClicked();
         clickTogglePause = (UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right)) || clickTogglePause;
@@ -261,7 +270,7 @@ void DrawScrubber() {
             // t += 10 * scrubberMgr.playbackSpeed;
             scrubberMgr.TogglePause(scrubberMgr.pauseAt + 10 * scrubberMgr.playbackSpeed);
         } else if ((t == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) / t * 1000. >= 1.0)) {
-            // trace('t and setProg different: ' + vec2(t, setProg).ToString());
+            trace('t and setProg different: ' + vec2(t, setProg).ToString());
             scrubberMgr.SetProgress(setProg);
             t = setProg;
         }
@@ -498,10 +507,10 @@ class ScrubberMgr {
     void ResetAll() {
         m_NewGhostOffset = 0;
         lastSetGhostOffset = 0;
-        pauseAt = -1;
         ForceUnpause();
         SetPlayback();
         DoUnpause();
+        pauseAt = 0;
         // warn("Reset, playback speed: " + Text::Format("%.7f", playbackSpeed));
     }
 
@@ -523,7 +532,7 @@ class ScrubberMgr {
     void SetProgress(double setProg) {
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         pauseAt = setProg;
-        auto newStartTime = pauseAt == 0.0 ? -1.0 : ps.Now - pauseAt;
+        auto newStartTime = setProg >= 0.0 ? ps.Now - pauseAt : -1.0; // pauseAt == 0.0 ? -1.0;
         if (ps !is null) {
             Call_Ghosts_SetStartTime(ps, int(newStartTime));
         }

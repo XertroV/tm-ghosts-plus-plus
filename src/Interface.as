@@ -226,7 +226,7 @@ class SaveGhostsTab : Tab {
         auto ghostPlayTime = int(ps.Now) - lastSetStartTime;
         // if we choose a ghost that has already finished, restart ghosts
         if (int(g.RaceTime) < ghostPlayTime) {
-            Call_Ghosts_SetStartTime(ps, -1); // was ps.Now
+            Call_Ghosts_SetStartTime(ps, ps.Now); // was ps.Now
         }
         g_BlockNextGhostsSetTimeAny = true;
 

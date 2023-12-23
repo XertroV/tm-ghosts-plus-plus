@@ -18,6 +18,7 @@ uint lastGhostsStartOrSpawnTime;
 bool _SpawnPlayer(CMwStack &in stack, CMwNod@ nod) {
     auto pg = cast<CSmArenaRulesMode>(nod);
     if (pg !is null) {
+        // todo, use start time instead
         lastSpawnTime = pg.Now;
         lastGhostsStartOrSpawnTime = lastSpawnTime;
     }
@@ -26,7 +27,7 @@ bool _SpawnPlayer(CMwStack &in stack, CMwNod@ nod) {
         g_BlockNextSpawnPlayer = false;
         return false;
     }
-    // warn("SpawnPlayer: resetting scrubber state");
+    warn("SpawnPlayer: resetting scrubber state");
     if (scrubberMgr !is null) scrubberMgr.ResetAll();
     startnew(SetGhostStartTimeToMatchPlayer);
     return true;
@@ -42,7 +43,7 @@ void SetGhostStartTimeToMatchPlayer() {
 }
 
 bool _RespawnPlayer(CMwStack &in stack) {
-    // warn("RespawnPlayer: resetting scrubber state");
+    warn("RespawnPlayer: resetting scrubber state");
     if (scrubberMgr !is null) scrubberMgr.ResetAll();
     return true;
 }
@@ -153,11 +154,13 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     }
 
     lastSetStartTime = ghostStartTime;
+    // lastGhostsStartOrSpawnTime = Math::Max(lastGhostsStartOrSpawnTime, ghostStartTime);
     lastGhostsStartOrSpawnTime = ghostStartTime;
     // print("ghosts set start time: " + ghostStartTime);
     if (lastSetStartTime < 0) {
         lastSetStartTime = ps.Now;
     }
+    trace('set start time');
     // trace('ghost set start time: ' + lastSetStartTime);
     return true;
 }
