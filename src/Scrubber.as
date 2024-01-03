@@ -78,6 +78,7 @@ void DrawScrubber() {
     auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
     if (ps is null) return;
     auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
+    if (cp is null) return;
     auto player = cp.Players.Length > 0 ? cast<CSmPlayer>(cp.Players[0]) : null;
     auto playerStartTime = player !is null ? player.StartTime : 0;
     // don't show during finish sequence
