@@ -220,22 +220,28 @@ vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSp
 // 0x1AC -> 0x1A4
 // 0x308 -> 0x300 (Audio Balance)
 // expect: offsets to decrease by 0x8
+// ! 2024-01-10_12_53
+// size 840 -> 824 (0x338)
+// 0x1A4 stays the same
+// 0x330 -> 0x320
+// expect upper offsets to decrease by 0x10
+
 
 // main offsets we touch
 uint16 O_GHOSTCLIPPLAYER_CURR_TIME = 0x1A4;
-uint16 O_GHOSTCLIPPLAYER_DO_MOTION_INTERP = 0x31C; // not correctly labeled, something to do with this but not exactly as named
-uint16 O_GHOSTCLIPPLAYER_TOTAL_TIME = 0x330;
-uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_3 = 0x334;
-uint16 O_GHOSTCLIPPLAYER_SMOOTH_PAUSE = 0x340;
+uint16 O_GHOSTCLIPPLAYER_DO_MOTION_INTERP = 0x30C; // not correctly labeled, something to do with this but not exactly as named
+uint16 O_GHOSTCLIPPLAYER_TOTAL_TIME = 0x320;
+uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_3 = 0x324;
+uint16 O_GHOSTCLIPPLAYER_SMOOTH_PAUSE = 0x330;
 
 // other offsets
-uint16 O_GHOSTCLIPPLAYER_FRAME_DELTA = 0x308;
-uint16 O_GHOSTCLIPPLAYER_CURR_TIME2 = 0x30C;
+uint16 O_GHOSTCLIPPLAYER_FRAME_DELTA = 0x2F8;
+uint16 O_GHOSTCLIPPLAYER_CURR_TIME2 = 0x2FC;
 uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_1 = 0x1A8;
-uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_2 = 0x310;
-uint16 O_GHOSTCLIPPLAYER_START_TIME = 0x318;
+uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_2 = 0x300;
+uint16 O_GHOSTCLIPPLAYER_START_TIME = 0x308;
 // editing this toggles the play/pause button in MT but does not actually pause playback. maybe it is a flat like CanPause
-uint16 O_GHOSTCLIPPLAYER_IS_PLAYING = 0x31C;
+uint16 O_GHOSTCLIPPLAYER_IS_PLAYING = 0x30C;
 
 
 string[] GetGhostClipPlayerDebugValues(CGameCtnMediaClipPlayer@ player) {
