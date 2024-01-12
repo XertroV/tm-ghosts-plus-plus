@@ -8,6 +8,7 @@ UI::Font@ g_fontStd;
 UI::Font@ g_fontBold;
 UI::Font@ g_fontLarge;
 UI::Font@ g_fontLarger;
+UI::Font@ g_fontMono;
 
 void Main() {
     trace('ghosts++ checking permissions');
@@ -48,6 +49,7 @@ void LoadFonts() {
     @g_fontBold = UI::LoadFont("DroidSans-bold.ttf");
     @g_fontLarge = UI::LoadFont("DroidSans.ttf", 20.);
     @g_fontLarger = UI::LoadFont("DroidSans.ttf", 26.);
+    @g_fontMono = UI::LoadFont("DroidSansMono.ttf", 16.);
 }
 
 void InitGP() {
@@ -69,7 +71,8 @@ void InitGP() {
 
     SetCurrentGhostValues();
     startnew(WatchAndRemoveFadeOut);
-    g_SaveGhostTab.StartWatchGhostsLoopLoop();
+    if (IsSpectatingGhost())
+        g_SaveGhostTab.StartWatchGhostsLoopLoop();
     trace('init done');
     g_Initialized = true;
 }

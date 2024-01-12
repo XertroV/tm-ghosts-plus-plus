@@ -14,7 +14,7 @@ void SetupIntercepts() {
 
 bool g_BlockNextSpawnPlayer;
 uint lastSpawnTime;
-uint lastGhostsStartOrSpawnTime;
+int lastGhostsStartOrSpawnTime;
 bool _SpawnPlayer(CMwStack &in stack, CMwNod@ nod) {
     auto pg = cast<CSmArenaRulesMode>(nod);
     if (pg !is null) {
@@ -29,6 +29,7 @@ bool _SpawnPlayer(CMwStack &in stack, CMwNod@ nod) {
     }
     warn("SpawnPlayer: resetting scrubber state");
     if (scrubberMgr !is null) scrubberMgr.ResetAll();
+    startnew(CoroutineFunc(scrubberMgr.ResetAll));
     startnew(SetGhostStartTimeToMatchPlayer);
     return true;
 }
@@ -70,6 +71,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
     // ! sometimes a null ptr exception is thrown here
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
+        trace("Starting DoPause soon b/c adding ghost");
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
 
@@ -98,6 +100,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
 bool _Ghost_AddWaypointSynced(CMwStack &in stack) {
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
+        trace("Starting DoPause soon b/c _Ghost_AddWaypointSynced");
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
     return true;
@@ -107,6 +110,7 @@ bool _Ghost_Remove(CMwStack &in stack) {
     // having ghosts in the paused state can crash the game when removing a ghost
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
+        trace("Starting DoPause soon b/c _Ghost_Remove");
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
     startnew(Update_ML_SyncAll);
@@ -117,6 +121,7 @@ bool _Ghost_RemoveAll(CMwStack &in stack) {
     // having ghosts in the paused state can crash the game when removing a ghost
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
+        trace("Starting DoPause soon b/c _Ghost_RemoveAll");
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
     return true;
@@ -130,6 +135,7 @@ uint lastBlockedSetStartTimeNow = 1;
 int lastSetStartTime = 5000;
 bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     auto ghostStartTime = stack.CurrentInt(0);
+    log_debug("ghosts set start time: " + ghostStartTime);
     // if (false && g_BlockNextGhostsSetTimeReset && int(ghostStartTime) < 0) {
     //     warn("blocking ghost SetStartTime reset");
     //     g_BlockNextGhostsSetTimeReset = false;
@@ -156,18 +162,14 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     lastSetStartTime = ghostStartTime;
     // lastGhostsStartOrSpawnTime = Math::Max(lastGhostsStartOrSpawnTime, ghostStartTime);
     lastGhostsStartOrSpawnTime = ghostStartTime;
-    // print("ghosts set start time: " + ghostStartTime);
-    if (lastSetStartTime < 0) {
-        lastSetStartTime = ps.Now;
-    }
-    trace('set start time');
-    // trace('ghost set start time: ' + lastSetStartTime);
+    log_debug('set start time: ' + lastSetStartTime);
     return true;
 }
 
 void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, int startTime) {
     g_BlockAllGhostsSetTimeNow = false;
     ps.Ghosts_SetStartTime(startTime);
+    log_debug("ghosts call set start time: " + startTime);
     g_BlockAllGhostsSetTimeNow = true;
 }
 

@@ -263,14 +263,16 @@ class SaveGhostsTab : Tab {
                 yield();
             }
             if (!IsSpectatingGhost()) break;
+            // TODO: this might set ghosts paused in wrong context
             try {
                 if (scrubberMgr !is null && !scrubberMgr.IsPaused) {
                     if (!scrubberMgr.IsStdPlayback) {
                         scrubberMgr.DoUnpause();
+                        trace('DoPause soon because !IsStdPlayback');
                         startnew(CoroutineFunc(scrubberMgr.DoPause));
                         EngineSounds::SetEngineSoundVdBFromSettings_SpawnCoro();
                     }
-                    scrubberMgr.SetProgress(0);
+                    scrubberMgr.SetProgress(0.001);
                 }
             } catch {
                 // can get a null ptr exception here (from mlhook, but from this code) if we reload the plugin and the loop is active

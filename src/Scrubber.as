@@ -23,7 +23,7 @@ float S_ScrubberBgAlpha = 1.0;
 vec4 S_TextColor = vec4(1);
 
 enum Font {
-    Std = 0, Bold = 1, Large = 2, Larger = 3
+    Std = 0, Bold = 1, Large = 2, Larger = 3, Mono = 4
 }
 
 [Setting category="Scrubber Size / Pos" name="Font Size"]
@@ -40,12 +40,16 @@ bool S_NeverHideScrubber = false;
 
 
 
+bool g_ThrowOnDoPause = false;
+
+
 
 UI::Font@ GetCurrFont() {
     if (S_FontSize == Font::Std) return g_fontStd;
     if (S_FontSize == Font::Bold) return g_fontBold;
     if (S_FontSize == Font::Large) return g_fontLarge;
     if (S_FontSize == Font::Larger) return g_fontLarger;
+    if (S_FontSize == Font::Mono) return g_fontMono;
     return g_fontStd;
 }
 
@@ -54,6 +58,7 @@ float GetCurrFontSize() {
     if (S_FontSize == Font::Bold) return 16.;
     if (S_FontSize == Font::Large) return 20.;
     if (S_FontSize == Font::Larger) return 26.;
+    if (S_FontSize == Font::Mono) return 16.;
     return 16.;
 }
 
@@ -70,6 +75,7 @@ bool IsPauseMenuOpen() {
 float maxTime = 0.;
 uint lastHover;
 bool showAdvanced = false;
+uint oneTimeLog = 0;
 
 void DrawScrubber() {
     if (!S_ScrubberWhenOverlayOff && !UI::IsOverlayShown()) return;
@@ -171,8 +177,13 @@ void DrawScrubber() {
     if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
         bool ghostsNotVisible = !GetGhostVisibility();
 
+        // if (oneTimeLog < 2) {
+        //     warn("OTL: scrubber pauseAt: " + scrubberMgr.pauseAt);
+        //     oneTimeLog++;
+        // }
+
         auto startTime = Math::Max(playerStartTime, lastGhostsStartOrSpawnTime);
-        double t = double(ps.Now - Math::Min(ps.Now, startTime)) + scrubberMgr.subSecondOffset;
+        double t = double(float(ps.Now) - startTime) + scrubberMgr.subSecondOffset;
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
             * (GetCurrFontSize() / 16.) * UI::GetScale();
@@ -206,10 +217,6 @@ void DrawScrubber() {
         if (t < 0) labelTime = "-" + labelTime;
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
             + (ghostsNotVisible ? " (Ghosts Off)" : "")
-            + ", " + lastSpectatedGhostRaceTime
-            + ", " + scrubberMgr.pauseAt
-            + ", " + lastLoadedGhostRaceTime
-            + ", " + maxTimePre
             ;
         setProg = UI::SliderFloat("##ghost-scrub", setProg, 0, Math::Max(maxTime, t), fmtString);
         bool startedScrub = UI::IsItemClicked();
@@ -224,6 +231,23 @@ void DrawScrubber() {
 
         // bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
         bool toggleAdv = UI::Button(Icons::Cogs + "##scrubber-toggle-adv", vec2(btnWidth, 0));
+
+#if DEV
+        // dev label below
+        UI::PushFont(g_fontMono);
+        UI::Text("[DEV] lsgrt:" + lastSpectatedGhostRaceTime
+            + ", llgrt:" + lastLoadedGhostRaceTime
+            + ", lsst:" + lastSetStartTime
+            + ", lgsost:" + lastGhostsStartOrSpawnTime
+            + ", startTime: " + startTime
+            + ", mtp:" + maxTimePre
+            + ", pauseAt: " + scrubberMgr.pauseAt
+            + ", setProg: " + setProg
+            + ", ps.Now: " + ps.Now
+            );
+        // g_ThrowOnDoPause = UI::Checkbox("Throw on DoPause", g_ThrowOnDoPause);
+        UI::PopFont();
+#endif
 
         bool shouldSoftenEngineSounds = scrubberMgr.IsPaused || scrubberMgr.playbackSpeed < 0.5 || scrubberMgr.isScrubbing;
         if (shouldSoftenEngineSounds) {
@@ -269,9 +293,12 @@ void DrawScrubber() {
         if (clickTogglePause) {
             // makes pausing smoother
             // t += 10 * scrubberMgr.playbackSpeed;
-            scrubberMgr.TogglePause(scrubberMgr.pauseAt + 10 * scrubberMgr.playbackSpeed);
-        } else if ((t == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) / t * 1000. >= 1.0)) {
-            trace('t and setProg different: ' + vec2(t, setProg).ToString());
+            scrubberMgr.TogglePause(scrubberMgr.pauseAt + 5.0 * scrubberMgr.playbackSpeed);
+        } else if (lastSetStartTime < 0 && !scrubberMgr.isScrubbing) {
+            // do nothing b/c auto time, but update pauseAt so scrubber shows time correctly
+            scrubberMgr.pauseAt = t;
+        } else if ((t == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) > 20)) {
+            log_debug('t and setProg different: ' + vec2(t, setProg).ToString() + "; " + ps.Now + ", " + playerStartTime + ", " + lastGhostsStartOrSpawnTime);
             scrubberMgr.SetProgress(setProg);
             t = setProg;
         }
@@ -355,7 +382,7 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
         scrubberMgr.SetPlayback();
         ExitSpectatingGhostAndCleanUp();
     }
-    if (reset) setProg = 0;
+    if (reset) setProg = 0.0001;
     if (stepBack || stepFwd) {
         if (scrubberMgr.IsPaused) {
             float progDelta = 10.0 * Math::Abs(scrubberMgr.playbackSpeed);
@@ -490,7 +517,9 @@ class ScrubberMgr {
         if (ps is null) return;
         auto mgr = GhostClipsMgr::Get(app);
         if (mgr is null) return;
-        pauseAt = ps.Now - GhostClipsMgr::GetCurrentGhostTime(mgr);
+        auto lastGhostStartTime = GhostClipsMgr::GetCurrentGhostTime(mgr);
+        if (lastGhostStartTime > 0) pauseAt = ps.Now - lastGhostStartTime;
+        log_debug("ScubberMgr init pauseAt: " + pauseAt);
     }
 
     bool get_IsPaused() {
@@ -506,12 +535,17 @@ class ScrubberMgr {
     }
 
     void ResetAll() {
+        trace("Scrubber: ResetAll");
         m_NewGhostOffset = 0;
         lastSetGhostOffset = 0;
-        ForceUnpause();
-        SetPlayback();
-        DoUnpause();
         pauseAt = 0;
+        isScrubbing = false;
+        isScrubbingShouldUnpause = false;
+        SetPlaybackSpeed(1.0, true);
+        if (IsPaused) TogglePause(0);
+        ForceUnpause();
+        SetProgress(-1);
+        DoUnpause();
         // warn("Reset, playback speed: " + Text::Format("%.7f", playbackSpeed));
     }
 
@@ -521,6 +555,7 @@ class ScrubberMgr {
     }
 
     void TogglePause(double setProg) {
+        trace("TogglePause: " + setProg);
         pauseAt = setProg;
         if (IsPaused) {
             mode = playbackSpeed == 1.0 ? ScrubberMode::Playback : ScrubberMode::CustomSpeed;
@@ -531,15 +566,22 @@ class ScrubberMgr {
     }
 
     void SetProgress(double setProg) {
+        // trace("SetProgress: " + setProg);
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         pauseAt = setProg;
+        // setting to -1 will sync to player
         auto newStartTime = setProg >= 0.0 ? ps.Now - pauseAt : -1.0; // pauseAt == 0.0 ? -1.0;
+        if (pauseAt < 0.0) pauseAt = 0.0;
         if (ps !is null) {
             Call_Ghosts_SetStartTime(ps, int(newStartTime));
         }
         if (!IsStdPlayback || !unpausedFlag) {
+            log_debug("pause via setprog: " + IsStdPlayback + ", " + unpausedFlag);
             auto mgr = GhostClipsMgr::Get(GetApp());
-            GhostClipsMgr::PauseClipPlayers(mgr, setProg / 1000.);
+            GhostClipsMgr::PauseClipPlayers(mgr, pauseAt / 1000.);
+        } else {
+            // auto mgr = GhostClipsMgr::Get(GetApp());
+            // GhostClipsMgr::UnpauseClipPlayers(mgr, pauseAt / 1000.);
         }
         subSecondOffset = pauseAt > 0
                         ? pauseAt - Math::Floor(pauseAt)
@@ -554,12 +596,15 @@ class ScrubberMgr {
     // this flag is for Update() -- it should not advance car positions if unpausedFlag == true. We start with it true as it's only false when paused or custom speed
     bool unpausedFlag = true;
     void DoUnpause() {
+        log_debug("DoUnpause");
         auto mgr = GhostClipsMgr::Get(GetApp());
         if (mgr is null) return;
         GhostClipsMgr::UnpauseClipPlayers(mgr, pauseAt / 1000., float(GhostClipsMgr::GetMaxGhostDuration(mgr)) / 1000.);
         unpausedFlag = true;
     }
     void DoPause() {
+        log_debug("DoPause");
+        // if (g_ThrowOnDoPause) throw("g_ThrowOnDoPause");
         auto mgr = GhostClipsMgr::Get(GetApp());
         if (mgr is null) return;
         GhostClipsMgr::PauseClipPlayers(mgr, pauseAt / 1000.);
@@ -567,6 +612,7 @@ class ScrubberMgr {
     }
 
     void SetPaused(double pgGhostProgTime, bool setMode = false) {
+        log_debug("SetPaused: " + pgGhostProgTime);
         pauseAt = pgGhostProgTime;
         if (setMode) {
             mode = ScrubberMode::Paused;
@@ -642,26 +688,35 @@ class ScrubberMgr {
         } else if (!unpausedFlag && !isScrubbing && IsCustPlayback) {
             auto td = GhostClipsMgr::AdvanceClipPlayersByDelta(mgr, playbackSpeed);
             if (td.x < 0) {
-                pauseAt = ps.Now;
-                GhostClipsMgr::PauseClipPlayers(mgr, 0.0);
+                pauseAt = 0.0;
+                DoPause();
+                log_debug("td.x < 0: setting pause to ps.Now: " + pauseAt);
             } else {
                 pauseAt = double(td.x) * 1000.;
                 subSecondOffset = pauseAt - Math::Floor(pauseAt);
+                log_debug("td.x >= 0: setting pause to: " + pauseAt);
             }
             Call_Ghosts_SetStartTime(ps, newStartTime);
         } else {
-            pauseAt = ps.Now - Math::Min(ps.Now, lastGhostsStartOrSpawnTime);
+            if (lastGhostsStartOrSpawnTime > 0 && lastSetStartTime > 0) {
+                pauseAt = ps.Now - Math::Min(ps.Now, lastGhostsStartOrSpawnTime);
+                if (false) {
+                    log_debug("lastGhostsStartOrSpawnTime: " + lastGhostsStartOrSpawnTime);
+                    log_debug("lastSetStartTime: " + lastSetStartTime);
+                    log_debug("setting pause at at end of scrubber update loop: " + pauseAt);
+                }
+            }
         }
     }
 
     bool isScrubbing = false;
     bool isScrubbingShouldUnpause = false;
+    // enable smooth scrubbing
     void StartScrubWatcher() {
         if (IsPaused) return;
         isScrubbing = true;
         isScrubbingShouldUnpause = IsStdPlayback;
-        if (isScrubbingShouldUnpause)
-            DoPause();
+        if (isScrubbingShouldUnpause) DoPause();
         startnew(CoroutineFunc(this.ScrubWatcher));
     }
 

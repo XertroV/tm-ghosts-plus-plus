@@ -4,6 +4,6 @@ float CSmArenaRules_GetGhostAlpha(CSmArenaRules@ arenaRules) {
     return Dev::GetOffsetFloat(arenaRules, O_CSMARENARULES_MAXGHOSTALPHA);
 }
 
-float CSmArenaRules_SetGhostAlpha(CSmArenaRules@ arenaRules, float maxGhostAlpha) {
-    return Dev::SetOffset(arenaRules, O_CSMARENARULES_MAXGHOSTALPHA, maxGhostAlpha);
+void CSmArenaRules_SetGhostAlpha(CSmArenaRules@ arenaRules, float maxGhostAlpha) {
+    Dev::SetOffset(arenaRules, O_CSMARENARULES_MAXGHOSTALPHA, maxGhostAlpha);
 }
