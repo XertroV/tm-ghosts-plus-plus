@@ -80,14 +80,17 @@ void InitGP() {
 bool g_Initialized = false;
 
 void Unload() {
-    trace('unloading ghosts++ #1 paused');
-    // if (scrubberPaused) GhostClipsMgr::UnpauseClipPlayers(GhostClipsMgr::Get(GetApp()), 0., 60.0);
-    if (scrubberMgr !is null)
-        scrubberMgr.ResetAll();
-    trace('unloading ghosts++ #2 mlhook');
-    MLHook::UnregisterMLHooksAndRemoveInjectedML();
-    trace('unloading ghosts++ #3 done');
-    EngineSounds::Unapply();
+    // nothing to do if game version is not safe, moreover, we might accidentally call unsafe stuff if we do it in this situation
+    if (GameVersionSafe) {
+        trace('unloading ghosts++ #1 paused');
+        // if (scrubberPaused) GhostClipsMgr::UnpauseClipPlayers(GhostClipsMgr::Get(GetApp()), 0., 60.0);
+        if (scrubberMgr !is null)
+            scrubberMgr.ResetAll();
+        trace('unloading ghosts++ #2 mlhook');
+        MLHook::UnregisterMLHooksAndRemoveInjectedML();
+        trace('unloading ghosts++ #3 done');
+        EngineSounds::Unapply();
+    }
 }
 void OnDestroyed() { Unload(); }
 void OnDisabled() { Unload(); }
