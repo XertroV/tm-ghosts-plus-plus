@@ -541,6 +541,7 @@ class ScrubberMgr {
         pauseAt = 0;
         isScrubbing = false;
         isScrubbingShouldUnpause = false;
+        _pbSpeed = PlaybackSpeeds::x1;
         SetPlaybackSpeed(1.0, true);
         if (IsPaused) TogglePause(0);
         ForceUnpause();
