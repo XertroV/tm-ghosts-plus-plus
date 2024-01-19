@@ -44,6 +44,20 @@ void Main() {
 #endif
 }
 
+// startnew(TestForceGhostAlpha).WithRunContext(Meta::RunContext::AfterMainLoop);
+void TestForceGhostAlpha() {
+    auto app = GetApp();
+    while (true) {
+        yield();
+        if (app.PlaygroundScript !is null) continue;
+        auto cp = cast<CSmArenaClient>(app.CurrentPlayground);
+        if (cp is null) continue;
+        if (cp.Arena is null) continue;
+        if (cp.Arena.Rules is null) continue;
+        CSmArenaRules_SetGhostAlpha(cp.Arena.Rules, 1.0);
+    }
+}
+
 void LoadFonts() {
     @g_fontStd = UI::LoadFont("DroidSans.ttf", 16., -1, -1, true, true, true);
     @g_fontBold = UI::LoadFont("DroidSans-bold.ttf");

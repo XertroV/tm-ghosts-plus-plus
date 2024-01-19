@@ -6,3 +6,6 @@ namespace Ghosts_PP {
     import NGameGhostClips_SClipPlayerGhost@ GetGhostFromInstanceId(CGameCtnApp@ app, uint instanceId) from "Ghosts_PP";
     import uint GetGhostVisEntityId(NGameGhostClips_SClipPlayerGhost@ g) from "Ghosts_PP";
 }
+
+import float CSmArenaRules_GetGhostAlpha(CSmArenaRules@ arenaRules) from "Ghosts_PP";
+import void CSmArenaRules_SetGhostAlpha(CSmArenaRules@ arenaRules, float maxGhostAlpha) from "Ghosts_PP";
