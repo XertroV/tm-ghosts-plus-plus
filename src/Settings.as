@@ -26,7 +26,7 @@ bool S_DrawLetterboxBars = false;
 bool S_SoftenEngineSounds = true;
 
 [Setting category="General" name="Volume DB: Engine Sounds when Scrubbing" min=-60 max=0]
-float S_EngineSoundsDB = -30.;
+float S_EngineSoundsDB = -20.;
 
 // [Setting category="General" name="Swap the play/pause button with the reset ghosts button"]
 // bool S_SwapPauseAndRestart = false;

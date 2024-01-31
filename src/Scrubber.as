@@ -251,7 +251,7 @@ void DrawScrubber() {
 
         bool shouldSoftenEngineSounds = scrubberMgr.IsPaused || scrubberMgr.playbackSpeed <= 0.5 || scrubberMgr.isScrubbing;
         if (shouldSoftenEngineSounds && S_SoftenEngineSounds) {
-            if (EngineSounds::Apply()) EngineSounds::SetEngineSoundVdB_SpawnCoro_Debounced((Math::Clamp(scrubberMgr.playbackSpeed, 0.1, 1.0) - 0.1));
+            if (EngineSounds::Apply()) EngineSounds::SetEngineSoundVdB_SpawnCoro_Debounced((Math::Clamp(scrubberMgr.playbackSpeed, 0.1, 0.8) - 0.1));
         } else {
             EngineSounds::Unapply();
         }
