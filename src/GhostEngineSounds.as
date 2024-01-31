@@ -6,7 +6,7 @@ namespace EngineSounds {
     bool applied;
 
     bool Apply() {
-        if (applied) return false;
+        if (applied) return true;
         if (setVolumePtr == 0) setVolumePtr = Dev::FindPattern(CAudioSourceEngine_SetVolumeDB_Pattern);
         if (setVolumePtr == 0) return false;
         setVolumeOrigBytes = Dev::Patch(setVolumePtr, "90 90 90 90");
@@ -35,5 +35,14 @@ namespace EngineSounds {
 
     void SetEngineSoundVdBFromSettings_SpawnCoro() {
         startnew(CoroutineFuncUserdataDouble(EngineSounds::SetEngineSoundVolumeDB), S_EngineSoundsDB);
+    }
+
+    uint lastSetEngineSounds = 0;
+    void SetEngineSoundVdB_SpawnCoro_Debounced(float lerp_t) {
+        if (lastSetEngineSounds + 100 < Time::Now) {
+            double setDb = Math::Lerp(S_EngineSoundsDB, 0.0, Math::Clamp(lerp_t * lerp_t, 0.0, 1.0));
+            lastSetEngineSounds = Time::Now;
+            startnew(CoroutineFuncUserdataDouble(EngineSounds::SetEngineSoundVolumeDB), setDb);
+        }
     }
 }

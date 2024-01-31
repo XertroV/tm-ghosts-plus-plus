@@ -13,3 +13,32 @@ void DrawTextWithStroke(const vec2 &in pos, const string &in text, vec4 textColo
     nvg::FillColor(textColor);
     nvg::Text(pos, text);
 }
+
+// int g_nvgFont = nvg::LoadFont("DroidSans-Bold.ttf");
+// const float TAU = 6.283185307179586;
+
+const vec4 c_black = vec4(0, 0, 0, 1);
+const vec4 c_transparent = vec4(0);
+const vec4 c_half_transparent = vec4(1, 1, 1, .5);
+const vec4 c_white = vec4(1);
+const vec4 c_red = vec4(1, 0, 0, 1);
+const vec4 c_green = vec4(0, 1, 0, 1);
+const vec4 c_blue = vec4(0, 0, 1, 1);
+
+void DrawDebugRect(vec2 pos, vec2 size, vec4 col = vec4(1, .5, 0, 1)) {
+    nvg::BeginPath();
+    nvg::Rect(pos, size);
+    nvg::StrokeColor(col);
+    nvg::Stroke();
+    nvg::ClosePath();
+}
+
+void DrawDebugCircle(vec2 pos, vec2 size, vec4 col = vec4(1, .5, 0, 1)) {
+    nvg::BeginPath();
+    nvg::Ellipse(pos, size.x, size.y);
+    nvg::StrokeColor(col);
+    nvg::Stroke();
+    nvg::FillColor(col * c_half_transparent);
+    nvg::Fill();
+    nvg::ClosePath();
+}

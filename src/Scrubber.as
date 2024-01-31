@@ -249,9 +249,9 @@ void DrawScrubber() {
         UI::PopFont();
 #endif
 
-        bool shouldSoftenEngineSounds = scrubberMgr.IsPaused || scrubberMgr.playbackSpeed < 0.5 || scrubberMgr.isScrubbing;
-        if (shouldSoftenEngineSounds) {
-            if (EngineSounds::Apply()) EngineSounds::SetEngineSoundVolumeDB(S_EngineSoundsDB);
+        bool shouldSoftenEngineSounds = scrubberMgr.IsPaused || scrubberMgr.playbackSpeed <= 0.5 || scrubberMgr.isScrubbing;
+        if (shouldSoftenEngineSounds && S_SoftenEngineSounds) {
+            if (EngineSounds::Apply()) EngineSounds::SetEngineSoundVdB_SpawnCoro_Debounced((Math::Clamp(scrubberMgr.playbackSpeed, 0.1, 1.0) - 0.1));
         } else {
             EngineSounds::Unapply();
         }
@@ -290,7 +290,7 @@ void DrawScrubber() {
         //     dragY = Math::Max(1, Math::Abs(dragY));
         //     auto dyl = sign * Math::Pow(Math::Log(dragY) / Math::Log(100.), 10.);
         //     scrubberMgr.SetPlaybackSpeed(dyl, !scrubberMgr.IsPaused);
-        if (clickTogglePause) {
+        if (clickTogglePause && !scrubberMgr.isScrubbing) {
             // makes pausing smoother
             // t += 10 * scrubberMgr.playbackSpeed;
             scrubberMgr.TogglePause(scrubberMgr.pauseAt + 5.0 * scrubberMgr.playbackSpeed);
@@ -304,6 +304,18 @@ void DrawScrubber() {
         }
         if (changeCurrSpeed || currSpeedBw) {
             scrubberMgr.CyclePlaybackSpeed(currSpeedBw);
+        }
+
+        // update hover with actual window size to cover advanced being open
+
+        auto wpos = UI::GetWindowPos();
+        auto wsize = UI::GetWindowSize();
+        if (Within(UI::GetMousePos(), vec4(wpos, wsize))) {
+#if DEV
+            DrawDebugRect(wpos, wsize, c_red);
+            DrawDebugCircle(UI::GetMousePos(), vec2(10.), c_green);
+#endif
+            lastHover = Time::Now;
         }
     }
     UI::End();
@@ -356,8 +368,10 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     UI::EndDisabled();
     UI::SameLine();
     DrawUnlockTimelineButton(ps);
-    bool clickSetOffset = false;
+    UI::SameLine();
+    DrawGhostOpacityControls();
 
+    bool clickSetOffset = false;
     if (!S_HideSetOffset) {
         UI::SameLine();
         UI::Dummy(vec2(10, 0));
@@ -714,7 +728,7 @@ class ScrubberMgr {
     bool isScrubbingShouldUnpause = false;
     // enable smooth scrubbing
     void StartScrubWatcher() {
-        if (IsPaused) return;
+        // if (IsPaused) return;
         isScrubbing = true;
         isScrubbingShouldUnpause = IsStdPlayback;
         if (isScrubbingShouldUnpause) DoPause();

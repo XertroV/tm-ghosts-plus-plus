@@ -211,7 +211,7 @@ class SaveGhostsTab : Tab {
         if (ps is null) throw("null playground script");
         auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
 
-        if (S_SetGhostAlphaTo1) ps.Ghosts_SetMaxAlpha(1.0);
+        if (S_SetGhostAlphaTo1) ps.Ghosts_SetMaxAlpha(S_GhostOpactiySolo);
         g_SaveGhostTab.StartWatchGhostsLoopLoop();
 
         // auto cmap = GetApp().Network.ClientManiaAppPlayground;

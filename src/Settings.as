@@ -19,9 +19,6 @@ bool S_ShowSaveNotifications = true;
 [Setting category="General" name="Enable in Editor"]
 bool S_EnableInEditor = false;
 
-[Setting category="General" name="Set Ghosts Maximum Alpha to Opaque"]
-bool S_SetGhostAlphaTo1 = false;
-
 [Setting category="General" name="Draw Letterbox Bars (hides gliched gfx)"]
 bool S_DrawLetterboxBars = false;
 
@@ -29,7 +26,7 @@ bool S_DrawLetterboxBars = false;
 bool S_SoftenEngineSounds = true;
 
 [Setting category="General" name="Volume DB: Engine Sounds when Scrubbing" min=-60 max=0]
-float S_EngineSoundsDB = -10.;
+float S_EngineSoundsDB = -30.;
 
 // [Setting category="General" name="Swap the play/pause button with the reset ghosts button"]
 // bool S_SwapPauseAndRestart = false;
@@ -92,3 +89,27 @@ float Setting_Keyboard_Spacing = 10.0f;
 
 [Setting category="Ghost Inputs" name="Inactive alpha" drag min=0 max=1]
 float Setting_Keyboard_InactiveAlpha = 0.4f;
+
+[Setting category="Ghost Opactiy" name="Solo: Set Ghost Opacity?"]
+bool S_SetGhostAlphaTo1 = false;
+
+[Setting category="Ghost Opactiy" name="Online: Set Ghost Opacity?"]
+bool S_GhostOpactiyOverrideOnline = false;
+
+[Setting category="Ghost Opactiy" name="Ghost Opacity Override (TimeAttack)" min=0 max=1 drag]
+float S_GhostOpactiyTimeAttack = 0.9;
+
+[Setting category="Ghost Opactiy" name="Ghost Opacity Override (Solo)" min=0 max=1 drag]
+float S_GhostOpactiySolo = 0.9;
+
+void DrawGhostOpacityControls(bool compact = false) {
+	S_GhostOpactiyOverrideOnline = UI::Checkbox(compact ? "##setghostopac" : "Set Ghost Opacity", S_GhostOpactiyOverrideOnline);
+	if (compact) AddSimpleTooltip("Set Ghost Opactiy");
+	UI::SameLine();
+	UI::PushItemWidth(75);
+	UI::BeginDisabled(!S_GhostOpactiyOverrideOnline);
+	S_GhostOpactiySolo = UI::SliderFloat("##ghostopac", S_GhostOpactiySolo, 0, 1);
+	UI::EndDisabled();
+	UI::PopItemWidth();
+	// if (S_GhostOpactiyOverrideOnline) S_GhostOpactiyTimeAttack = S_GhostOpactiySolo;
+}

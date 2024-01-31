@@ -40,6 +40,8 @@ void Main() {
         @g_GhostFinder = GhostFinder();
     }
 
+    startnew(ForceGhostAlphaLoop).WithRunContext(Meta::RunContext::AfterMainLoop);
+
 #if FALSE
     startnew(RunGhostTest);
 #endif
@@ -57,18 +59,42 @@ void CheckMLFeedEnabled() {
     }
 }
 
-// startnew(TestForceGhostAlpha).WithRunContext(Meta::RunContext::AfterMainLoop);
-void TestForceGhostAlpha() {
+// startnew(ForceGhostAlphaLoop).WithRunContext(Meta::RunContext::AfterMainLoop);
+void ForceGhostAlphaLoop() {
     auto app = GetApp();
     while (true) {
         yield();
-        if (app.PlaygroundScript !is null) continue;
-        auto cp = cast<CSmArenaClient>(app.CurrentPlayground);
-        if (cp is null) continue;
-        if (cp.Arena is null) continue;
-        if (cp.Arena.Rules is null) continue;
-        CSmArenaRules_SetGhostAlpha(cp.Arena.Rules, 1.0);
+        if (!S_GhostOpactiyOverrideOnline && !S_SetGhostAlphaTo1) {
+            sleep(91); continue;
+        }
+        if (S_SetGhostAlphaTo1 && app.PlaygroundScript !is null) {
+            // persists, so don't need to do this very often
+            cast<CSmArenaRulesMode>(app.PlaygroundScript).Ghosts_SetMaxAlpha(S_GhostOpactiySolo);
+            sleep(131); continue;
+        } else if (S_GhostOpactiyOverrideOnline && app.CurrentPlayground !is null) {
+            auto net = app.Network;
+            auto si = cast<CTrackManiaNetworkServerInfo>(net.ServerInfo);
+            // only enable for time attack, otherwise it affects royal, etc.
+            if (!IsTimeAttackDebounced(si)) {
+                sleep(91); continue;
+            }
+            // need to set this every frame
+            auto cp = cast<CSmArenaClient>(app.CurrentPlayground);
+            if (cp is null) continue;
+            if (cp.Arena is null) continue;
+            if (cp.Arena.Rules is null) continue;
+            CSmArenaRules_SetGhostAlpha(cp.Arena.Rules, S_GhostOpactiyTimeAttack);
+        }
     }
+}
+
+uint lastTaCheck = 0;
+bool lastTaCheckResult = false;
+bool IsTimeAttackDebounced(CTrackManiaNetworkServerInfo@ si) {
+    if (lastTaCheck + 1000 > Time::Now) return lastTaCheckResult;
+    lastTaCheck = Time::Now;
+    lastTaCheckResult = si.CurGameModeStr == "TM_TimeAttack_Online";
+    return lastTaCheckResult;
 }
 
 void LoadFonts() {
