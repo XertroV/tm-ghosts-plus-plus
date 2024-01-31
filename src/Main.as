@@ -67,9 +67,11 @@ void ForceGhostAlphaLoop() {
         if (!S_GhostOpactiyOverrideOnline && !S_SetGhostAlphaTo1) {
             sleep(91); continue;
         }
-        if (S_SetGhostAlphaTo1 && app.PlaygroundScript !is null) {
-            // persists, so don't need to do this very often
-            cast<CSmArenaRulesMode>(app.PlaygroundScript).Ghosts_SetMaxAlpha(S_GhostOpactiySolo);
+        if (app.PlaygroundScript !is null) {
+            if (S_SetGhostAlphaTo1) {
+                // persists, so don't need to do this very often
+                cast<CSmArenaRulesMode>(app.PlaygroundScript).Ghosts_SetMaxAlpha(S_GhostOpactiySolo);
+            }
             sleep(131); continue;
         } else if (S_GhostOpactiyOverrideOnline && app.CurrentPlayground !is null) {
             auto net = app.Network;
