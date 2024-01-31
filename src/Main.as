@@ -11,6 +11,7 @@ UI::Font@ g_fontLarger;
 UI::Font@ g_fontMono;
 
 void Main() {
+    startnew(CheckMLFeedEnabled);
     trace('ghosts++ checking permissions');
     CheckRequiredPermissions();
     trace('checked permissions');
@@ -42,6 +43,18 @@ void Main() {
 #if FALSE
     startnew(RunGhostTest);
 #endif
+}
+
+void CheckMLFeedEnabled() {
+    auto mlhook = Meta::GetPluginFromID("MLHook");
+    if (mlhook is null) {
+        NotifyError("MLHook not found. Ghosts++ will not work.");
+        return;
+    }
+    if (!mlhook.Enabled) {
+        NotifyError("MLHook is disabled. Please enable it (toggle it on). Ghosts++ will not work otherwise.");
+        return;
+    }
 }
 
 // startnew(TestForceGhostAlpha).WithRunContext(Meta::RunContext::AfterMainLoop);
