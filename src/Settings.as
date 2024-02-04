@@ -37,6 +37,9 @@ bool S_SuppressUnlockTimelinePrompt = false;
 [Setting category="General" name="Hide set offset in advanced tools"]
 bool S_HideSetOffset = true;
 
+[Setting category="General" name="Automatically load favorites"]
+bool S_AutoLoadFav = false;
+
 
 enum KeyboardShape
 {

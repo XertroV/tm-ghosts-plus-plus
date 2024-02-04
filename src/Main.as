@@ -185,6 +185,12 @@ void OnMapChange() {
     maxTime = 0.;
     if (s_currMap.Length > 0) {
         @g_GhostFinder = GhostFinder();
+        if (S_AutoLoadFav) {
+            log_info("Loading favs");
+            startnew(CoroutineFunc(LoadFavs));
+        } else {
+            log_info("Not loading favs");
+        }
     }
     if (tabs is null) return;
     for (uint i = 0; i < tabs.Length; i++) {
@@ -195,6 +201,23 @@ void OnMapChange() {
     EngineSounds::Unapply();
 }
 
+void LoadFavs() {
+    // TODO: why is this needed?
+    sleep(2000);
+
+    Json::Value@[] players;
+    Cache::Initialize();
+    Cache::GetFavoritesFromNameFilter("", players);
+    for (uint i=0; i<players.Length; i++) {
+        auto player = players[i];
+        string wsid = player['wsid'];
+        string names = string::Join(player['names'].GetKeys(), ", ");
+
+        Update_ML_SetGhostLoading(wsid);
+        Core::LoadGhostOfPlayer(wsid, s_currMap, names);
+        Update_ML_SetGhostLoaded(wsid);
+    }
+}
 
 void WatchAndRemoveFadeOut() {
     auto app = GetApp();

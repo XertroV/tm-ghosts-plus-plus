@@ -81,6 +81,7 @@ namespace Core {
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
         auto dfm = ps.DataFileMgr;
         auto gm = ps.GhostMgr;
+        if (gm is null) return;
         auto task = dfm.Ghost_Download(filename, url);
         WaitAndClearTaskLater(task, dfm);
         if (task.HasFailed || !task.HasSucceeded) {
