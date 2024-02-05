@@ -501,7 +501,8 @@ class FavoritesTab : PlayersTab {
 
     void OnMapChange() override {
         PlayersTab::OnMapChange();
-        if (S_AutoloadFavoritedPlayers) startnew(CoroutineFunc(AutoloadFavoritePlayers));
+        if (S_AutoloadFavoritedPlayers)
+            startnew(CoroutineFunc(AutoloadFavoritePlayers));
     }
 
     void InitSoon() {
@@ -542,7 +543,7 @@ class FavoritesTab : PlayersTab {
 
         Json::Value@[] @favs = {};
         Cache::GetFavoritesFromNameFilter("", favs);
-        auto nbToLoad = Math::Min(favs.Length, 10);
+        auto nbToLoad = Math::Min(favs.Length, S_AutoloadFavoritedPlayersNb);
         for (uint i = 0; i < nbToLoad; i++) {
             OnClickFindGhost(Cache::GetLogin(favs[i]['key']));
         }

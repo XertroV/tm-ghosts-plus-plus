@@ -37,8 +37,12 @@ bool S_SuppressUnlockTimelinePrompt = false;
 [Setting category="General" name="Hide set offset in advanced tools"]
 bool S_HideSetOffset = true;
 
-[Setting category="General" name="Autoload favorited players?" description="Automatically load ghosts from favorited players when entering a map. \\$d88Limited to a maximum of 10.\\$z"]
+[Setting category="General" name="Autoload favorited players?" description="Automatically load ghosts from favorited players when entering a map"]
 bool S_AutoloadFavoritedPlayers = false;
+
+[Setting category="General" name="Number to autoload?" description="Will limit the number of automatically loaded ghosts from favorited players. More ghosts = more lag loading a map." min=0 max=20]
+uint S_AutoloadFavoritedPlayersNb = 6;
+
 
 enum KeyboardShape
 {

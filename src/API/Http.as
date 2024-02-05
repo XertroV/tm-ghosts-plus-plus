@@ -9,30 +9,9 @@ Json::Value@ FetchLiveEndpoint(const string &in route) {
     return Json::Parse(req.String());
 }
 
-Json::Value@ FetchClubEndpoint(const string &in route) {
-    NadeoServices::AddAudience("NadeoClubServices");
-    while (!NadeoServices::IsAuthenticated("NadeoClubServices")) yield();
-
-    log_trace("[FetchClubEndpoint] Requesting: " + route);
-    auto req = NadeoServices::Get("NadeoClubServices", route);
-    req.Start();
-    while(!req.Finished()) { yield(); }
-    return Json::Parse(req.String());
-}
-
 Json::Value@ CallLiveApiPath(const string &in path) {
     AssertGoodPath(path);
     return FetchLiveEndpoint(NadeoServices::BaseURLLive() + path);
-}
-
-Json::Value@ CallCompApiPath(const string &in path) {
-    AssertGoodPath(path);
-    return FetchClubEndpoint(NadeoServices::BaseURLCompetition() + path);
-}
-
-Json::Value@ CallClubApiPath(const string &in path) {
-    AssertGoodPath(path);
-    return FetchClubEndpoint(NadeoServices::BaseURLClub() + path);
 }
 
 Json::Value@ CallMapMonitorApiPath(const string &in path) {
@@ -40,7 +19,7 @@ Json::Value@ CallMapMonitorApiPath(const string &in path) {
     // auto token = MM_Auth::GetCachedToken();
     auto url = MM_API_ROOT + path;
     log_trace("[CallMapMonitorApiPath] Requesting: " + url);
-    auto req = Net::HttpRequest();
+    Net::HttpRequest@ req = Net::HttpRequest();
     req.Url = MM_API_ROOT + path;
     // req.Headers['Authorization'] = 'openplanet ' + token;
     req.Method = Net::HttpMethod::Get;
@@ -63,7 +42,7 @@ const string LengthAndOffset(uint length, uint offset) {
 
 
 Net::HttpRequest@ PluginRequest(const string &in url) {
-    auto r = Net::HttpRequest();
+    Net::HttpRequest@ r = Net::HttpRequest();
     r.Url = url;
     r.Headers['User-Agent'] = "TM_Plugin:" + Meta::ExecutingPlugin().Name + " / contact=@XertroV,m@xk.io / client_version=" + Meta::ExecutingPlugin().Version;
     return r;
