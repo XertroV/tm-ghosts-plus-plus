@@ -459,9 +459,11 @@ class PlayersTab : Tab {
         startnew(CoroutineFuncUserdata(this.FindAndLoadGhost), j);
     }
 
+    // find an load a ghost from a player json
     void FindAndLoadGhost(ref@ r) {
         auto j = cast <Json::Value>(r);
         string login = j['key'];
+        trace(Json::Write(j));
         string wsid = j['wsid'];
         auto names = j['names'].GetKeys();
 
@@ -497,6 +499,11 @@ class FavoritesTab : PlayersTab {
         startnew(CoroutineFunc(this.InitSoon));
     }
 
+    void OnMapChange() override {
+        PlayersTab::OnMapChange();
+        if (S_AutoloadFavoritedPlayers) startnew(CoroutineFunc(AutoloadFavoritePlayers));
+    }
+
     void InitSoon() {
         sleep(100);
         while (!Cache::IsInitialized) yield();
@@ -514,6 +521,30 @@ class FavoritesTab : PlayersTab {
 
     void OnFavAdded() {
         UpdatePlayerFilter();
+    }
+
+    void AutoloadFavoritePlayers() {
+        auto app = GetApp();
+        if (app.RootMap is null) return;
+        sleep(200);
+        if (app.RootMap is null) return;
+        if (app.PlaygroundScript is null) return;
+        auto net = app.Network;
+        while (net.ClientManiaAppPlayground is null) {
+            // trace('waiting for cmap');
+            yield();
+        }
+        while (net.ClientManiaAppPlayground.UILayers.Length < 10) {
+            // trace('waiting for cmap.UILayers.Len >= 10');
+            yield();
+        }
+        if (app.RootMap is null) return;
+
+        auto @favs = Cache::FavoritesArr;
+        auto nbToLoad = Math::Min(favs.Length, 10);
+        for (uint i = 0; i < nbToLoad; i++) {
+            OnClickFindGhost(Cache::GetLogin(favs[i]['key']));
+        }
     }
 }
 

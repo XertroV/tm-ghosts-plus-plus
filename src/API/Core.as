@@ -40,7 +40,7 @@ namespace Core {
         LoadingGhosts_New(1);
         auto recs = GetMapPlayerListRecordList({wsid}, uid);
         if (recs is null || recs.Length == 0) {
-            NotifyWarning("Could not load ghost of " + (name.Length > 0 ? name : wsid));
+            NotifyWarning("Could not load ghost of " + (name.Length > 0 ? name : wsid) + ". (It might not exist.)");
             LoadingGhosts_GhostError(1);
         } else {
             auto rec = recs[0];
