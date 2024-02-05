@@ -95,7 +95,8 @@ bool lastTaCheckResult = false;
 bool IsTimeAttackDebounced(CTrackManiaNetworkServerInfo@ si) {
     if (lastTaCheck + 1000 > Time::Now) return lastTaCheckResult;
     lastTaCheck = Time::Now;
-    lastTaCheckResult = si.CurGameModeStr == "TM_TimeAttack_Online";
+    lastTaCheckResult = si.CurGameModeStr == "TM_TimeAttack_Online"
+        || si.CurGameModeStr == "TM_COTDQualifications_Online";
     return lastTaCheckResult;
 }
 
