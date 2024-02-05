@@ -684,7 +684,7 @@ class MedalsTab : Tab {
         UI::Indent();
         UI::BeginDisabled(isLoadingGhosts);
         UI::SetNextItemWidth(100.);
-        nbGhosts = Math::Clamp(UI::InputInt("Number of ghosts", nbGhosts), 1, 3);
+        nbGhosts = Math::Clamp(UI::InputInt("Number of ghosts", nbGhosts), 1, 2);
         if (medals[4] > 0 && UI::Button(Time::Format(medals[4]) + " / Champion Medal Ghosts")) {
             LoadGhostsNear(medals[4], nbGhosts);
         }
@@ -918,7 +918,7 @@ void _LoadGhostsNear(ref@ r) {
     auto nbGhosts = args[1];
     if (g_GhostFinder is null) return;
     auto wsids = g_GhostFinder.FindAroundTime(time, nbGhosts);
-    for (uint i = 0; i < wsids.Length; i++) {
+    for (uint i = 0; i < Math::Min(wsids.Length, nbGhosts); i++) {
         SendEvent_TMGame_Record_Toggle(wsids[i]);
     }
     // Cache::LoadGhostsForWsids(wsids, s_currMap);

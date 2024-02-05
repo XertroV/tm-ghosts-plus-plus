@@ -140,6 +140,7 @@ class GhostFinder {
         return GetWsidsForRankAndNb(rankToGet, nbGhosts);
     }
 
+    // will return 2 options if it can
     string[]@ FindAroundTime(uint time, uint nb) {
         auto found = SearchForRanks(time, nb);
         string[] ret;
@@ -162,12 +163,13 @@ class GhostFinder {
         AddJsonTimes(recs);
         isLoading = false;
         string[] ret;
-        for (uint i = 0; i < recs.Length; i++) {
+        for (uint i = 0; i < Math::Min(nbGhosts, recs.Length); i++) {
             ret.InsertLast(recs[i]['accountId']);
         }
         return ret;
     }
 
+    // ignores nb param
     Json::Value@[]@ SearchForRanks(uint time, uint nb) {
         auto resp = MapMonitor::GetMapLbSurround(uid, time);
         auto recs = resp['tops'][0]['top'];
