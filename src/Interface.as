@@ -540,7 +540,8 @@ class FavoritesTab : PlayersTab {
         }
         if (app.RootMap is null) return;
 
-        auto @favs = Cache::FavoritesArr;
+        Json::Value@[] @favs = {};
+        Cache::GetFavoritesFromNameFilter("", favs);
         auto nbToLoad = Math::Min(favs.Length, 10);
         for (uint i = 0; i < nbToLoad; i++) {
             OnClickFindGhost(Cache::GetLogin(favs[i]['key']));
