@@ -350,7 +350,7 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     UI::SameLine();
     bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
     bool rmbCamera = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
-    AddSimpleTooltip("While spectating, cycle between cimenatic cam, free cam, and the player camera.");
+    AddSimpleTooltip("While spectating, cycle between cinematic cam, free cam, and the player camera.");
     UI::SameLine();
     bool clickCycleCams = UI::Button(CurrCamLabel() + "##scrubber-spec-cam", vec2(btnWidth, 0));
     AddSimpleTooltip("Force the camera you spectate ghosts with (1, 2, 3) -- does not override mediatracker.");
