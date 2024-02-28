@@ -1,7 +1,7 @@
 bool GameVersionSafe = false;
 bool KnownSafe = false;
 const string[] KnownSafeVersions = {
-    "2024-01-10_12_53", "2024-01-10_12_53",
+    "2024-02-26_11_36",
 };
 const string configUrl = "https://openplanet.dev/plugin/ghosts-pp/config/version-compat";
 
