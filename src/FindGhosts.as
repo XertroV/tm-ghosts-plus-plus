@@ -163,7 +163,7 @@ class GhostFinder {
         AddJsonTimes(recs);
         isLoading = false;
         string[] ret;
-        for (uint i = 0; i < Math::Min(nbGhosts, recs.Length); i++) {
+        for (int i = 0; i < Math::Min(nbGhosts, recs.Length); i++) {
             ret.InsertLast(recs[i]['accountId']);
         }
         return ret;

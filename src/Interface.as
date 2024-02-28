@@ -211,7 +211,7 @@ class SaveGhostsTab : Tab {
         if (ps is null) throw("null playground script");
         auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
 
-        if (S_SetGhostAlphaTo1) ps.Ghosts_SetMaxAlpha(S_GhostOpactiySolo);
+        if (S_SetGhostAlphaTo1) ps.Ghosts_SetMaxAlpha(S_GhostOpacitySolo);
         g_SaveGhostTab.StartWatchGhostsLoopLoop();
 
         // auto cmap = GetApp().Network.ClientManiaAppPlayground;
@@ -920,7 +920,7 @@ void _LoadGhostsNear(ref@ r) {
     auto nbGhosts = args[1];
     if (g_GhostFinder is null) return;
     auto wsids = g_GhostFinder.FindAroundTime(time, nbGhosts);
-    for (uint i = 0; i < Math::Min(wsids.Length, nbGhosts); i++) {
+    for (int i = 0; i < Math::Min(wsids.Length, nbGhosts); i++) {
         SendEvent_TMGame_Record_Toggle(wsids[i]);
     }
     // Cache::LoadGhostsForWsids(wsids, s_currMap);

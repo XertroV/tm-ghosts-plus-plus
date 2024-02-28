@@ -13,13 +13,13 @@ LogLevel S_LogLevel = LogLevel::Debug;
 LogLevel S_LogLevel = LogLevel::Info;
 #endif
 
-[Setting category="General" name="Show Ghost Save Nofitications?"]
+[Setting category="General" name="Show Ghost Save Notifications?"]
 bool S_ShowSaveNotifications = true;
 
 [Setting category="General" name="Enable in Editor"]
 bool S_EnableInEditor = false;
 
-[Setting category="General" name="Draw Letterbox Bars (hides gliched gfx)"]
+[Setting category="General" name="Draw Letterbox Bars (hides glitched gfx)"]
 bool S_DrawLetterboxBars = false;
 
 [Setting category="General" name="Mute / Soften Engine Sounds when Scrubbing"]
@@ -60,7 +60,7 @@ bool S_ShowInputsWhenUIHidden = false;
 [Setting category="Ghost Inputs" name="Show Steering %?"]
 bool S_ShowSteeringPct = true;
 
-[Setting category="Ghost Inputs" name="Hide Ghost Inputs when only 1 ghost is loaded?" description="Because dashboard already shows it in this case."]
+[Setting category="Ghost Inputs" name="Hide Ghost Inputs when only 1 ghost is loaded?" description="Because Dashboard already shows it in this case."]
 bool S_HideInputsIfOnlyGhost = true;
 
 [Setting category="Ghost Inputs" name="Height (relative to screen)" min=0 max=1 drag]
@@ -96,26 +96,26 @@ float Setting_Keyboard_Spacing = 10.0f;
 [Setting category="Ghost Inputs" name="Inactive alpha" drag min=0 max=1]
 float Setting_Keyboard_InactiveAlpha = 0.4f;
 
-[Setting category="Ghost Opactiy" name="Solo: Set Ghost Opacity?"]
+[Setting category="Ghost Opacity" name="Solo: Set Ghost Opacity?"]
 bool S_SetGhostAlphaTo1 = false;
 
-[Setting category="Ghost Opactiy" name="Online: Set Ghost Opacity?"]
-bool S_GhostOpactiyOverrideOnline = false;
+[Setting category="Ghost Opacity" name="Online: Set Ghost Opacity?"]
+bool S_GhostOpacityOverrideOnline = false;
 
-[Setting category="Ghost Opactiy" name="Ghost Opacity Override (TimeAttack)" min=0 max=1 drag]
-float S_GhostOpactiyTimeAttack = 0.9;
+[Setting category="Ghost Opacity" name="Ghost Opacity Override (TimeAttack)" min=0 max=1 drag]
+float S_GhostOpacityTimeAttack = 0.9;
 
-[Setting category="Ghost Opactiy" name="Ghost Opacity Override (Solo)" min=0 max=1 drag]
-float S_GhostOpactiySolo = 0.9;
+[Setting category="Ghost Opacity" name="Ghost Opacity Override (Solo)" min=0 max=1 drag]
+float S_GhostOpacitySolo = 0.9;
 
 void DrawGhostOpacityControls(bool compact = false) {
-	S_GhostOpactiyOverrideOnline = UI::Checkbox(compact ? "##setghostopac" : "Set Ghost Opacity", S_GhostOpactiyOverrideOnline);
-	if (compact) AddSimpleTooltip("Set Ghost Opactiy");
+	S_GhostOpacityOverrideOnline = UI::Checkbox(compact ? "##setghostopac" : "Set Ghost Opacity", S_GhostOpacityOverrideOnline);
+	if (compact) AddSimpleTooltip("Set Ghost Opacity");
 	UI::SameLine();
 	UI::PushItemWidth(75);
-	UI::BeginDisabled(!S_GhostOpactiyOverrideOnline);
-	S_GhostOpactiySolo = UI::SliderFloat("##ghostopac", S_GhostOpactiySolo, 0, 1);
+	UI::BeginDisabled(!S_GhostOpacityOverrideOnline);
+	S_GhostOpacitySolo = UI::SliderFloat("##ghostopac", S_GhostOpacitySolo, 0, 1);
 	UI::EndDisabled();
 	UI::PopItemWidth();
-	// if (S_GhostOpactiyOverrideOnline) S_GhostOpactiyTimeAttack = S_GhostOpactiySolo;
+	// if (S_GhostOpacityOverrideOnline) S_GhostOpacityTimeAttack = S_GhostOpacitySolo;
 }

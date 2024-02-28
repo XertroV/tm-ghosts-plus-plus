@@ -64,16 +64,16 @@ void ForceGhostAlphaLoop() {
     auto app = GetApp();
     while (true) {
         yield();
-        if (!S_GhostOpactiyOverrideOnline && !S_SetGhostAlphaTo1) {
+        if (!S_GhostOpacityOverrideOnline && !S_SetGhostAlphaTo1) {
             sleep(91); continue;
         }
         if (app.PlaygroundScript !is null) {
             if (S_SetGhostAlphaTo1) {
                 // persists, so don't need to do this very often
-                cast<CSmArenaRulesMode>(app.PlaygroundScript).Ghosts_SetMaxAlpha(S_GhostOpactiySolo);
+                cast<CSmArenaRulesMode>(app.PlaygroundScript).Ghosts_SetMaxAlpha(S_GhostOpacitySolo);
             }
             sleep(131); continue;
-        } else if (S_GhostOpactiyOverrideOnline && app.CurrentPlayground !is null) {
+        } else if (S_GhostOpacityOverrideOnline && app.CurrentPlayground !is null) {
             auto net = app.Network;
             auto si = cast<CTrackManiaNetworkServerInfo>(net.ServerInfo);
             // only enable for time attack, otherwise it affects royal, etc.
@@ -85,7 +85,7 @@ void ForceGhostAlphaLoop() {
             if (cp is null) continue;
             if (cp.Arena is null) continue;
             if (cp.Arena.Rules is null) continue;
-            CSmArenaRules_SetGhostAlpha(cp.Arena.Rules, S_GhostOpactiyTimeAttack);
+            CSmArenaRules_SetGhostAlpha(cp.Arena.Rules, S_GhostOpacityTimeAttack);
         }
     }
 }
