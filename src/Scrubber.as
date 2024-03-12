@@ -549,7 +549,7 @@ class ScrubberMgr {
     }
 
     void ResetAll() {
-        trace("Scrubber: ResetAll");
+        // trace("Scrubber: ResetAll");
         m_NewGhostOffset = 0;
         lastSetGhostOffset = 0;
         pauseAt = 0;
