@@ -377,6 +377,7 @@ CGameScriptMapSpawn@ GetDefaultMapSpawn(CSmArenaRulesMode@ ps) {
 uint UNLOCK_TIMER_AMOUNT = 0x2000000;
 
 bool IsTimerUnlocked(CSmArenaRulesMode@ ps) {
+    if (ps is null) return false;
     return ps.Now >= UNLOCK_TIMER_AMOUNT;
 }
 

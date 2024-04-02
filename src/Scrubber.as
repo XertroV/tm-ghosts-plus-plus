@@ -525,6 +525,10 @@ class ScrubberMgr {
     float subSecondOffset = 0.0;
 
     ScrubberMgr() {
+        startnew(CoroutineFunc(this.InitScrubberMgr));
+    }
+
+    void InitScrubberMgr() {
         auto app = GetApp();
         if (app is null) return;
         auto ps = app.PlaygroundScript;
