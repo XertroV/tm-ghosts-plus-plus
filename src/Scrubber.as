@@ -785,23 +785,6 @@ class ScrubberDebugTab : Tab {
     }
 }
 
-
-
-// getting around playground time limits
-// On CGameCtnMediaBlockEntity:
-
-/*
-
-0x38: buffer of entities?
-0x58: ptr: CPlugEntRecordData
-0x60: float: startOffset
-0x68: string: ghost name
-
-0xF8: string: skin options
-
-0x14C: float: currently viewing
-
-*/
 bool Within(vec2 &in pos, vec4 &in rect) {
     return pos.x >= rect.x && pos.x < (rect.x + rect.z)
         && pos.y >= rect.y && pos.y < (rect.y + rect.w);

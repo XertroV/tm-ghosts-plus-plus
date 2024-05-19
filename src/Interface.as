@@ -552,7 +552,7 @@ class FavoritesTab : PlayersTab {
 
 
 
-bool SortGhosts(const Json::Value@ &in a, const Json::Value@ &in b) {
+bool SortGhosts(const Json::Value@ const &in a, const Json::Value@ const &in b) {
     if (a is null) return false;
     if (b is null) return true;
     return (int(a['time']) - int(b['time'])) < 0;

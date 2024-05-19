@@ -1,7 +1,6 @@
 // borrowed from multidash borrowed from Dashboard
 
 namespace Inputs {
-
     int g_NvgFont = nvg::LoadFont("DroidSans.ttf", true, true);
     int g_NvgFontBold = nvg::LoadFont("DroidSans-bold.ttf", true, true);
     float padding = -1;
