@@ -107,7 +107,8 @@ void DrawScrubber() {
         lastHover = Time::Now;
     }
 
-    bool showScrubber = isSpectating || (int(ps.StartTime) - ps.Now) > 0 || (Time::Now - lastHover) < S_HoverHideDelay;
+    bool showBeforeStart = (int(ps.StartTime) - ps.Now) > 0 && S_ShowScrubberBeforeStart;
+    bool showScrubber = isSpectating || showBeforeStart || (Time::Now - lastHover) < S_HoverHideDelay;
     auto @mgr = GhostClipsMgr::Get(GetApp());
     showScrubber = showScrubber && scrubberMgr !is null;
     showScrubber = showScrubber && mgr !is null;

@@ -13,6 +13,9 @@ LogLevel S_LogLevel = LogLevel::Debug;
 LogLevel S_LogLevel = LogLevel::Info;
 #endif
 
+[Setting category="General" name="Show scrubber during race countdown?"]
+bool S_ShowScrubberBeforeStart = true;
+
 [Setting category="General" name="Show Ghost Save Notifications?"]
 bool S_ShowSaveNotifications = true;
 
