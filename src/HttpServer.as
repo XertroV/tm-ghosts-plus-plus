@@ -1,7 +1,7 @@
 // Adapted from Archivist
 
 const uint PORT = 29907;
-const string HOSTNAME = "localhost";
+const string HOSTNAME = "127.0.0.1";
 
 const string HTTP_BASE_URL = "http://" + HOSTNAME + ":" + PORT + "/";
 

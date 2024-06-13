@@ -37,7 +37,7 @@ void RenderInterface() {
 #endif
 
     if (!Cache::hasDoneInit) startnew(Cache::Initialize);
-    UI::SetNextWindowSize(600, 300, UI::Cond::Appearing);
+    UI::SetNextWindowSize(600, 300, UI::Cond::FirstUseEver);
     if (UI::Begin(MenuTitle, S_ShowWindow)) {
         if (GetApp().PlaygroundScript is null) {
             UI::Text("Please load a map in Solo mode");
