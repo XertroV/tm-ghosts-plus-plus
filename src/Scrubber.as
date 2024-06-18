@@ -598,7 +598,7 @@ class ScrubberMgr {
         if (!IsStdPlayback || !unpausedFlag) {
             log_debug("pause via setprog: " + IsStdPlayback + ", " + unpausedFlag);
             auto mgr = GhostClipsMgr::Get(GetApp());
-            GhostClipsMgr::PauseClipPlayers(mgr, pauseAt / 1000.);
+            if (mgr !is null) GhostClipsMgr::PauseClipPlayers(mgr, pauseAt / 1000.);
         } else {
             // auto mgr = GhostClipsMgr::Get(GetApp());
             // GhostClipsMgr::UnpauseClipPlayers(mgr, pauseAt / 1000.);
