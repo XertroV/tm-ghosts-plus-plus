@@ -182,7 +182,7 @@ class SaveGhostsTab : Tab {
 #endif
 
         UI::TableNextColumn();
-        UI::Text(ColoredString(gm.GhostNickname));
+        UI::Text(Text::OpenplanetFormatCodes(gm.GhostNickname));
 
         UI::TableNextColumn();
         UI::Text(rt);
