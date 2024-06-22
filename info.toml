@@ -11,6 +11,6 @@ dependencies = ["MLHook", "NadeoServices", "VehicleState", "Camera"]
 optional_dependencies = ["ChampionMedals"] #, "Dashboard"]
 # blocks = ["GhostScrubber"]
 timeout = 4444
-shared_exports = ["GPP_SharedExports.as"]
+shared_exports = ["GPP_SharedExports_.as"]
 exports = ["Exports.as"]
 module = "Ghosts_PP"
