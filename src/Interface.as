@@ -123,12 +123,13 @@ class SaveGhostsTab : Tab {
         }
 
         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
-        auto nbCols = 6;
+        auto nbCols = 7;
         if (UI::BeginTable("save-ghosts", nbCols, TABLE_FLAGS)) {
 
             UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 30.);
             UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
             UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 70.);
+            UI::TableSetupColumn("Inputs", UI::TableColumnFlags::WidthFixed, 32.);
             UI::TableSetupColumn("Spectate", UI::TableColumnFlags::WidthFixed, 32.);
             UI::TableSetupColumn("Save", UI::TableColumnFlags::WidthFixed, 32.);
             UI::TableSetupColumn("Unload", UI::TableColumnFlags::WidthFixed, 32.);
@@ -147,6 +148,8 @@ class SaveGhostsTab : Tab {
             UI::EndTable();
         }
         UI::PopStyleColor();
+
+        DrawInputs();
 #if DEV
         // auto bufOffset = Reflection::GetType("NGameGhostClips_SMgr").GetMember("Ghosts").Offset + 0x10;
         // auto bufPtr = Dev::GetOffsetUint64(mgr, bufOffset);
@@ -168,7 +171,7 @@ class SaveGhostsTab : Tab {
     }
 
     void DrawSaveGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i, uint id) {
-        auto gm = gc.GhostModel;
+        CGameCtnGhost@ gm = gc.GhostModel;
         auto clip = gc.Clip;
         auto rt = Time::Format(gm.RaceTime);
 
@@ -188,7 +191,12 @@ class SaveGhostsTab : Tab {
         UI::Text(rt);
 
         UI::TableNextColumn();
-        bool clicked = UI::Button(Icons::Eye + "##" + i);
+        bool clicked = UI::Button(Icons::ThList + "##" + i);
+        AddSimpleTooltip("Inputs");
+        if (clicked) ShowInputs(gm);
+
+        UI::TableNextColumn();
+        clicked = UI::Button(Icons::Eye + "##" + i);
         AddSimpleTooltip("Spectate");
         if (clicked) startnew(CoroutineFuncUserdataInt64(SpectateGhost), int64(i));
 
@@ -323,6 +331,23 @@ class SaveGhostsTab : Tab {
 
     void OnMapChange() override {
         saving.RemoveRange(0, saving.Length);
+    }
+
+    TmInputChange@[]@ currInputs;
+    bool showInputsWindow = false;
+    void ShowInputs(CGameCtnGhost@ g) {
+        @currInputs = GetProcessedGhostInputData(g);
+        showInputsWindow = true;
+    }
+
+    void DrawInputs() {
+        if (!showInputsWindow) return;
+        if (UI::Begin("Ghost Inputs", showInputsWindow)) {
+            for (uint i = 0; i < currInputs.Length; i++) {
+                UI::Text(currInputs[i].ToString());
+            }
+        }
+        UI::End();
     }
 }
 

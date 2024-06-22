@@ -499,7 +499,7 @@ string CurrCamLabel() {
 
 
 string get_currSpeedLabel() {
-    if (Math::Abs(scrubberMgr.playbackSpeed) < 0.1)
+    if (Math::Abs(scrubberMgr.playbackSpeed) < 0.5)
         return Text::Format("%.2fx", scrubberMgr.playbackSpeed);
     return Text::Format("%.1fx", scrubberMgr.playbackSpeed);
 }
@@ -663,9 +663,12 @@ class ScrubberMgr {
 
     void UpdatePlaybackSpeed() {
         if (_pbSpeed == PlaybackSpeeds::x2) SetPlaybackSpeed(2.0, !IsPaused);
+        else if (_pbSpeed == PlaybackSpeeds::x4) SetPlaybackSpeed(4.0, !IsPaused);
         else if (_pbSpeed == PlaybackSpeeds::x0_01) SetPlaybackSpeed(0.01, !IsPaused);
         else if (_pbSpeed == PlaybackSpeeds::x0_1) SetPlaybackSpeed(0.1, !IsPaused);
+        else if (_pbSpeed == PlaybackSpeeds::x0_3) SetPlaybackSpeed(0.3, !IsPaused);
         else if (_pbSpeed == PlaybackSpeeds::x0_5) SetPlaybackSpeed(0.5, !IsPaused);
+        else if (_pbSpeed == PlaybackSpeeds::x0_7) SetPlaybackSpeed(0.7, !IsPaused);
         else if (_pbSpeed == PlaybackSpeeds::x1) SetPlaybackSpeed(1.0, !IsPaused);
         else if (_pbSpeed == PlaybackSpeeds::nx2) SetPlaybackSpeed(-2.0, !IsPaused);
         else if (_pbSpeed == PlaybackSpeeds::nx0_01) SetPlaybackSpeed(-0.01, !IsPaused);
@@ -751,8 +754,8 @@ class ScrubberMgr {
 ScrubberMgr@ scrubberMgr = ScrubberMgr();
 
 enum PlaybackSpeeds {
-    x2 = 0, x1 = 1, x0_5, x0_1, x0_01,
-    nx0_01, nx0_1, nx0_5, nx1, nx2,
+    x4 = 0, x2, x1, x0_7, x0_5, x0_3, x0_1, x0_01,
+    nx0_01, nx0_1, nx0_5, nx1, nx2, nx4,
     LAST,
 }
 

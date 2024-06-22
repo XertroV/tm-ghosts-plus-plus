@@ -9,3 +9,10 @@ namespace Ghosts_PP {
 
 import float CSmArenaRules_GetGhostAlpha(CSmArenaRules@ arenaRules) from "Ghosts_PP";
 import void CSmArenaRules_SetGhostAlpha(CSmArenaRules@ arenaRules, float maxGhostAlpha) from "Ghosts_PP";
+
+namespace Ghosts_PP {
+    import IInputChange@[]@ GetGhostInputData(CGameCtnGhost@ ghost) from "Ghosts_PP";
+    // import IGhostSample@[]@ GetGhostSampleData(CGameCtnGhost@ ghost) from "Ghosts_PP";
+
+    import CheckpointIxTime@[]@ GetGhostCheckpoints(CGameCtnGhost@ ghost) from "Ghosts_PP";
+}

@@ -148,7 +148,10 @@ void Unload() {
         EngineSounds::Unapply();
     }
 }
-void OnDestroyed() { Unload(); }
+void OnDestroyed() {
+    NodPtrs::Unload();
+    Unload();
+}
 void OnDisabled() { Unload(); }
 
 // check for permissions and
