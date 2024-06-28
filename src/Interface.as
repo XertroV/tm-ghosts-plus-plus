@@ -44,6 +44,8 @@ void RenderInterface() {
 #if SIG_DEVELOPER
             UI::BeginTabBar("save or load ghosts");
             g_DebugTab.Draw();
+            g_ScrubDebug.Draw();
+            g_DebugClips.Draw();
             g_DebugCacheTab.Draw();
             g_Favorites.Draw();
             g_Players.Draw();

@@ -5,6 +5,7 @@ namespace Ghosts_PP {
     import uint GetSpectatingGhostInstanceId(CGameCtnApp@ app) from "Ghosts_PP";
     import NGameGhostClips_SClipPlayerGhost@ GetGhostFromInstanceId(CGameCtnApp@ app, uint instanceId) from "Ghosts_PP";
     import uint GetGhostVisEntityId(NGameGhostClips_SClipPlayerGhost@ g) from "Ghosts_PP";
+    import NGameGhostClips_SMgr@ GetGhostClipsMgr(CGameCtnApp@ app) from "Ghosts_PP";
 }
 
 import float CSmArenaRules_GetGhostAlpha(CSmArenaRules@ arenaRules) from "Ghosts_PP";

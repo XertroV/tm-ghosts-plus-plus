@@ -234,24 +234,38 @@ vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSp
 
 // Was 0x60 in 2024-01-10;
 const uint16 O_GHOSTCLIPPLAYER_EDMEDIATRACKS = GetOffset("CGameCtnMediaClipPlayer", "EdMediaTracks");
-const int16 O_GCP_CONSTS_OFF = (O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60) + 0x8;
+// const int16 O_GCP_CONSTS_OFF = (O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60) + 0x8;
 // -0x60 for orig size. +8 for 2024-06-20_19_53 added values but before the stuff we care about
 
+uint16 _o_gcp_consts_off = 0;
+uint16 O_GCP_CONSTS_OFF {
+    get {
+        if (_o_gcp_consts_off == 0) {
+            _o_gcp_consts_off = O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60;
+            if (TmGameVersion >= "2024-06-20_19_53") {
+                _o_gcp_consts_off += 0x8;
+            }
+        }
+        return _o_gcp_consts_off;
+    }
+}
+
 // main offsets we touch
-uint16 O_GHOSTCLIPPLAYER_CURR_TIME = 0x1A4 + O_GCP_CONSTS_OFF;
-uint16 O_GHOSTCLIPPLAYER_DO_MOTION_INTERP = 0x30C + O_GCP_CONSTS_OFF; // not correctly labeled, something to do with this but not exactly as named
-uint16 O_GHOSTCLIPPLAYER_TOTAL_TIME = 0x320 + O_GCP_CONSTS_OFF;
-uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_3 = 0x324 + O_GCP_CONSTS_OFF;
-uint16 O_GHOSTCLIPPLAYER_SMOOTH_PAUSE = 0x330 + O_GCP_CONSTS_OFF;
+uint16 O_GHOSTCLIPPLAYER_CURR_TIME { get { return 0x1A4 + O_GCP_CONSTS_OFF; } }
+// not correctly labeled, something to do with this but not exactly as named
+uint16 O_GHOSTCLIPPLAYER_DO_MOTION_INTERP { get { return 0x30C + O_GCP_CONSTS_OFF; } }
+uint16 O_GHOSTCLIPPLAYER_TOTAL_TIME { get { return 0x320 + O_GCP_CONSTS_OFF; } }
+uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_3 { get { return 0x324 + O_GCP_CONSTS_OFF; } }
+uint16 O_GHOSTCLIPPLAYER_SMOOTH_PAUSE { get { return 0x330 + O_GCP_CONSTS_OFF; } }
 
 // other offsets
-uint16 O_GHOSTCLIPPLAYER_FRAME_DELTA = 0x2F8 + O_GCP_CONSTS_OFF;
-uint16 O_GHOSTCLIPPLAYER_CURR_TIME2 = 0x2FC + O_GCP_CONSTS_OFF;
-uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_1 = 0x1A8 + O_GCP_CONSTS_OFF;
-uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_2 = 0x300 + O_GCP_CONSTS_OFF;
-uint16 O_GHOSTCLIPPLAYER_START_TIME = 0x308 + O_GCP_CONSTS_OFF;
+uint16 O_GHOSTCLIPPLAYER_FRAME_DELTA { get { return 0x2F8 + O_GCP_CONSTS_OFF; } }
+uint16 O_GHOSTCLIPPLAYER_CURR_TIME2 { get { return 0x2FC + O_GCP_CONSTS_OFF; } }
+uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_1 { get { return 0x1A8 + O_GCP_CONSTS_OFF; } }
+uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_2 { get { return 0x300 + O_GCP_CONSTS_OFF; } }
+uint16 O_GHOSTCLIPPLAYER_START_TIME { get { return 0x308 + O_GCP_CONSTS_OFF; } }
 // editing this toggles the play/pause button in MT but does not actually pause playback. maybe it is a flat like CanPause
-uint16 O_GHOSTCLIPPLAYER_IS_PLAYING = 0x30C + O_GCP_CONSTS_OFF;
+uint16 O_GHOSTCLIPPLAYER_IS_PLAYING { get { return 0x30C + O_GCP_CONSTS_OFF; } }
 
 
 string[] GetGhostClipPlayerDebugValues(CGameCtnMediaClipPlayer@ player) {

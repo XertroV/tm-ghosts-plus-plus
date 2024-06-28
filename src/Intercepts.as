@@ -135,7 +135,7 @@ uint lastBlockedSetStartTimeNow = 1;
 int lastSetStartTime = 5000;
 bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     auto ghostStartTime = stack.CurrentInt(0);
-    log_debug("ghosts set start time: " + ghostStartTime);
+    // log_debug("ghosts set start time: " + ghostStartTime);
     // if (false && g_BlockNextGhostsSetTimeReset && int(ghostStartTime) < 0) {
     //     warn("blocking ghost SetStartTime reset");
     //     g_BlockNextGhostsSetTimeReset = false;
@@ -162,14 +162,14 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     lastSetStartTime = ghostStartTime;
     // lastGhostsStartOrSpawnTime = Math::Max(lastGhostsStartOrSpawnTime, ghostStartTime);
     lastGhostsStartOrSpawnTime = ghostStartTime;
-    log_debug('set start time: ' + lastSetStartTime);
+    // log_debug('set start time: ' + lastSetStartTime);
     return true;
 }
 
 void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, int startTime) {
     g_BlockAllGhostsSetTimeNow = false;
     ps.Ghosts_SetStartTime(startTime);
-    log_debug("ghosts call set start time: " + startTime);
+    // log_debug("ghosts call set start time: " + startTime);
     g_BlockAllGhostsSetTimeNow = true;
 }
 

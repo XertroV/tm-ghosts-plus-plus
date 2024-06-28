@@ -62,7 +62,7 @@ for pluginSrc in ${pluginSources[@]}; do
   BUILD_NAME=$PLUGIN_NAME-$(date +%s).zip
   RELEASE_NAME=$PLUGIN_NAME-$PLUGIN_VERSION.op
   PLUGINS_DIR=${PLUGINS_DIR:-$HOME/win/OpenplanetNext/Plugins}
-  PLUGIN_DEV_LOC=$PLUGINS_DIR/$PLUGIN_NAME
+  PLUGIN_DEV_LOC=$PLUGINS_DIR/ghosts-pp
   PLUGIN_RELEASE_LOC=$PLUGINS_DIR/$RELEASE_NAME
 
   function buildPlugin {
