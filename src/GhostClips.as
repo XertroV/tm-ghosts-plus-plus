@@ -228,10 +228,14 @@ vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSp
 // ! 2024-02-26_11_36
 // size 824 -> 832
 // seems like +8 from early on
+// ! 2024-06-20_19_53
+// size 832 -> 840
+// +8 from after EdMediaTracks
 
-// 0x60 in 2024-01-10
+// Was 0x60 in 2024-01-10;
 const uint16 O_GHOSTCLIPPLAYER_EDMEDIATRACKS = GetOffset("CGameCtnMediaClipPlayer", "EdMediaTracks");
-const int16 O_GCP_CONSTS_OFF = (O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60);
+const int16 O_GCP_CONSTS_OFF = (O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60) + 0x8;
+// -0x60 for orig size. +8 for 2024-06-20_19_53 added values but before the stuff we care about
 
 // main offsets we touch
 uint16 O_GHOSTCLIPPLAYER_CURR_TIME = 0x1A4 + O_GCP_CONSTS_OFF;
