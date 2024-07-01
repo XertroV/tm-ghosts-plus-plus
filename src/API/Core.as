@@ -21,7 +21,7 @@ namespace Core {
         for (uint i = 0; i < wsids.Length; i++) {
             wsidsBuf.Add(wsids[i]);
         }
-        auto resp = scoreMgr.Map_GetPlayerListRecordList(userMgr.Users[0].Id, wsidsBuf, mapUid, "PersonalBest", "", "", "");
+        auto resp = scoreMgr.Map_GetPlayerListRecordList(userMgr.Users[0].Id, wsidsBuf, mapUid, "PersonalBest", "", "TimeAttack", "");
         WaitAndClearTaskLater(resp, scoreMgr);
         if (resp.HasFailed || !resp.HasSucceeded) {
             log_warn('GetMapPlayerListRecordList failed: ' + resp.ErrorCode + ", " + resp.ErrorType + ", " + resp.ErrorDescription);

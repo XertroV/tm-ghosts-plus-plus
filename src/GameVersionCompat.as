@@ -19,10 +19,14 @@ void CheckAndSetGameVersionSafe() {
     }
 }
 
+string GetGameExeVersion() {
+    return GetApp().SystemPlatform.ExeVersion;
+}
+
 string TmGameVersion = "";
 void EnsureGameVersionCompatibility() {
     if (GameVersionSafe) return;
-    TmGameVersion = GetApp().SystemPlatform.ExeVersion;
+    TmGameVersion = GetGameExeVersion();
     GameVersionSafe = KnownSafeVersions.Find(TmGameVersion) > -1;
     KnownSafe = GameVersionSafe;
     if (GameVersionSafe) return;

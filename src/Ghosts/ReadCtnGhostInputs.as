@@ -212,7 +212,7 @@ namespace Ghosts_PP {
         auto cps = g.Checkpoints;
         for (int i = 0; i < cps.Length; i++) {
             auto cp = cps.GetCP(i);
-            ret.InsertLast(CheckpointIxTime(cp.cpIndex, cp.cpTime));
+            ret.InsertLast(CheckpointIxTime(uint(cp.cpIndex), int64(cp.cpTime)));
         }
         return ret;
     }

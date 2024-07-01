@@ -242,9 +242,14 @@ uint16 O_GCP_CONSTS_OFF {
     get {
         if (_o_gcp_consts_off == 0) {
             _o_gcp_consts_off = O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60;
+            if (TmGameVersion.Length == 0) TmGameVersion = GetGameExeVersion();
             if (TmGameVersion >= "2024-06-20_19_53") {
                 _o_gcp_consts_off += 0x8;
+                warn("Adjusting GCP consts offset for version since >= 24-6-20: " + TmGameVersion + "; new offset: " + _o_gcp_consts_off);
+            } else {
+                warn(TmGameVersion + " is not >= 2024-06-20_19_53; using old offset: " + _o_gcp_consts_off);
             }
+            warn("O_GHOSTCLIPPLAYER_CURR_TIME: " + Text::Format("0x%04x", O_GHOSTCLIPPLAYER_CURR_TIME));
         }
         return _o_gcp_consts_off;
     }
