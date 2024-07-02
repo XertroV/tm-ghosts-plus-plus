@@ -81,9 +81,10 @@ void DrawScrubber() {
     if (!S_ScrubberWhenOverlayOff && !UI::IsOverlayShown()) return;
     if (!S_ScrubberWhenUIOff && !UI::IsGameUIVisible()) return;
     bool isSpectating = IsSpectatingGhost();
-    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    auto app = GetApp();
+    auto ps = cast<CSmArenaRulesMode>(app.PlaygroundScript);
     if (ps is null) return;
-    auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
+    auto cp = cast<CSmArenaClient>(app.CurrentPlayground);
     if (cp is null) return;
     auto player = cp.Players.Length > 0 ? cast<CSmPlayer>(cp.Players[0]) : null;
     auto playerStartTime = player !is null ? player.StartTime : 0;
@@ -103,13 +104,17 @@ void DrawScrubber() {
     vec2 size = screenScaled * vec2(S_XWidth, 0);
     size.y = ySize;
 
-    if (S_NeverHideScrubber || Within(UI::GetMousePos() / UI::GetScale(), vec4(pos, size))) {
+    if (S_NeverHideScrubber || (
+        // check that we are hovering the scrubber area BUT we are not interacting with another imgui element
+        int(app.InputPort.MouseVisibility) == 0 // 0 = Auto; 1 = ForceHidden; 2 = ForceShow
+        && Within(UI::GetMousePos() / UI::GetScale(), vec4(pos, size))
+    )) {
         lastHover = Time::Now;
     }
 
     bool showBeforeStart = (int(ps.StartTime) - ps.Now) > 0 && S_ShowScrubberBeforeStart;
     bool showScrubber = isSpectating || showBeforeStart || (Time::Now - lastHover) < S_HoverHideDelay;
-    auto @mgr = GhostClipsMgr::Get(GetApp());
+    auto @mgr = GhostClipsMgr::Get(app);
     showScrubber = showScrubber && scrubberMgr !is null;
     showScrubber = showScrubber && mgr !is null;
     if (!showScrubber) {
@@ -134,7 +139,7 @@ void DrawScrubber() {
                     Dashboard::InformCurrentEntityId(ghostVisId);
                 }
 #else
-                CSceneVehicleVis@[] viss = VehicleState::GetAllVis(GetApp().GameScene);
+                CSceneVehicleVis@[] viss = VehicleState::GetAllVis(app.GameScene);
                 CSceneVehicleVis@ found;
                 for (uint i = 0; i < viss.Length; i++) {
                     auto vis = viss[i];
@@ -219,7 +224,7 @@ void DrawScrubber() {
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
             + (ghostsNotVisible ? " (Ghosts Off)" : "")
             ;
-        setProg = UI::SliderFloat("##ghost-scrub", setProg, 0, Math::Max(maxTime, t), fmtString);
+        setProg = UI::SliderFloat("##ghost-scrub", setProg, 0, Math::Max(maxTime, t), fmtString, UI::SliderFlags::NoInput);
         bool startedScrub = UI::IsItemClicked();
         clickTogglePause = (UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right)) || clickTogglePause;
 
