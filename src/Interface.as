@@ -130,6 +130,7 @@ class SaveGhostsTab : Tab {
 
             UI::TableSetupColumn("Ix", UI::TableColumnFlags::WidthFixed, 30.);
             UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthStretch);
+            // UI::TableSetupColumn("Plat", UI::TableColumnFlags::WidthFixed, 32.);
             UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 70.);
             UI::TableSetupColumn("Inputs", UI::TableColumnFlags::WidthFixed, 32.);
             UI::TableSetupColumn("Spectate", UI::TableColumnFlags::WidthFixed, 32.);
@@ -188,6 +189,9 @@ class SaveGhostsTab : Tab {
 
         UI::TableNextColumn();
         UI::Text(Text::OpenplanetFormatCodes(gm.GhostNickname));
+
+        // UI::TableNextColumn();
+        // UI::Text(GhostLogoToStr(gm.m_GhostNameLogoType));
 
         UI::TableNextColumn();
         UI::Text(rt);

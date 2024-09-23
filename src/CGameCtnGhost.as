@@ -30,3 +30,10 @@ bool LooksLikeString(CMwNod@ nod, uint offset) {
             && strPtr > 0xFFFFFFFFFF && strPtr < 0x0000030FFEEDDCC)
         );
 }
+
+// string GhostLogoToStr(CGameCtnGhost::EGhostNameLogoType lt) {
+//     switch (lt) {
+//         case CGameCtnGhost::EGhostNameLogoType::None: return Icons::CircleO;
+//         case CGameCtnGhost::EGhostNameLogoType::LocalPlateform: return Icons::CircleO;
+//     }
+// }

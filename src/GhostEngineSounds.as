@@ -19,6 +19,7 @@ namespace EngineSounds {
         if (setVolumePtr == 0) throw("setVolumePtr == 0");
         Dev::Patch(setVolumePtr, setVolumeOrigBytes);
         applied = false;
+        SetEngineSoundVolumeDB(0.0);
     }
 
     void SetEngineSoundVolumeDB(double volumeDb) {
@@ -30,6 +31,19 @@ namespace EngineSounds {
             if ((@engineSource = cast<CAudioSourceEngine>(audio.Sources[i])) !is null) {
                 engineSource.VolumedB = volumeDbF;
             }
+        }
+        auto wheelSurf = GetSoundSurf_CommonCarWheels();
+        if (wheelSurf !is null) {
+            // by default, defaultWheelSurfVolume = -9.;
+            // do this to maintain compatibility with the game tho
+            if (defaultWheelSurfVolume < -999.0) defaultWheelSurfVolume = wheelSurf.VolumedB;
+            wheelSurf.VolumedB = volumeDb + defaultWheelSurfVolume;
+        }
+
+        auto boostSound = GetSound_SpecialBoostLoop();
+        if (boostSound !is null) {
+            if (defaultSpecialBoostVolume < -999.0) defaultSpecialBoostVolume = boostSound.VolumedB;
+            boostSound.VolumedB = volumeDb + defaultSpecialBoostVolume;
         }
     }
 
@@ -45,4 +59,26 @@ namespace EngineSounds {
             startnew(CoroutineFuncUserdataDouble(EngineSounds::SetEngineSoundVolumeDB), setDb);
         }
     }
+
+    float defaultWheelSurfVolume = -999.9;
+    float defaultSpecialBoostVolume = -999.9;
+
+    CPlugSoundSurface@ GetSoundSurf_CommonCarWheels() {
+        auto wheelSurfFid = Fids::GetGame("GameData/Vehicles/Cars/CommonMedia/Audio/WheelSurface.SoundSurface.Gbx");
+        if (wheelSurfFid is null) throw("GetSoundSurf_CommonCarWheels: wheelSurfFid is null");
+        auto wheelSurf = cast<CPlugSoundSurface>(Fids::Preload(wheelSurfFid));
+        if (wheelSurf is null) throw("GetSoundSurf_CommonCarWheels: wheelSurf is null");
+        return wheelSurf;
+    }
+
+    // CPlugSound at GameData/Vehicles/Cars/CommonMedia/Audio/SpecialBoost_Loop.Sound.gbx
+    CPlugSound@ GetSound_SpecialBoostLoop() {
+        auto boostSoundFid = Fids::GetGame("GameData/Vehicles/Cars/CommonMedia/Audio/SpecialBoost_Loop.Sound.Gbx");
+        if (boostSoundFid is null) throw("GetSound_SpecialBoostLoop: boostSoundFid is null");
+        auto boostSound = cast<CPlugSound>(Fids::Preload(boostSoundFid));
+        if (boostSound is null) throw("GetSound_SpecialBoostLoop: boostSound is null");
+        return boostSound;
+    }
+
+    // could also do whoosh sound, wind, mb some other impact sounds?
 }

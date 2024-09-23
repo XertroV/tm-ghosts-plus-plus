@@ -23,11 +23,11 @@ bool _SpawnPlayer(CMwStack &in stack, CMwNod@ nod) {
         lastGhostsStartOrSpawnTime = lastSpawnTime;
     }
     if (g_BlockNextSpawnPlayer) {
-        warn("Blocking spawn player");
+        log_warn("Blocking spawn player");
         g_BlockNextSpawnPlayer = false;
         return false;
     }
-    warn("SpawnPlayer: resetting scrubber state");
+    log_warn("SpawnPlayer: resetting scrubber state");
     if (scrubberMgr !is null) scrubberMgr.ResetAll();
     startnew(CoroutineFunc(scrubberMgr.ResetAll));
     startnew(SetGhostStartTimeToMatchPlayer);
@@ -44,7 +44,7 @@ void SetGhostStartTimeToMatchPlayer() {
 }
 
 bool _RespawnPlayer(CMwStack &in stack) {
-    warn("RespawnPlayer: resetting scrubber state");
+    log_warn("RespawnPlayer: resetting scrubber state");
     if (scrubberMgr !is null) scrubberMgr.ResetAll();
     return true;
 }
@@ -54,7 +54,7 @@ bool _CGSHPI_CloseInGameMenu(CMwStack &in stack) {
     // having ghosts in the paused state can crash the game when exiting a map
     if (isExiting && scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.ResetAll();
-        trace("Reset paused scrubber due to exit map");
+        log_trace("Reset paused scrubber due to exit map");
         // startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
     return true;
@@ -71,7 +71,7 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
     // ! sometimes a null ptr exception is thrown here
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
-        trace("Starting DoPause soon b/c adding ghost");
+        log_trace("Starting DoPause soon b/c adding ghost");
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
 
@@ -100,20 +100,23 @@ bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
 bool _Ghost_AddWaypointSynced(CMwStack &in stack) {
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
-        trace("Starting DoPause soon b/c _Ghost_AddWaypointSynced");
+        log_trace("Starting DoPause soon b/c _Ghost_AddWaypointSynced");
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
     return true;
 }
 
+uint allowSetStartTimeNow_BeforeEq = 0;
+
 bool _Ghost_Remove(CMwStack &in stack) {
     // having ghosts in the paused state can crash the game when removing a ghost
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
-        trace("Starting DoPause soon b/c _Ghost_Remove");
+        log_trace("Starting DoPause soon b/c _Ghost_Remove");
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
     startnew(Update_ML_SyncAll);
+    allowSetStartTimeNow_BeforeEq = Time::Now + 100;
     return true;
 }
 
@@ -121,7 +124,7 @@ bool _Ghost_RemoveAll(CMwStack &in stack) {
     // having ghosts in the paused state can crash the game when removing a ghost
     if (scrubberMgr !is null && !scrubberMgr.unpausedFlag) {
         scrubberMgr.DoUnpause();
-        trace("Starting DoPause soon b/c _Ghost_RemoveAll");
+        log_trace("Starting DoPause soon b/c _Ghost_RemoveAll");
         startnew(CoroutineFunc(scrubberMgr.DoPause));
     }
     return true;
@@ -144,7 +147,7 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
 
     auto ps = cast<CSmArenaRulesMode>(nod);
 
-    if (g_BlockAllGhostsSetTimeNow && IsSpectatingGhost()) {
+    if (g_BlockAllGhostsSetTimeNow && IsSpectatingGhost() && Time::Now > allowSetStartTimeNow_BeforeEq) {
         bool isNearlyNow = ghostStartTime == int(ps.Now) - 1;
         if (ghostStartTime == int(ps.Now) || isNearlyNow) {
             warn("blocking ghost SetStartTime Now" + (isNearlyNow ? "-1" : ""));
@@ -153,7 +156,7 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
         }
     }
 
-    if (g_BlockNextGhostsSetTimeAny) {
+    if (g_BlockNextGhostsSetTimeAny && Time::Now > allowSetStartTimeNow_BeforeEq) {
         warn("blocking ghost SetStartTime any: " + ghostStartTime);
         g_BlockNextGhostsSetTimeAny = false;
         return false;
@@ -177,15 +180,32 @@ MwId lastSpectatedGhostInstanceId = MwId(uint(-1));
 uint lastSpectatedGhostRaceTime = 0;
 
 bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {
+    bool blockAfterBlockedSetStartTime = lastBlockedSetStartTimeNow + 2 >= Time::Now
+        && IsSpectatingGhost();
+#if DEV
+#else
+    // if we just blocked a set start time, don't let the mode change target ghost
+    log_trace("blocking SetForcedTarget_Ghost due to blocked SetStartTime Now");
+    if (blockAfterBlockedSetStartTime) return false;
+#endif
+
     auto ghostInstId = stack.CurrentId(0);
     auto mgr = GhostClipsMgr::Get(GetApp());
     auto ghost = mgr is null ? null : GhostClipsMgr::GetGhostFromInstanceId(mgr, ghostInstId.Value);
 
     if (ghost !is null) {
-        trace('SetForcedTarget_Ghost: ' + (ghost is null ? "null" : string(ghost.GhostModel.GhostNickname)) + " / InstanceId: " + Text::Format("#%08x", lastSpectatedGhostInstanceId.Value) + " / RaceTime: " + lastSpectatedGhostRaceTime);
+        log_trace('SetForcedTarget_Ghost: ' + (ghost is null ? "null" : string(ghost.GhostModel.GhostNickname)) + " / InstanceId: " + Text::Format("#%08x", lastSpectatedGhostInstanceId.Value) + " / RaceTime: " + lastSpectatedGhostRaceTime);
     } else {
-        warn("SetForcedTarget_Ghost called for a ghost that does not exist; inst id: " + Text::Format("#%08x", ghostInstId.Value));
+        log_info("SetForcedTarget_Ghost called for a ghost that does not exist; inst id: " + Text::Format("#%08x", ghostInstId.Value));
     }
+
+#if DEV
+    // if we just blocked a set start time, don't let the mode change target ghost
+    if (blockAfterBlockedSetStartTime) {
+        log_trace("[DEV] Blocking set forced target ghost due to blocked set start time now");
+        return false;
+    }
+#endif
 
     // if (lastBlockedSetStartTimeNow == Time::Now && !g_AllowNextForceGhostDespiteNowBlock) {
     //     warn("Blocking set forced target ghost due to blocked set start time now");

@@ -61,17 +61,17 @@ class BittableMemoryBuffer {
 }
 
 MemoryBuffer@ GetRawGhostInputData(CGameCtnGhost@ ghost) {
-    dev_trace("GetRawGhostInputData");
+    // dev_trace("GetRawGhostInputData");
     auto g = DGameCtnGhost(ghost);
-    dev_trace("DGameCtnGhost");
+    // dev_trace("DGameCtnGhost");
     auto inputs = g.Inputs.GetPlayerInput(0);
-    dev_trace("DGameCtnGhost_PlayerInput");
+    // dev_trace("DGameCtnGhost_PlayerInput");
     auto data = inputs.InputData;
-    dev_trace("DGameCtnGhost_PlayerInputData");
+    // dev_trace("DGameCtnGhost_PlayerInputData");
     auto buf = MemoryBuffer(data.BytesLen);
     auto ptr = data.BytesPtr;
     uint len = data.BytesLen;
-    dev_trace('getting buffer of data; len=' + len + '; ptr=' + Text::FormatPointer(ptr));
+    // dev_trace('getting buffer of data; len=' + len + '; ptr=' + Text::FormatPointer(ptr));
     uint offset = 0;
     uint64 tmp64;
     // while (offset < len) {
@@ -219,11 +219,11 @@ namespace Ghosts_PP {
 }
 
 TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
-    dev_trace("GetProcessedGhostInputData");
+    // dev_trace("GetProcessedGhostInputData");
     auto buf = BittableMemoryBuffer(GetRawGhostInputData(ghost));
-    dev_trace("[GetProcessedGhostInputData] got buffer");
+    // dev_trace("[GetProcessedGhostInputData] got buffer");
     auto ticks = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0).ticks;
-    dev_trace("[GetProcessedGhostInputData] got ticks=" + ticks);
+    // dev_trace("[GetProcessedGhostInputData] got ticks=" + ticks);
     TmInputChange@[] res;
 
     EStart started = EStart::NotStarted;
@@ -242,7 +242,7 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
     bool sameVech = false;
 
     for (int i = 0; i < ticks; i++) {
-        dev_trace("[GetProcessedGhostInputData] processing tick " + i);
+        // dev_trace("[GetProcessedGhostInputData] processing tick " + i);
         different = false;
         bool sameState = buf.ReadBit() == 1;
         bool onlyHorn = false;
@@ -304,7 +304,7 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
 
         if (different) {
             auto change = TmInputChange(i, states, mouseAccuX, mouseAccuY, steer, gas, brake, horn, characterStates);
-            dev_trace('Got input change: ' + change.ToString());
+            // dev_trace('Got input change: ' + change.ToString());
             res.InsertLast(change);
         }
     }

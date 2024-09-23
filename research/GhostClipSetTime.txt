@@ -1,0 +1,45 @@
+Trackmania.exe+C8A6A2 - 45 8D 0C 1A           - lea r9d,[r10+rbx]
+Trackmania.exe+C8A6A6 - 49 8B 4F 40           - mov rcx,[r15+40]
+Trackmania.exe+C8A6AA - 0F28 D6               - movaps xmm2,xmm6
+Trackmania.exe+C8A6AD - 8B D6                 - mov edx,esi
+Trackmania.exe+C8A6AF - F3 0F11 44 24 20      - movss [rsp+20],xmm0
+Trackmania.exe+C8A6B5 - E8 16FAFFFF           - call Trackmania.exe.text+C890D0 { set ghost clip time
+ }
+Trackmania.exe+C8A6BA - 65 48 8B 04 25 58000000  - mov rax,gs:[00000058] { 88 }
+Trackmania.exe+C8A6C3 - 48 8B 18              - mov rbx,[rax]
+Trackmania.exe+C8A6C6 - B8 10000000           - mov eax,00000010 { 16 }
+Trackmania.exe+C8A6CB - 80 3C 18  00          - cmp byte ptr [rax+rbx],00 { 0 }
+Trackmania.exe+C8A6CF - 75 05                 - jne Trackmania.exe.text+C896D6 { ->Trackmania.exe+C8A6D6 }
+Trackmania.exe+C8A6D1 - E8 5AB68600           - call Trackmania.exe.text+14F4D30 { ->Trackmania.exe+14F5D30 }
+Trackmania.exe+C8A6D6 - BA 50010000           - mov edx,00000150 { 336 }
+Trackmania.exe+C8A6DB - 48 8D 4C 24 58        - lea rcx,[rsp+58]
+Trackmania.exe+C8A6E0 - 48 03 D3              - add rdx,rbx
+Trackmania.exe+C8A6E3 - E8 484D48FF           - call Trackmania.exe.text+10E430 { ->Trackmania.exe+10F430 }
+Trackmania.exe+C8A6E8 - 45 8B 47 58           - mov r8d,[r15+58]
+Trackmania.exe+C8A6EC - 48 8D 54 24 30        - lea rdx,[rsp+30]
+Trackmania.exe+C8A6F1 - 48 8D 4C 24 58        - lea rcx,[rsp+58]
+Trackmania.exe+C8A6F6 - E8 253D49FF           - call Trackmania.exe.text+11D420 { ->Trackmania.exe+11E420 }
+
+
+--------------
+
+
+Trackmania.exe+C8A6AA - 0F28 D6               - movaps xmm2,xmm6
+Trackmania.exe+C8A6AD - 8B D6                 - mov edx,esi
+Trackmania.exe+C8A6AF - F3 0F11 44 24 20      - movss [rsp+20],xmm0
+Trackmania.exe+C8A6B5 - E8 16FAFFFF           - call Trackmania.exe.text+C890D0 { set ghost clip time
+ }
+Trackmania.exe+C8A6BA - 65 48 8B 04 25 58000000  - mov rax,gs:[00000058] { 88 }
+Trackmania.exe+C8A6C3 - 48 8B 18              - mov rbx,[rax]
+Trackmania.exe+C8A6C6 - B8 10000000           - mov eax,00000010 { 16 }
+Trackmania.exe+C8A6CB - 80 3C 18  00          - cmp byte ptr [rax+rbx],00 { 0 }
+
+
+0F 28 D6 8B D6 F3 0F 11 44 24 20 E8 16 FA FF FF 65 48 8B 04 25 58 00 00 00 48 8B 18 B8 10 00 00 00 80 3C 18 00
+0F 28 D6 8B D6 F3 0F 11 44 24 20 E8 ?? ?? ?? ?? 65 48 8B 04 25 58 00 00 00 48 8B 18 B8 10 00 00 00 80 3C 18 00
+8B D6 F3 0F 11 44 24 20 E8 ?? ?? ?? ?? 65 48 8B 04 25 58 00 00 00 48 8B 18 B8 10 00 00 00 80 3C 18 00
+F3 0F 11 44 24 20 E8 ?? ?? ?? ?? 65 48 8B 04 25 58 00 00 00 48 8B 18 B8 10 00 00 00 80 3C 18 00
+
+
+// this calls the following function which sets the actual time value:
+E8 ?? ?? ?? ?? 65 48 8B 04 25 58 00 00 00 48 8B 18 B8 10 00 00 00 80 3C 18 00
