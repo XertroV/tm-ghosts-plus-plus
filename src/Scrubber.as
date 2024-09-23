@@ -78,12 +78,13 @@ bool showAdvanced = false;
 uint oneTimeLog = 0;
 
 void DrawScrubber() {
-    if (!S_ScrubberWhenOverlayOff && !UI::IsOverlayShown()) return;
-    if (!S_ScrubberWhenUIOff && !UI::IsGameUIVisible()) return;
-    bool isSpectating = IsSpectatingGhost();
     auto app = GetApp();
     auto ps = cast<CSmArenaRulesMode>(app.PlaygroundScript);
     if (ps is null) return;
+    if (S_AutoUnlockTimelineSolo) CheckUpdateAutoUnlockTimelineSolo(ps);
+    if (!S_ScrubberWhenOverlayOff && !UI::IsOverlayShown()) return;
+    if (!S_ScrubberWhenUIOff && !UI::IsGameUIVisible()) return;
+    bool isSpectating = IsSpectatingGhost();
     auto cp = cast<CSmArenaClient>(app.CurrentPlayground);
     if (cp is null) return;
     auto player = cp.Players.Length > 0 ? cast<CSmPlayer>(cp.Players[0]) : null;
@@ -374,6 +375,9 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     UI::EndDisabled();
     UI::SameLine();
     DrawUnlockTimelineButton(ps);
+    UI::SameLine();
+    S_AutoUnlockTimelineSolo = UI::Checkbox("Auto-Unlock", S_AutoUnlockTimelineSolo);
+    AddSimpleTooltip("Automatically unlock the timeline when you load a map.");
     UI::SameLine();
     DrawGhostOpacityControls();
 
