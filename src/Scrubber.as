@@ -202,6 +202,12 @@ void DrawScrubber() {
 
         bool clickTogglePause = false;
 
+
+#if DEV
+        nvg::StrokeWidth(4.0);
+        // DrawDebugRect(UI::GetWindowPos() + UI::GetCursorPos(), vec2(btnWidth, GetCurrFontSize() + fp.y * 2.), c_red);
+        nvg::StrokeWidth(2.0);
+#endif
         bool expand = UI::Button(Icons::Expand + "##scrubber-expand", vec2(btnWidth, 0));
         UI::SameLine();
         clickTogglePause = DrawPlayPauseButton(btnWidth) || clickTogglePause;
@@ -213,7 +219,13 @@ void DrawScrubber() {
             lastLoadedGhostRaceTime = mgr.Ghosts[0].GhostModel.RaceTime;
         }
 
-        UI::SetNextItemWidth((UI::GetWindowContentRegionWidth() - btnWidthFull * nbBtns) / UI::GetScale());
+        float scrubberWidth = (UI::GetCursorPos().x + UI::GetContentRegionAvail().x - btnWidthFull * nbBtns - spacing.x);
+#if DEV
+        nvg::StrokeWidth(4.0);
+        // DrawDebugRect(UI::GetWindowPos() + UI::GetCursorPos(), vec2(scrubberWidth, GetCurrFontSize() + fp.y * 2.), c_red);
+        nvg::StrokeWidth(2.0);
+#endif
+        UI::SetNextItemWidth(scrubberWidth / UI::GetScale());
         maxTime = 0.0;
         maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
         maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime);
@@ -377,7 +389,7 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     DrawUnlockTimelineButton(ps);
     UI::SameLine();
     S_AutoUnlockTimelineSolo = UI::Checkbox("Auto-Unlock", S_AutoUnlockTimelineSolo);
-    AddSimpleTooltip("Automatically unlock the timeline when you load a map.");
+    AddSimpleTooltip("Automatically unlock the timeline when you load a map.\n\n\\$iNote: 'unlock timeline' button is disabled while you are driving.");
     UI::SameLine();
     DrawGhostOpacityControls();
 

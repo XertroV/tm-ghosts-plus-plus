@@ -35,7 +35,7 @@ float S_EngineSoundsDB = -20.;
 // bool S_SwapPauseAndRestart = false;
 
 [Setting category="General" name="Automatically unlock the timeline in Solo"]
-bool S_AutoUnlockTimelineSolo = false;
+bool S_AutoUnlockTimelineSolo = true;
 
 [Setting category="General" name="Suppress unlock timeline prompt"]
 bool S_SuppressUnlockTimelinePrompt = false;
