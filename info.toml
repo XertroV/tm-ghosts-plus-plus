@@ -2,7 +2,7 @@
 name     = "Ghosts++"
 author   = "XertroV"
 category = "MLHook"
-version  = "0.3.16"
+version  = "0.3.17"
 siteid = 444
 
 [script]

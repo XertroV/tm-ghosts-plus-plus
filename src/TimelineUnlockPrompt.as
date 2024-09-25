@@ -41,6 +41,9 @@ void CheckUpdateAutoUnlockTimelineSolo(CSmArenaRulesMode@ ps) {
     if (IsTimerUnlocked(ps)) return;
     if (ps.UIManager.UIAll.UISequence == 0) return;
     if (IsPlayerDriving()) return;
-    log_info("Auto-unlocking timeline; ps.Now: " + ps.Now + "; ps.StartTime: " + ps.StartTime + "; ps.UIManager.UIAll.UISequence: " + ps.UIManager.UIAll.UISequence);
+    if (int(ps.Now) < 0) return;
+    if (ps.Now < 50) return;
+    // log_info("[PRE ] Auto-unlocking timeline; ps.Now: " + ps.Now + "; ps.StartTime: " + ps.StartTime + "; ps.UIManager.UIAll.UISequence: " + ps.UIManager.UIAll.UISequence);
     UnlockPlaygroundTimer(ps);
+    log_info("Auto-unlocking timeline; ps.Now: " + ps.Now + "; ps.StartTime: " + ps.StartTime + "; ps.UIManager.UIAll.UISequence: " + ps.UIManager.UIAll.UISequence);
 }
