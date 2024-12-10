@@ -10,6 +10,9 @@ void SetupIntercepts() {
     // not a proc
     // Dev::InterceptProc("CGamePlaygroundUIConfig", "Spectator_SetForcedTarget_Clear", _Spectator_SetForcedTarget_Clear);
     Dev::InterceptProc("CGameScriptHandlerPlaygroundInterface", "CloseInGameMenu", _CGSHPI_CloseInGameMenu);
+    // cannot intercept as not proc
+    // Dev::InterceptProc("CGameManiaPlanet", "BackToMainMenu", _BackToMainMenu);
+    // Dev::InterceptProc("CTrackMania", "BackToMainMenu", _BackToMainMenu_TM);
 }
 
 bool g_BlockNextSpawnPlayer;
@@ -171,6 +174,7 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
 
 void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, int startTime) {
     g_BlockAllGhostsSetTimeNow = false;
+    if (ps is null) return;
     ps.Ghosts_SetStartTime(startTime);
     // log_debug("ghosts call set start time: " + startTime);
     g_BlockAllGhostsSetTimeNow = true;

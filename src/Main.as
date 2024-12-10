@@ -22,6 +22,7 @@ void Main() {
         while (GetApp().RootMap !is null) yield();
     }
     // startnew(WindowFocusCoro);
+    startnew(Loop_BeforeScripts).WithRunContext(Meta::RunContext::BeforeScripts);
     startnew(MapCoro);
     startnew(ClearTaskCoro);
     startnew(SetupIntercepts);
@@ -456,4 +457,38 @@ void RenderEarly() {
     pendingScroll = vec2();
 
     DrawUnlockTimelinePromptWindow();
+}
+
+
+void Loop_BeforeScripts() {
+    // if app.BackToMainMenu() is called, it can crash the game if ghosts are paused. (Not always, but sometimes)
+    // This happens in the game's main loop, but plugins call BackToMainMenu during render.
+    // Check here whether an BackToMainMenu was called and if so, unpause.
+    auto app = cast<CGameManiaPlanet>(GetApp());
+    while (true) {
+        if (scrubberMgr !is null && IsBackToMenuRequested(app)) {
+            log_warn("Unpausing ghosts because IsBackToMenuRequested(app) == true");
+            scrubberMgr.ResetAll();
+            while (IsBackToMenuRequested(app)) yield();
+        }
+        yield();
+    }
+}
+
+uint16 O_GAMECTNAPP_BACKTOMENUCALLED = GetOffset("CGameCtnApp", "Editor") - (0x7D8 - 0x7B4);
+
+bool IsBackToMenuRequested(CGameManiaPlanet@ app) {
+    // 0x7B4 is 1 after BackToMainMenu is called.
+    // 0x7B8 is never 1; 0x7BC is 1 after it starts going back to menu.
+    return Dev::GetOffsetUint32(app, O_GAMECTNAPP_BACKTOMENUCALLED) > 0;
+
+    // auto ret = Dev::GetOffsetUint32(app, 0x7B8) > 0
+    // || Dev::GetOffsetUint32(app, 0x7B4) > 0
+    // || Dev::GetOffsetUint32(app, 0x7BC) > 0;
+    // if (ret) {
+    //     log_warn("0x7B4: " + Dev::GetOffsetUint32(app, 0x7B4));
+    //     log_warn("0x7B8: " + Dev::GetOffsetUint32(app, 0x7B8));
+    //     log_warn("0x7BC: " + Dev::GetOffsetUint32(app, 0x7BC));
+    // }
+    // return ret;
 }
