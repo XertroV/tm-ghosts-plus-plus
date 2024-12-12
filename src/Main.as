@@ -114,10 +114,7 @@ void InitGP() {
     yield();
     auto app = GetApp();
     while (app.PlaygroundScript is null) yield();
-    trace('registering callback & hook');
-    MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
-    MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_NextMap", true);
-    MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_Exit", true);
+    _OnEnabledOrStart();
 
     // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_SpectateGhost", true);
     // MLHook::RegisterMLHook(spectateHook, "TMGame_Record_Spectate", true);
@@ -125,12 +122,19 @@ void InitGP() {
     // MLHook::RegisterMLHook(toggleHook, "TMGame_Record_TogglePB", true);
     // MLHook::InjectManialinkToPlayground(SetFocusedRecord_PageUID, SETFOCUSEDRECORD_SCRIPT_TXT, true);
 
-    SetCurrentGhostValues();
     startnew(WatchAndRemoveFadeOut);
-    if (IsSpectatingGhost())
-        g_SaveGhostTab.StartWatchGhostsLoopLoop();
     trace('init done');
     g_Initialized = true;
+}
+
+void _OnEnabledOrStart() {
+    trace('registering callback & hook');
+    MLHook::RegisterPlaygroundMLExecutionPointCallback(ML_PG_Callback);
+    MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_NextMap", true);
+    MLHook::RegisterMLHook(resetHook, "RaceMenuEvent_Exit", true);
+    SetCurrentGhostValues();
+    if (IsSpectatingGhost())
+        g_SaveGhostTab.StartWatchGhostsLoopLoop();
 }
 
 bool g_Initialized = false;
@@ -146,6 +150,7 @@ void Unload() {
         MLHook::UnregisterMLHooksAndRemoveInjectedML();
         trace('unloading ghosts++ #3 done');
         EngineSounds::Unapply();
+        CheckUnhookAllRegisteredHooks();
     }
 }
 void OnDestroyed() {
@@ -153,6 +158,10 @@ void OnDestroyed() {
     Unload();
 }
 void OnDisabled() { Unload(); }
+
+void OnEnabled() {
+    _OnEnabledOrStart();
+}
 
 // check for permissions and
 void CheckRequiredPermissions() {
