@@ -16,6 +16,18 @@ namespace GPSScrubbing {
         }
         UI::End();
         ScrubberWindow::AfterWindowEnd();
+
+        // inputs maybe
+        bool showInputs = S_ShowInputsWhileSpectatingGhosts
+            && (UI::IsGameUIVisible() || S_ShowInputsWhenUIHidden)
+            ;
+        if (showInputs) {
+            auto visId = GameCamera().CurrVehicleVisId;
+            if (visId < 0x0F000000 && visId & 0x04000000 != 0) {
+                DrawInputsForVisId(visId);
+            }
+        }
+
     }
 
     float _lastScrub_t = 0;

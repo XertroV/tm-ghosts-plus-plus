@@ -481,8 +481,8 @@ bool Dev_PointerLooksBad(uint64 ptr) {
     #else
         // normal windows
         if (ptr < 0x10000000000) return true;
-        if (ptr > BASE_ADDR_END) return true;
     #endif
+    if (ptr > 0x40000000000) return true;
     if (ptr % 8 != 0) return true;
     if (ptr == 0) return true;
     return false;

@@ -123,6 +123,26 @@ namespace ScrubberWindow {
 }
 
 
+void DrawInputsForVisId(uint targetVisId) {
+    CSceneVehicleVis@[] viss = VehicleState::GetAllVis(GetApp().GameScene);
+    CSceneVehicleVis@ found;
+    for (uint i = 0; i < viss.Length; i++) {
+        auto vis = viss[i];
+        auto visId = Dev::GetOffsetUint32(vis, 0);
+        if (visId == targetVisId) {
+            @found = vis;
+            break;
+        }
+    }
+    if (found !is null) {
+        auto inputsSize = vec2(S_InputsHeight * 2, S_InputsHeight) * ScrubberWindow::screen.y;
+        auto inputsPos = (ScrubberWindow::screen - inputsSize) * vec2(S_InputsPosX, S_InputsPosY);
+        inputsPos += inputsSize;
+        nvg::Translate(inputsPos);
+        Inputs::DrawInputs(found.AsyncState, inputsSize);
+        nvg::ResetTransform();
+    }
+}
 
 
 float maxTime = 0.;
@@ -200,24 +220,7 @@ void DrawScrubber() {
                     Dashboard::InformCurrentEntityId(ghostVisId);
                 }
 #else
-                CSceneVehicleVis@[] viss = VehicleState::GetAllVis(app.GameScene);
-                CSceneVehicleVis@ found;
-                for (uint i = 0; i < viss.Length; i++) {
-                    auto vis = viss[i];
-                    auto visId = Dev::GetOffsetUint32(vis, 0);
-                    if (visId == ghostVisId) {
-                        @found = vis;
-                        break;
-                    }
-                }
-                if (found !is null) {
-                    auto inputsSize = vec2(S_InputsHeight * 2, S_InputsHeight) * ScrubberWindow::screen.y;
-                    auto inputsPos = (ScrubberWindow::screen - inputsSize) * vec2(S_InputsPosX, S_InputsPosY);
-                    inputsPos += inputsSize;
-                    nvg::Translate(inputsPos);
-                    Inputs::DrawInputs(found.AsyncState, inputsSize);
-                    nvg::ResetTransform();
-                }
+                DrawInputsForVisId(ghostVisId);
 #endif
             }
         }

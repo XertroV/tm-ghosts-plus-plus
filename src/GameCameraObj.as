@@ -3,12 +3,20 @@ const uint16 O_GAMECAM_ACTIVE_CAM_TYPE = 0x1A8;
 // 0x24: c1, 0x25: c2, 0x26: c3
 const uint16 O_GAMECAM_USE_ALT = 0x24;
 const uint16 O_APP_GAMECAM = GetOffset("CGameCtnApp", "GameScene") + 0x10;
+// appears at 0x5C, 0xDC
+const uint16 O_GAMECAM_CURR_VEHICLE_VIS_ID = 0x5C;
 
 class GameCamera {
     GameCamera() {}
 
     protected CMwNod@ GetSelf() {
         return Dev::GetOffsetNod(GetApp(), O_APP_GAMECAM);
+    }
+
+    uint get_CurrVehicleVisId() {
+        auto gc = GetSelf();
+        if (gc is null) return 0x0FF00000;
+        return Dev::GetOffsetUint32(gc, O_GAMECAM_CURR_VEHICLE_VIS_ID);
     }
 
     uint get_ActiveCam() {

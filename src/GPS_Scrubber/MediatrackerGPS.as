@@ -20,6 +20,9 @@ bool S_EnableGPSScrubbing = true;
 
 void OnUpdatedGpsScrubbingSetting() {
     Hook_UpdateMediatrackerClipCurrentTime.SetApplied(S_EnableGPSScrubbing);
+    if (!S_EnableGPSScrubbing) {
+        GPSScrubbing::_SetActiveClip(null);
+    }
 }
 
 namespace GPSScrubbing {
@@ -45,10 +48,15 @@ namespace GPSScrubbing {
         if (!S_EnableGPSScrubbing) return false;
         auto app = GetApp();
         if (!CheckMapHasGPS(app.RootMap)) return false;
+        if (!IsPlayerDriving()) return false;
         auto clipPlayer = GetCurrPgMediaClipPlayer(app);
         if (clipPlayer is null) return false;
         auto clip = clipPlayer.Clip;
         if (clip is null) return false;
+        if (ClipPlayer_GetTimeSpeed3(clipPlayer) == 0.0) {
+            _SetActiveClip(null);
+            return false;
+        }
         if (clip is _activeClip) return _lastActiveClipWasGPS;
         _SetActiveClip(clip);
         return _lastActiveClipWasGPS;
@@ -96,6 +104,7 @@ namespace GPSScrubbing {
 
 
     uint _lastMapMwIdVal = 0;
+    uint _lastMapAuthorTime = 0;
     bool _lastMapHasGPSCheck = false;
 
     bool CheckMapHasGPS(CGameCtnChallenge@ map) {
@@ -105,6 +114,7 @@ namespace GPSScrubbing {
             _SetActiveClip(null);
         } else if (map.Id.Value != _lastMapMwIdVal) {
             _lastMapMwIdVal = map.Id.Value;
+            _lastMapAuthorTime = map.TMObjective_AuthorTime;
             _lastMapHasGPSCheck = _DoesMapHaveGPS(map);
         }
         return _lastMapHasGPSCheck;
@@ -141,14 +151,14 @@ namespace GPSScrubbing {
                 return true;
             }
             //
-            if (CanFindGPSInTrack(track)) {
+            if (CanFindGPSInTrack(clip, track)) {
                 return true;
             }
         }
         return false;
     }
 
-    bool CanFindGPSInTrack(CGameCtnMediaTrack@ track) {
+    bool CanFindGPSInTrack(CGameCtnMediaClip@ clip, CGameCtnMediaTrack@ track) {
         if (track is null) return false;
         for (uint i = 0; i < track.Blocks.Length; i++) {
             auto block = track.Blocks[i];
@@ -158,7 +168,7 @@ namespace GPSScrubbing {
             if (CanFindGPSInTextBlock(textBlock)) {
                 return true;
             }
-            if (CanFindGPSInEntityBlock(entBlock)) {
+            if (CanFindGPSInEntityBlock(entBlock, clip)) {
                 return true;
             }
         }
@@ -170,10 +180,38 @@ namespace GPSScrubbing {
         return string(block.Text).ToLower().Contains("gps");
     }
 
-    bool CanFindGPSInEntityBlock(CGameCtnMediaBlockEntity@ block) {
+    bool CanFindGPSInEntityBlock(CGameCtnMediaBlockEntity@ block, CGameCtnMediaClip@ clip) {
         if (block is null) return false;
         // ghost nickname at 0x68
         auto nickName = Dev::GetOffsetString(block, 0x68);
-        return string(nickName).ToLower().Contains("gps");
+        if (string(nickName).ToLower().Contains("gps")) {
+            return true;
+        }
+        float nnAsFloat;
+        if (Text::TryParseFloat(nickName, nnAsFloat)) {
+            // ghost name is a float, true if <= AT + 5;
+            auto ghostTimeLtEqAuthorTime = uint(nnAsFloat) <= _lastMapAuthorTime + 5000;
+            if (ghostTimeLtEqAuthorTime) {
+                return true;
+            }
+        }
+        // race time at 0x7C
+        auto raceTimeLtEqAuthorTime = Dev::GetOffsetUint32(block, 0x7C) <= _lastMapAuthorTime + 5000;
+        if (raceTimeLtEqAuthorTime) {
+            return true;
+        }
+        return false;
+    }
+
+    uint GetVehicleVisId(CGameCtnMediaBlockEntity@ block) {
+        throw('unused');
+        // 0x158 ptr -> struct (+0x4 = visId)
+        // 0x160 visId+1 ??
+        // 0x164 visId+2 ??
+        uint64 ptr = Dev::GetOffsetUint64(block, 0x158);
+        if (ptr == 0) return 0x0FF00000;
+        if (ptr % 8 != 0) return 0x0FF00000;
+        if (Dev_PointerLooksBad(ptr)) return 0x0FF00000;
+        return Dev::ReadUInt32(ptr + 0x4);
     }
 }

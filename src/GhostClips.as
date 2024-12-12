@@ -188,6 +188,10 @@ void ClipPlayer_SetStartTime(CGameCtnMediaClipPlayer@ player, uint t) {
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_START_TIME, t);
 }
 
+float ClipPlayer_GetTimeSpeed3(CGameCtnMediaClipPlayer@ player) {
+    return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3);
+}
+
 // returns vec2(time, delta)
 vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSpeed = 1.0) {
     if (player is null) return vec2();
