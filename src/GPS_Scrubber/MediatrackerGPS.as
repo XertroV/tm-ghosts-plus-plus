@@ -37,7 +37,7 @@ namespace GPSScrubbing {
         @_activeClip = clip;
         if (_activeClip !is null) _activeClip.MwAddRef();
         // update other cached data
-        _lastActiveClipWasGPS = CanFindGPSInClip(_activeClip);
+        _lastActiveClipWasGPS = CanFindGPSInClip(_activeClip, true);
         _activeClipDuration = Clip_GetDuration(_activeClip);
 #if DEV
         trace("Active clip: " + (_lastActiveClipWasGPS ? "GPS" : "No GPS") + " | " + _activeClipDuration + "ms");
@@ -137,11 +137,17 @@ namespace GPSScrubbing {
         return false;
     }
 
-    bool CanFindGPSInClip(CGameCtnMediaClip@ clip) {
+    bool CanFindGPSInClip(CGameCtnMediaClip@ clip, bool checkGhostAndCam = false) {
         if (clip is null) return false;
+        if (checkGhostAndCam) {
+            if (!ClipHasBothGhostAndCam(clip)) {
+                return false;
+            }
+        }
         if (string(clip.Name).ToLower().Contains("gps")) {
             return true;
         }
+        // todo: MUST have a ghost with camera somewhere
         for (uint i = 0; i < clip.Tracks.Length; i++) {
             auto track = clip.Tracks[i];
             if (track is null) continue;
@@ -199,6 +205,46 @@ namespace GPSScrubbing {
         auto raceTimeLtEqAuthorTime = Dev::GetOffsetUint32(block, 0x7C) <= _lastMapAuthorTime + 5000;
         if (raceTimeLtEqAuthorTime) {
             return true;
+        }
+        return false;
+    }
+
+    bool ClipHasBothGhostAndCam(CGameCtnMediaClip@ clip) {
+        if (!ClipHasGhost(clip)) return false;
+        if (!ClipHasCam(clip)) return false;
+        return true;
+    }
+
+    bool ClipHasGhost(CGameCtnMediaClip@ clip) {
+        if (clip is null) return false;
+        for (uint i = 0; i < clip.Tracks.Length; i++) {
+            auto track = clip.Tracks[i];
+            if (track is null) continue;
+            for (uint j = 0; j < track.Blocks.Length; j++) {
+                auto block = track.Blocks[j];
+                if (block is null) continue;
+                auto entBlock = cast<CGameCtnMediaBlockEntity>(block);
+                // not a ghost/entity track
+                if (entBlock is null) break;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool ClipHasCam(CGameCtnMediaClip@ clip) {
+        if (clip is null) return false;
+        for (uint i = 0; i < clip.Tracks.Length; i++) {
+            auto track = clip.Tracks[i];
+            if (track is null) continue;
+            for (uint j = 0; j < track.Blocks.Length; j++) {
+                auto block = track.Blocks[j];
+                if (block is null) continue;
+                auto camBlock = cast<CGameCtnMediaBlockCamera>(block);
+                // not a camera track
+                if (camBlock is null) break;
+                return true;
+            }
         }
         return false;
     }

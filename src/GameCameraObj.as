@@ -3,8 +3,10 @@ const uint16 O_GAMECAM_ACTIVE_CAM_TYPE = 0x1A8;
 // 0x24: c1, 0x25: c2, 0x26: c3
 const uint16 O_GAMECAM_USE_ALT = 0x24;
 const uint16 O_APP_GAMECAM = GetOffset("CGameCtnApp", "GameScene") + 0x10;
-// appears at 0x5C, 0xDC
-const uint16 O_GAMECAM_CURR_VEHICLE_VIS_ID = 0x5C;
+// appears at 0x5C, 0xDC, with custom cameras, visId can be at 0x220, 0x2c8
+// (220 & 2c8 work for driving, custom cams, ghost spec, normal gps cam)
+const uint16 O_GAMECAM_CURR_VEHICLE_VIS_ID = 0x220;
+// const uint16 O_GAMECAM_CURR_VEHICLE_VIS_ID = 0x5C;
 
 class GameCamera {
     GameCamera() {}
