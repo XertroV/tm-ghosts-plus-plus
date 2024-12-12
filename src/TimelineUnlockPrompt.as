@@ -35,9 +35,10 @@ bool DrawUnlockTimelineButton(CSmArenaRulesMode@ ps) {
     return ret;
 }
 
-void CheckUpdateAutoUnlockTimelineSolo(CSmArenaRulesMode@ ps) {
+void CheckUpdateAutoUnlockTimelineSolo(CSmArenaRulesMode@ ps, CGameCtnEditor@ editor) {
     if (!S_AutoUnlockTimelineSolo) return;
     if (ps is null) return;
+    if (editor !is null) return;
     if (IsTimerUnlocked(ps)) return;
     if (ps.UIManager.UIAll.UISequence == 0) return;
     if (IsPlayerDriving()) return;

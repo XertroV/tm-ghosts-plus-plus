@@ -174,7 +174,7 @@ void DrawScrubber() {
     auto ps = cast<CSmArenaRulesMode>(app.PlaygroundScript);
     if (ps is null) return;
 
-    if (S_AutoUnlockTimelineSolo) CheckUpdateAutoUnlockTimelineSolo(ps);
+    if (S_AutoUnlockTimelineSolo) CheckUpdateAutoUnlockTimelineSolo(ps, app.Editor);
 
     bool isSpectating = IsSpectatingGhost();
     auto player = cp.Players.Length > 0 ? cast<CSmPlayer>(cp.Players[0]) : null;
