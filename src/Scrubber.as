@@ -72,6 +72,59 @@ bool IsPauseMenuOpen() {
 }
 
 
+namespace ScrubberWindow {
+    vec2 screen;
+    vec2 screenScaled;
+    vec2 spacing;
+    // frame padding
+    vec2 fp;
+    vec2 pos;
+    vec2 size;
+    float ySize;
+
+    const int WindowFlags = UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize;
+
+    // pushes font, updates variables for screen stuff
+    void BeforeRender() {
+        UI::PushFont(GetCurrFont());
+
+        screen = vec2(Draw::GetWidth(), Draw::GetHeight());
+        screenScaled = screen / UI::GetScale();
+        spacing = UI::GetStyleVarVec2(UI::StyleVar::ItemSpacing);
+        fp = UI::GetStyleVarVec2(UI::StyleVar::FramePadding);
+        ySize = (UI::GetFrameHeightWithSpacing() + spacing.y + fp.y) / UI::GetScale();
+        pos = (screenScaled - vec2(S_XWidth * screenScaled.x, ySize)) * vec2(S_ScrubberCenterX ? 0.5 : S_XPosRel, S_YPosRel);
+        size = screenScaled * vec2(S_XWidth, 0);
+        size.y = ySize;
+    }
+
+    void SetUpWindow() {
+        auto bgCol = UI::GetStyleColor(UI::Col::WindowBg);
+        auto frameBgCol = UI::GetStyleColor(UI::Col::FrameBg);
+        auto frameABgCol = UI::GetStyleColor(UI::Col::FrameBgActive);
+        auto frameHBgCol = UI::GetStyleColor(UI::Col::FrameBgHovered);
+        bgCol.w *= S_ScrubberBgAlpha;
+        frameBgCol.w *= S_ScrubberBgAlpha;
+        frameHBgCol.w *= S_ScrubberBgAlpha;
+        frameABgCol.w *= S_ScrubberBgAlpha;
+        UI::PushStyleColor(UI::Col::WindowBg, bgCol);
+        UI::PushStyleColor(UI::Col::Text, S_TextColor);
+        UI::PushStyleColor(UI::Col::FrameBg, frameBgCol);
+        UI::PushStyleColor(UI::Col::FrameBgActive, frameABgCol);
+        UI::PushStyleColor(UI::Col::FrameBgHovered, frameHBgCol);
+        UI::SetNextWindowSize(int(size.x), 0 /*int(size.y)*/, UI::Cond::Always);
+        UI::SetNextWindowPos(int(pos.x), int(pos.y), UI::Cond::Always);
+    }
+
+    void AfterWindowEnd() {
+        UI::PopStyleColor(5);
+        UI::PopFont();
+    }
+}
+
+
+
+
 float maxTime = 0.;
 uint lastHover;
 bool showAdvanced = false;
@@ -79,37 +132,43 @@ uint oneTimeLog = 0;
 uint lastDraw_StartTime = 0;
 
 void DrawScrubber() {
-    auto app = GetApp();
-    auto ps = cast<CSmArenaRulesMode>(app.PlaygroundScript);
-    if (ps is null) return;
-    if (S_AutoUnlockTimelineSolo) CheckUpdateAutoUnlockTimelineSolo(ps);
+    // check visibility before branching for GPS scrubbing
     if (!S_ScrubberWhenOverlayOff && !UI::IsOverlayShown()) return;
     if (!S_ScrubberWhenUIOff && !UI::IsGameUIVisible()) return;
-    bool isSpectating = IsSpectatingGhost();
+    // we'll need to refer to a bunch of things in the app
+    auto app = GetApp();
+    // curr pg first -- required for normal and gps scrubbing
     auto cp = cast<CSmArenaClient>(app.CurrentPlayground);
     if (cp is null) return;
+    // don't show any scrubber if we're in a menu
+    if (IsPauseMenuOpen()) return;
+
+    // if we are in an active GPS clip, we want to show the special GPS scrubber (reduced features)
+    if (GPSScrubbing::Active) {
+        // trace("GPS Scrubber Active");
+        GPSScrubbing::DrawScrubber();
+        return;
+    }
+    // if we're not in a GPS clip, we can proceed with the normal scrubber
+    // ... which only works in solo
+    auto ps = cast<CSmArenaRulesMode>(app.PlaygroundScript);
+    if (ps is null) return;
+
+    if (S_AutoUnlockTimelineSolo) CheckUpdateAutoUnlockTimelineSolo(ps);
+
+    bool isSpectating = IsSpectatingGhost();
     auto player = cp.Players.Length > 0 ? cast<CSmPlayer>(cp.Players[0]) : null;
     auto playerStartTime = player !is null ? player.StartTime : 0;
     // don't show during finish sequence
     if (ps.UIManager.UIAll.UISequence == CGamePlaygroundUIConfig::EUISequence::Finish) return;
-    if (IsPauseMenuOpen()) return;
     if (UI::CurrentActionMap() == "MenuInputsMap") return;
 
-    UI::PushFont(GetCurrFont());
-
-    vec2 screen = vec2(Draw::GetWidth(), Draw::GetHeight());
-    vec2 screenScaled = screen / UI::GetScale();
-    auto spacing = UI::GetStyleVarVec2(UI::StyleVar::ItemSpacing);
-    auto fp = UI::GetStyleVarVec2(UI::StyleVar::FramePadding);
-    auto ySize = (UI::GetFrameHeightWithSpacing() + spacing.y + fp.y) / UI::GetScale();
-    vec2 pos = (screenScaled - vec2(S_XWidth * screenScaled.x, ySize)) * vec2(S_ScrubberCenterX ? 0.5 : S_XPosRel, S_YPosRel);
-    vec2 size = screenScaled * vec2(S_XWidth, 0);
-    size.y = ySize;
+    ScrubberWindow::BeforeRender();
 
     if (S_NeverHideScrubber || (
         // check that we are hovering the scrubber area BUT we are not interacting with another imgui element
         int(app.InputPort.MouseVisibility) == 0 // 0 = Auto; 1 = ForceHidden; 2 = ForceShow
-        && Within(UI::GetMousePos() / UI::GetScale(), vec4(pos, size))
+        && Within(UI::GetMousePos() / UI::GetScale(), vec4(ScrubberWindow::pos, ScrubberWindow::size))
     )) {
         lastHover = Time::Now;
     }
@@ -152,8 +211,8 @@ void DrawScrubber() {
                     }
                 }
                 if (found !is null) {
-                    auto inputsSize = vec2(S_InputsHeight * 2, S_InputsHeight) * screen.y;
-                    auto inputsPos = (screen - inputsSize) * vec2(S_InputsPosX, S_InputsPosY);
+                    auto inputsSize = vec2(S_InputsHeight * 2, S_InputsHeight) * ScrubberWindow::screen.y;
+                    auto inputsPos = (ScrubberWindow::screen - inputsSize) * vec2(S_InputsPosX, S_InputsPosY);
                     inputsPos += inputsSize;
                     nvg::Translate(inputsPos);
                     Inputs::DrawInputs(found.AsyncState, inputsSize);
@@ -164,25 +223,12 @@ void DrawScrubber() {
         }
     }
 
-    bool drawAdvOnTop = S_ForceShowAdvOnTop || (pos.y + (ySize * 2.) / UI::GetScale() > screen.y);
-    if (drawAdvOnTop && showAdvanced) pos.y -= (ySize - (spacing.y + fp.y) / UI::GetScale());
+    bool drawAdvOnTop = S_ForceShowAdvOnTop || (ScrubberWindow::pos.y + (ScrubberWindow::ySize * 2.) / UI::GetScale() > ScrubberWindow::screen.y);
+    if (drawAdvOnTop && showAdvanced) ScrubberWindow::pos.y -= (ScrubberWindow::ySize - (ScrubberWindow::spacing.y + ScrubberWindow::fp.y) / UI::GetScale());
 
-    auto bgCol = UI::GetStyleColor(UI::Col::WindowBg);
-    auto frameBgCol = UI::GetStyleColor(UI::Col::FrameBg);
-    auto frameABgCol = UI::GetStyleColor(UI::Col::FrameBgActive);
-    auto frameHBgCol = UI::GetStyleColor(UI::Col::FrameBgHovered);
-    bgCol.w *= S_ScrubberBgAlpha;
-    frameBgCol.w *= S_ScrubberBgAlpha;
-    frameHBgCol.w *= S_ScrubberBgAlpha;
-    frameABgCol.w *= S_ScrubberBgAlpha;
-    UI::PushStyleColor(UI::Col::WindowBg, bgCol);
-    UI::PushStyleColor(UI::Col::Text, S_TextColor);
-    UI::PushStyleColor(UI::Col::FrameBg, frameBgCol);
-    UI::PushStyleColor(UI::Col::FrameBgActive, frameABgCol);
-    UI::PushStyleColor(UI::Col::FrameBgHovered, frameHBgCol);
-    UI::SetNextWindowSize(int(size.x), 0 /*int(size.y)*/, UI::Cond::Always);
-    UI::SetNextWindowPos(int(pos.x), int(pos.y), UI::Cond::Always);
-    if (UI::Begin("scrubber", UI::WindowFlags::NoTitleBar | UI::WindowFlags::NoResize)) {
+    ScrubberWindow::SetUpWindow();
+
+    if (UI::Begin("scrubber", ScrubberWindow::WindowFlags)) {
         bool ghostsNotVisible = !GetGhostVisibility();
 
         // if (oneTimeLog < 2) {
@@ -193,11 +239,11 @@ void DrawScrubber() {
         double startTime = Math::Max(playerStartTime, lastGhostsStartOrSpawnTime);
         lastDraw_StartTime = uint(startTime);
         // need double precision everywhere here to avoid last digit flicker (ps.Now is often in the millions)
-        double t = double(double(ps.Now) - startTime) + double(scrubberMgr.subSecondOffset);
+        double t = (double(ps.Now) - startTime) + double(scrubberMgr.subSecondOffset);
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
-        auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
+        auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., ScrubberWindow::screen.x), 0., 1.))
             * (GetCurrFontSize() / 16.) * UI::GetScale();
-        auto btnWidthFull = btnWidth + spacing.x;
+        auto btnWidthFull = btnWidth + ScrubberWindow::spacing.x;
         float setProg = scrubberMgr.pauseAt;
         if (showAdvanced && drawAdvOnTop) {
             setProg = DrawAdvancedScrubberExtras(ps, btnWidth, isSpectating, setProg);
@@ -222,7 +268,7 @@ void DrawScrubber() {
             lastLoadedGhostRaceTime = mgr.Ghosts[0].GhostModel.RaceTime;
         }
 
-        float scrubberWidth = (UI::GetCursorPos().x + UI::GetContentRegionAvail().x - btnWidthFull * nbBtns - spacing.x);
+        float scrubberWidth = (UI::GetCursorPos().x + UI::GetContentRegionAvail().x - btnWidthFull * nbBtns - ScrubberWindow::spacing.x);
 #if DEV
         nvg::StrokeWidth(4.0);
         // DrawDebugRect(UI::GetWindowPos() + UI::GetCursorPos(), vec2(scrubberWidth, GetCurrFontSize() + fp.y * 2.), c_red);
@@ -341,9 +387,7 @@ void DrawScrubber() {
         }
     }
     UI::End();
-    UI::PopStyleColor(5);
-
-    UI::PopFont();
+    ScrubberWindow::AfterWindowEnd();
 }
 
 bool DrawPlayPauseButton(float btnWidth) {
@@ -785,6 +829,8 @@ enum PlaybackSpeeds {
 
 void ML_PG_Callback(ref@ r) {
     if (scrubberMgr is null) return;
+    if (GetApp().CurrentPlayground is null) return;
+    GPSScrubbing::Update();
     if (GetApp().PlaygroundScript is null) return;
     scrubberMgr.Update();
 }

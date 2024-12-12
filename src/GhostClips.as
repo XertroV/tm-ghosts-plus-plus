@@ -148,16 +148,44 @@ float ClipPlayer_GetCurrSeconds(CGameCtnMediaClipPlayer@ player) {
     return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_CURR_TIME);
 }
 
+float ClipPlayer_GetCurrSeconds2(CGameCtnMediaClipPlayer@ player) {
+    return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_CURR_TIME2);
+}
+
+float ClipPlayer_GetCurrSeconds3(CGameCtnMediaClipPlayer@ player) {
+    return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_CURR_TIME3);
+}
+
 void ClipPlayer_SetCurrSeconds(CGameCtnMediaClipPlayer@ player, float t) {
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME, t);
+}
+
+void ClipPlayer_SetCurrSeconds2(CGameCtnMediaClipPlayer@ player, float t) {
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME2, t);
+}
+
+void ClipPlayer_SetCurrSeconds3(CGameCtnMediaClipPlayer@ player, float t) {
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME3, t);
 }
 
 float ClipPlayer_GetFrameDelta(CGameCtnMediaClipPlayer@ player) {
     return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_FRAME_DELTA);
 }
 
+float ClipPlayer_GetFrameDelta2(CGameCtnMediaClipPlayer@ player) {
+    return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_FRAME_DELTA2);
+}
+
 float ClipPlayer_GetTotalTime(CGameCtnMediaClipPlayer@ player) {
     return Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TOTAL_TIME);
+}
+
+uint ClipPlayer_GetStartTime(CGameCtnMediaClipPlayer@ player) {
+    return Dev::GetOffsetUint32(player, O_GHOSTCLIPPLAYER_START_TIME);
+}
+
+void ClipPlayer_SetStartTime(CGameCtnMediaClipPlayer@ player, uint t) {
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_START_TIME, t);
 }
 
 // returns vec2(time, delta)
@@ -237,11 +265,11 @@ const uint16 O_GHOSTCLIPPLAYER_EDMEDIATRACKS = GetOffset("CGameCtnMediaClipPlaye
 // const int16 O_GCP_CONSTS_OFF = (O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60) + 0x8;
 // -0x60 for orig size. +8 for 2024-06-20_19_53 added values but before the stuff we care about
 
-uint16 _o_gcp_consts_off = 0;
-uint16 O_GCP_CONSTS_OFF {
+int16 _o_gcp_consts_off = 0;
+int16 O_GCP_CONSTS_OFF {
     get {
         if (_o_gcp_consts_off == 0) {
-            _o_gcp_consts_off = O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60;
+            _o_gcp_consts_off = int16(O_GHOSTCLIPPLAYER_EDMEDIATRACKS) - 0x60;
             if (TmGameVersion.Length == 0) TmGameVersion = GetGameExeVersion();
             if (TmGameVersion >= "2024-06-20_19_53") {
                 _o_gcp_consts_off += 0x8;
@@ -271,6 +299,9 @@ uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_2 { get { return 0x300 + O_GCP_CONSTS_OFF; }
 uint16 O_GHOSTCLIPPLAYER_START_TIME { get { return 0x308 + O_GCP_CONSTS_OFF; } }
 // editing this toggles the play/pause button in MT but does not actually pause playback. maybe it is a flat like CanPause
 uint16 O_GHOSTCLIPPLAYER_IS_PLAYING { get { return 0x30C + O_GCP_CONSTS_OFF; } }
+// these needed for GPS scrubbing
+uint16 O_GHOSTCLIPPLAYER_CURR_TIME3 { get { return 0x328 + O_GCP_CONSTS_OFF; } }
+uint16 O_GHOSTCLIPPLAYER_FRAME_DELTA2 { get { return 0x32C + O_GCP_CONSTS_OFF; } }
 
 
 string[] GetGhostClipPlayerDebugValues(CGameCtnMediaClipPlayer@ player) {

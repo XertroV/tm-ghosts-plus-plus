@@ -28,6 +28,7 @@ void Main() {
     startnew(SetupIntercepts);
     startnew(InitGP);
     startnew(LoadFonts);
+    startnew(OnUpdatedGpsScrubbingSetting);
     trace('started coros');
     trace('checking spec');
     if (GetApp().PlaygroundScript !is null) {
@@ -162,6 +163,12 @@ void OnDisabled() { Unload(); }
 
 void OnEnabled() {
     _OnEnabledOrStart();
+}
+
+/** Called when a setting in the settings panel was changed.
+*/
+void OnSettingsChanged() {
+    OnUpdatedGpsScrubbingSetting();
 }
 
 // check for permissions and
