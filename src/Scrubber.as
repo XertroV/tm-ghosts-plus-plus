@@ -76,6 +76,7 @@ float maxTime = 0.;
 uint lastHover;
 bool showAdvanced = false;
 uint oneTimeLog = 0;
+uint lastDraw_StartTime = 0;
 
 void DrawScrubber() {
     auto app = GetApp();
@@ -189,8 +190,10 @@ void DrawScrubber() {
         //     oneTimeLog++;
         // }
 
-        auto startTime = Math::Max(playerStartTime, lastGhostsStartOrSpawnTime);
-        double t = double(float(ps.Now) - startTime) + scrubberMgr.subSecondOffset;
+        double startTime = Math::Max(playerStartTime, lastGhostsStartOrSpawnTime);
+        lastDraw_StartTime = uint(startTime);
+        // need double precision everywhere here to avoid last digit flicker (ps.Now is often in the millions)
+        double t = double(double(ps.Now) - startTime) + double(scrubberMgr.subSecondOffset);
         // auto setProg = UI::ProgressBar(t, vec2(-1, 0), Text::Format("%.2f %%", t * 100));
         auto btnWidth = Math::Lerp(40., 50., Math::Clamp(Math::InvLerp(1920., 3440., screen.x), 0., 1.))
             * (GetCurrFontSize() / 16.) * UI::GetScale();
@@ -804,6 +807,7 @@ class ScrubberDebugTab : Tab {
         DrawValLabel(scrubberMgr.unpausedFlag, "scrubberMgr.unpausedFlag");
         DrawValLabel(lastSpectatedGhostRaceTime, "lastSpectatedGhostRaceTime");
         DrawValLabel(lastLoadedGhostRaceTime, "lastLoadedGhostRaceTime");
+        DrawValLabel(lastDraw_StartTime, "lastDraw_StartTime");
         if (ps !is null)
             DrawValLabel(ps.Now, "ps.Now");
         UI::Columns(1);
