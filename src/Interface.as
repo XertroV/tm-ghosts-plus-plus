@@ -18,6 +18,7 @@ DebugGhostsTab@ g_DebugTab = DebugGhostsTab();
 DebugCacheTab@ g_DebugCacheTab = DebugCacheTab();
 DebugClipsTab@ g_DebugClips = DebugClipsTab();
 ScrubberDebugTab@ g_ScrubDebug = ScrubberDebugTab();
+DebugLaunchedPbGhostTab@ g_DebugLaunchedPbGhostTab = DebugLaunchedPbGhostTab();
 UrlTab@ g_UrlTab = UrlTab();
 
 Tab@[]@ tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug, g_UrlTab, g_LeaderboardTab};
@@ -47,6 +48,7 @@ void RenderInterface() {
             g_ScrubDebug.Draw();
             g_DebugClips.Draw();
             g_DebugCacheTab.Draw();
+            g_DebugLaunchedPbGhostTab.Draw();
             g_Favorites.Draw();
             g_Players.Draw();
             UI::EndTabBar();
@@ -72,6 +74,7 @@ void RenderInterface() {
             g_ScrubDebug.Draw();
             g_DebugClips.Draw();
             g_DebugCacheTab.Draw();
+            g_DebugLaunchedPbGhostTab.Draw();
 #else
             // g_LoadGhostTab.DrawInner();
 #endif

@@ -44,6 +44,7 @@ namespace GhostClipsMgr {
         return null;
     }
 
+    // matches index of .Ghosts
     uint GetInstanceIdAtIx(NGameGhostClips_SMgr@ mgr, uint ix) {
         if (mgr is null) return uint(-1);
         auto bufOffset = GhostInstIdsOffset;

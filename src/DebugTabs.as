@@ -16,7 +16,12 @@ class DebugClipsTab : Tab {
 
         DrawClip("clip1", clip1, clip1Ptr, debug1);
         UI::Separator();
-        DrawClip("clip2", clip2, clip2Ptr, debug2);
+        DrawClip("clip2 (PB clip)", clip2, clip2Ptr, debug2);
+
+        UI::Text("Tracks: " + clip2.Clip.Tracks.Length);
+        if (clip2 !is null && UI::Button("Explore PB Clip")) {
+            ExploreNod("PB Clip", clip2);
+        }
     }
 
     void DrawClip(const string &in name, CGameCtnMediaClipPlayer@ clip, uint64 ptr, string[]@ debugVals) {
@@ -146,6 +151,31 @@ class DebugCacheTab : Tab {
 
         UI::Columns(1);
     }
+}
+
+class DebugLaunchedPbGhostTab : Tab {
+    DebugLaunchedPbGhostTab() {
+        super("[D] PB Ghost");
+    }
+
+    void DrawInner() override {
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        if (mgr is null) UI::Text(Icons::ExclamationTriangle + " GhostClipsMgr is null");
+        auto ix = Ghosts_PP::GetLaunchedCpGhostIx(mgr);
+        auto instanceId = Ghosts_PP::GetLaunchedCpGhostInstanceId(mgr);
+        auto pbGhost = Ghosts_PP::GetLaunchedCpGhost(mgr);
+
+        UI::Columns(2);
+        DrawValLabel(ix, "PB Ghost Index");
+        DrawValLabel(FmtHexUint32(instanceId), "PB Ghost InstanceId");
+        DrawValLabel(pbGhost !is null, "PB Ghost not null");
+        UI::Columns(1);
+    }
+}
+
+
+string FmtHexUint32(uint v) {
+    return Text::Format("%08x", v);
 }
 
 
