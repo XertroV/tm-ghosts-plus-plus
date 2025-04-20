@@ -157,6 +157,8 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
             warn("blocking ghost SetStartTime Now" + (isNearlyNow ? "-1" : ""));
             lastBlockedSetStartTimeNow = Time::Now;
             return false;
+        } else {
+            dev_trace("ghost SetStartTime not Now: " + ghostStartTime + " / " + ps.Now);
         }
     }
 

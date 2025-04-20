@@ -123,6 +123,11 @@ namespace GhostClipsMgr {
         SetGhostClipPlayerUnpaused(GetPBClipPlayer(mgr), currTime, totalTime);
     }
 
+    // void SetClipPlayersDeltaTime(NGameGhostClips_SMgr@ mgr, float deltaTime) {
+    //     SetGhostClipPlayerSmallDeltaTime(GetMainClipPlayer(mgr));
+    //     SetGhostClipPlayerSmallDeltaTime(GetPBClipPlayer(mgr));
+    // }
+
     // all ghosts but 1 PB ghost, null if there are no ghosts
     CGameCtnMediaClipPlayer@ GetMainClipPlayer(NGameGhostClips_SMgr@ mgr) {
         return cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20));
@@ -288,8 +293,11 @@ int16 O_GCP_CONSTS_OFF {
     }
 }
 
+// 2025 helper: O_GCP_CONSTS_OFF = 0x10.
 // main offsets we touch
 uint16 O_GHOSTCLIPPLAYER_CURR_TIME { get { return 0x1A4 + O_GCP_CONSTS_OFF; } }
+// the game calculates `delta t * this + currentTime3` (maybe position for future?)
+uint16 O_GHOSTCLIPPLAYER_DT_COEF_1A8 { get { return 0x1A8 + O_GCP_CONSTS_OFF; } }
 // not correctly labeled, something to do with this but not exactly as named
 uint16 O_GHOSTCLIPPLAYER_DO_MOTION_INTERP { get { return 0x30C + O_GCP_CONSTS_OFF; } }
 uint16 O_GHOSTCLIPPLAYER_TOTAL_TIME { get { return 0x320 + O_GCP_CONSTS_OFF; } }
@@ -328,7 +336,12 @@ void SetGhostClipPlayerPaused(CGameCtnMediaClipPlayer@ player, float timestamp) 
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TOTAL_TIME, float(-100.0));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP, uint8(0));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE, uint8(1));
-    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3, float(1.0));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3, float(0.1));
+}
+
+void SetGhostClipPlayerSmallDeltaTime(CGameCtnMediaClipPlayer@ player) {
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_FRAME_DELTA, float(0.0001));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_FRAME_DELTA2, float(0.0001));
 }
 
 void SetGhostClipPlayerUnpaused(CGameCtnMediaClipPlayer@ player, float timestamp, float totalTime) {

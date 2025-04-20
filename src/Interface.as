@@ -276,13 +276,13 @@ class SaveGhostsTab : Tab {
             // CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
 
             // while PS exists and now < finish time of longest ghost
-            while (IsSpectatingGhost() && int(GetApp().PlaygroundScript.Now) < (int(lastSpectatedGhostRaceTime) + lastSetStartTime - 20)) {
+            while (IsSpectatingGhost() && int(GetApp().PlaygroundScript.Now) < (int(lastSpectatedGhostRaceTime) + lastSetStartTime - 10)) {
                 yield();
             }
             if (!IsSpectatingGhost()) break;
             // TODO: this might set ghosts paused in wrong context
             try {
-                if (scrubberMgr !is null && !scrubberMgr.IsPaused) {
+                if (scrubberMgr !is null && !scrubberMgr.IsPaused && !scrubberMgr.isScrubbing) {
                     if (!scrubberMgr.IsStdPlayback) {
                         scrubberMgr.DoUnpause();
                         trace('DoPause soon because !IsStdPlayback');

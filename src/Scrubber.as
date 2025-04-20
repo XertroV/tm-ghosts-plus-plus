@@ -826,6 +826,7 @@ class ScrubberMgr {
                 KinematicsControl::SetKinematicsTime(app, currDur);
             }
         }
+        NoFlashCar::IsApplied = isSpectating || IsPaused || !unpausedFlag;
 
         // if (ghost.GhostModel.RaceTime - 100 < int(pauseAt)) {
         //     log_trace('flicker range');

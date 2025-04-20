@@ -158,6 +158,8 @@ void Unload() {
 }
 void OnDestroyed() {
     NodPtrs::Unload();
+    NoFlashCar::IsApplied = false;
+    KinematicsControl::IsApplied = false;
     Unload();
 }
 void OnDisabled() { Unload(); }
