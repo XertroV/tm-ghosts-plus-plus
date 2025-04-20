@@ -78,10 +78,10 @@ class MemPatcher {
             // we already read origBytes on initialization (prevents restoring a patched value if multiple plugins touch the same thing);
             auto expectedOrig = Dev::Patch(ptr + offsets[i], newBytes[i]);
             if (i >= origBytes.Length || origBytes[i] != expectedOrig) {
-                warn("MemPatcher: Patching failed at " + offsets[i] + " with " + newBytes[i] + " (was " + expectedOrig + ", expected " + (origBytes.Length > i ? origBytes[i] : "UNKNOWN") + ")");
+                warn("MemPatcher: Patching failed at +0x" + Text::Format("%04x", offsets[i]) + " with " + newBytes[i] + " (was " + expectedOrig + ", expected " + (origBytes.Length > i ? origBytes[i] : "UNKNOWN") + ")");
             }
             // origBytes[i] = Dev::Patch(ptr + offsets[i], newBytes[i]);
-            trace('Patched: ' + patternDisplay + ' at ' + offsets[i] + ' with ' + newBytes[i] + ' (was ' + origBytes[i] + ')');
+            log_trace('Patched: ' + patternDisplay + ' at +0x' + Text::Format("%04x", offsets[i]) + ' with ' + newBytes[i] + ' (was ' + origBytes[i] + ')');
         }
     }
 

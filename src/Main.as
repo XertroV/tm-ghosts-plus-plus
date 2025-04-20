@@ -420,7 +420,10 @@ void UnlockPlaygroundTimer(CSmArenaRulesMode @ps) {
     uint newNow = ps.Now + UNLOCK_TIMER_AMOUNT;
     Dev::SetOffset(cp, GetOffset(cp, "PredictionSmooth") + 0x14, newNow);
     if (int(ps.StartTime) >= 0) {
-        ps.StartTime += UNLOCK_TIMER_AMOUNT;
+        // don't increase this more than once.
+        if (ps.StartTime < UNLOCK_TIMER_AMOUNT) {
+            ps.StartTime += UNLOCK_TIMER_AMOUNT;
+        }
         // Call_Ghosts_SetStartTime(ps, newNow - ghostTime);
         setGhostStartTimeNextFrame = newNow - ghostTime;
         startnew(SetGhostStartTimeNextFrameAfterUnlock);

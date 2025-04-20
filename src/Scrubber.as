@@ -379,7 +379,7 @@ void DrawScrubber() {
         } else if ((t*setProg == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) > 0.01f)) {
             // check if we have a new setProg; or t/setProg is 0
             log_debug('t and setProg different: ' + vec2(t, setProg).ToString() + "; " + ps.Now + ", " + playerStartTime + ", " + lastGhostsStartOrSpawnTime);
-            scrubberMgr.SetProgress(setProg, true);
+            scrubberMgr.SetProgress(setProg, scrubberMgr.isScrubbing);
             t = setProg;
         }
         if (changeCurrSpeed || currSpeedBw) {
@@ -632,7 +632,7 @@ class ScrubberMgr {
     }
 
     bool get_IsPaused() {
-        return mode == ScrubberMode::Paused || !unpausedFlag;
+        return mode == ScrubberMode::Paused;
     }
 
     bool get_IsStdPlayback() {
@@ -832,7 +832,7 @@ class ScrubberMgr {
         //     newStartTime -= 100;
         // }
 
-        if (IsPaused) {
+        if (IsPaused || isScrubbing) {
             Call_Ghosts_SetStartTime(ps, newStartTime);
         } else if (!unpausedFlag && !isScrubbing && IsCustPlayback) {
             auto td = GhostClipsMgr::AdvanceClipPlayersByDelta(mgr, playbackSpeed);
@@ -867,7 +867,6 @@ class ScrubberMgr {
         isScrubbingShouldUnpause = IsStdPlayback;
         if (isScrubbingShouldUnpause) DoPause();
         startnew(CoroutineFunc(this.ScrubWatcher));
-        KinematicsControl::IsApplied = true;
     }
 
     protected void ScrubWatcher() {
