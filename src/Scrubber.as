@@ -187,7 +187,7 @@ void DrawScrubber() {
 
     ScrubberWindow::BeforeRender();
 
-    if (S_NeverHideScrubber || (
+    if (S_NeverHideScrubber || scrubberMgr.isScrubbing || (
         // check that we are hovering the scrubber area BUT we are not interacting with another imgui element
         int(app.InputPort.MouseVisibility) == 0 // 0 = Auto; 1 = ForceHidden; 2 = ForceShow
         && Within(UI::GetMousePos() / UI::GetScale(), vec4(ScrubberWindow::pos, ScrubberWindow::size))
