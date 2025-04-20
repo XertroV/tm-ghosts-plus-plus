@@ -43,7 +43,6 @@ void Main() {
     }
 
     startnew(ForceGhostAlphaLoop).WithRunContext(Meta::RunContext::AfterMainLoop);
-    CameraPolish::Hook_CameraUpdatePos.SetApplied(true);
 
 #if FALSE
     startnew(RunGhostTest);

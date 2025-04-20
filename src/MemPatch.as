@@ -12,7 +12,6 @@ class MemPatcher {
 
     MemPatcher(const string &in pattern, uint16[]@ offsets, string[]@ newBytes, string[]@ expected = {}) {
         Setup({pattern}, offsets, newBytes, expected);
-
     }
 
     // multiple patterns are for incompatible game updates

@@ -657,6 +657,9 @@ class ScrubberMgr {
         SetProgress(-1);
         DoUnpause();
         // warn("Reset, playback speed: " + Text::Format("%.7f", playbackSpeed));
+        NoFlashCar::IsApplied = false;
+        KinematicsControl::IsApplied = false;
+        CameraPolish::Hook_CameraUpdatePos.Unapply();
     }
 
     void ForceUnpause() {
@@ -820,18 +823,15 @@ class ScrubberMgr {
 
         // if we're spectating a ghost, update kinematics time
         KinematicsControl::IsApplied = isSpectating;
+        CameraPolish::Hook_CameraUpdatePos.SetApplied(isSpectating);
         if (isSpectating) {
             auto currDur = ps.Now - newStartTime;
             if (currDur > 0) {
                 KinematicsControl::SetKinematicsTime(app, currDur);
             }
         }
-        NoFlashCar::IsApplied = isSpectating || IsPaused || !unpausedFlag;
 
-        // if (ghost.GhostModel.RaceTime - 100 < int(pauseAt)) {
-        //     log_trace('flicker range');
-        //     newStartTime -= 100;
-        // }
+        NoFlashCar::IsApplied = IsPaused || !unpausedFlag;
 
         if (IsPaused || isScrubbing) {
             Call_Ghosts_SetStartTime(ps, newStartTime);
