@@ -18,7 +18,9 @@ class DebugClipsTab : Tab {
         UI::Separator();
         DrawClip("clip2 (PB clip)", clip2, clip2Ptr, debug2);
 
-        UI::Text("Tracks: " + clip2.Clip.Tracks.Length);
+        if (clip2 !is null && clip2.Clip !is null) {
+            UI::Text("Tracks: " + clip2.Clip.Tracks.Length);
+        }
         if (clip2 !is null && UI::Button("Explore PB Clip")) {
             ExploreNod("PB Clip", clip2);
         }

@@ -180,6 +180,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         }
         */
 
+        dev_trace("g_AllowNextForceGhostDespiteNowBlock = true;");
         g_AllowNextForceGhostDespiteNowBlock = true;
 
         // otherwise keep current spec

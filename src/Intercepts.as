@@ -43,6 +43,7 @@ void SetGhostStartTimeToMatchPlayer() {
     if (ps is null || cp is null || cp.Players.Length == 0) return;
     auto p = cast<CSmPlayer>(cp.Players[0]);
     if (p is null) return;
+    // dev_trace("SetGhostStartTimeToMatchPlayer");
     Call_Ghosts_SetStartTime(ps, -1);
 }
 
@@ -168,7 +169,6 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     lastSetStartTime = ghostStartTime;
     // lastGhostsStartOrSpawnTime = Math::Max(lastGhostsStartOrSpawnTime, ghostStartTime);
     lastGhostsStartOrSpawnTime = ghostStartTime;
-    // log_debug('set start time: ' + lastSetStartTime);
     return true;
 }
 
@@ -183,17 +183,27 @@ void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, int startTime) {
 MwId lastSpectatedGhostInstanceId = MwId(uint(-1));
 uint lastSpectatedGhostRaceTime = 0;
 
-bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack) {
+bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack, CMwNod@ nod) {
     bool blockAfterBlockedSetStartTime = lastBlockedSetStartTimeNow + 2 >= Time::Now
         && IsSpectatingGhost();
 #if DEV
 #else
-    // if we just blocked a set start time, don't let the mode change target ghost
-    log_trace("blocking SetForcedTarget_Ghost due to blocked SetStartTime Now");
-    if (blockAfterBlockedSetStartTime) return false;
+    if (blockAfterBlockedSetStartTime) {
+        // if we just blocked a set start time, don't let the mode change target ghost
+        log_trace("blocking SetForcedTarget_Ghost due to blocked SetStartTime Now");
+        return false;
+    }
 #endif
 
+
     auto ghostInstId = stack.CurrentId(0);
+    if (lastSpectatedGhostInstanceId.Value == ghostInstId.Value) {
+        dev_trace("SetForcedTarget_Ghost called for same ghost instance id; ignoring but applying last SpectatorForceCameraType");
+        auto uiAll = cast<CGamePlaygroundUIConfig>(nod);
+        if (uiAll !is null) uiAll.SpectatorForceCameraType = lastSetForcedCamera;
+        return false;
+    }
+
     auto mgr = GhostClipsMgr::Get(GetApp());
     auto ghost = mgr is null ? null : GhostClipsMgr::GetGhostFromInstanceId(mgr, ghostInstId.Value);
 

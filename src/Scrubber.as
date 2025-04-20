@@ -177,6 +177,7 @@ void DrawScrubber() {
     if (S_AutoUnlockTimelineSolo) CheckUpdateAutoUnlockTimelineSolo(ps, app.Editor);
 
     bool isSpectating = IsSpectatingGhost();
+
     auto player = cp.Players.Length > 0 ? cast<CSmPlayer>(cp.Players[0]) : null;
     auto playerStartTime = player !is null ? player.StartTime : 0;
     // don't show during finish sequence
@@ -496,7 +497,7 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
         if (cam == 1) newCam = fwd ? 0 : 2;
         if (cam == 2) newCam = fwd ? 3 : 0; // cam7 / free
         if (cam >= 3) newCam = fwd ? 0 : 2;
-        ps.UIManager.UIAll.SpectatorForceCameraType = newCam;
+        ps.UIManager.UIAll.SpectatorForceCameraType = lastSetForcedCamera = newCam;
         if (newCam == 2) {
             auto gt = GetApp().CurrentPlayground.GameTerminals[0];
             SetDrivableCamFlag(gt, false);
@@ -507,6 +508,8 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
 
     return setProg;
 }
+
+uint lastSetForcedCamera = 1;
 
 void UpdateGhostsSetOffsets() {
     auto app = GetApp();
@@ -763,20 +766,38 @@ class ScrubberMgr {
             }
         }
 
-        if (IsSpectatingGhost() && S_SpecCamera != ScrubberSpecCamera::None) {
+        bool isSpectating = IsSpectatingGhost();
+        if (isSpectating && S_SpecCamera != ScrubberSpecCamera::None) {
             GameCamera().ActiveCam = uint(S_SpecCamera);
             // GameCamera().AltCam = m_UseAltCam;
         }
 
-        auto mgr = GhostClipsMgr::Get(GetApp());
+        if (!isSpectating) {
+            lastSetForcedCamera = 1;
+            lastSpectatedGhostInstanceId.Value = -1;
+        }
+
+
+        auto mgr = GhostClipsMgr::Get(app);
         // auto specId = GetCurrentlySpecdGhostInstanceId(ps);
         // auto ghost = GhostClipsMgr::GetGhostFromInstanceId(mgr, specId);
         // only set in some branches
         auto newStartTime = ps.Now - int(pauseAt);
+
+        // if we're spectating a ghost, update kinematics time
+        KinematicsControl::IsApplied = isSpectating;
+        if (isSpectating) {
+            auto currDur = ps.Now - newStartTime;
+            if (currDur > 0) {
+                KinematicsControl::SetKinematicsTime(app, currDur);
+            }
+        }
+
         // if (ghost.GhostModel.RaceTime - 100 < int(pauseAt)) {
         //     log_trace('flicker range');
         //     newStartTime -= 100;
         // }
+
         if (IsPaused) {
             Call_Ghosts_SetStartTime(ps, newStartTime);
         } else if (!unpausedFlag && !isScrubbing && IsCustPlayback) {
@@ -812,6 +833,7 @@ class ScrubberMgr {
         isScrubbingShouldUnpause = IsStdPlayback;
         if (isScrubbingShouldUnpause) DoPause();
         startnew(CoroutineFunc(this.ScrubWatcher));
+        KinematicsControl::IsApplied = true;
     }
 
     protected void ScrubWatcher() {

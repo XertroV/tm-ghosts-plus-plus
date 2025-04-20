@@ -43,6 +43,7 @@ void Main() {
     }
 
     startnew(ForceGhostAlphaLoop).WithRunContext(Meta::RunContext::AfterMainLoop);
+    CameraPolish::Hook_CameraUpdatePos.SetApplied(true);
 
 #if FALSE
     startnew(RunGhostTest);
@@ -318,9 +319,12 @@ void NotifyWarning(const string &in msg) {
 }
 
 
-bool IsSpectatingGhost() {
-    auto ps = GetApp().PlaygroundScript;
-    if (ps is null || ps.UIManager is null) return false;
+bool IsSpectatingGhost(CGamePlaygroundScript@ ps = null) {
+    if (ps is null) {
+        @ps = GetApp().PlaygroundScript;
+        if (ps is null) return false;
+    }
+    if (ps.UIManager is null) return false;
     return ps.UIManager.UIAll.ForceSpectator;
 }
 
@@ -433,7 +437,7 @@ int setGhostStartTimeNextFrame = 0;
 void SetGhostStartTimeNextFrameAfterUnlock() {
     yield();
     Call_Ghosts_SetStartTime(cast<CSmArenaRulesMode>(GetApp().PlaygroundScript), setGhostStartTimeNextFrame);
-    trace('set ghosts start time to: ' + setGhostStartTimeNextFrame);
+    // trace('set ghosts start time to: ' + setGhostStartTimeNextFrame);
 }
 
 
