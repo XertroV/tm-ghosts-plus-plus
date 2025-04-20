@@ -51,7 +51,7 @@ class HookHelper {
             warn_every_60_s("Failed to apply hook for " + functionName + " (hookInfo == null)");
             return false;
         }
-        trace("Hook applied for " + functionName + " at " + Text::FormatPointer(patternPtr + offset));
+        log_debug("Hook applied for " + functionName + " at " + Text::FormatPointer(patternPtr + offset));
         return true;
     }
 
@@ -93,7 +93,7 @@ class FunctionHookHelper : HookHelper {
     bool Apply() override {
         if (IsApplied()) return true;
         if (!HookHelper::Apply()) return false;
-        trace("FunctionHookHelper::Apply for " + functionName);
+        log_debug("FunctionHookHelper::Apply for " + functionName);
         // read offset assuming jmp [offset]; 5 bytes
         auto caveRelOffset = Dev::ReadInt32(patternPtr + offset + 1);
         dev_trace("caveRelOffset: " + caveRelOffset);
@@ -131,6 +131,39 @@ class FunctionHookHelper : HookHelper {
     }
 }
 
+
+class FunctionHookHelperAsync : FunctionHookHelper {
+    // whether we want to turn this on/off
+    bool setAppliedFlag = false;
+    // true = turn on, false = turn off
+    bool setAppliedVal = false;
+
+    FunctionHookHelperAsync(const string &in pattern, uint offset, uint padding, const string &in functionName, Dev::PushRegisters pushRegs = Dev::PushRegisters::SSE, bool findPtrEarly = false) {
+        super(pattern, offset, padding, functionName, pushRegs, findPtrEarly);
+        startnew(CoroutineFunc(_InnerLoop));
+    }
+
+    void Stop() {
+        keepLooping = false;
+        Unapply();
+    }
+
+    bool keepLooping = true;
+    protected void _InnerLoop() {
+        while (keepLooping) {
+            yield();
+            if (setAppliedFlag) {
+                setAppliedFlag = false;
+                SetApplied(setAppliedVal);
+            }
+        }
+    }
+
+    void SetAppliedSoon(bool v) {
+        setAppliedFlag = true;
+        setAppliedVal = v;
+    }
+}
 
 
 funcdef bool UnapplyHookFn();

@@ -159,6 +159,7 @@ void OnDestroyed() {
     NodPtrs::Unload();
     NoFlashCar::IsApplied = false;
     KinematicsControl::IsApplied = false;
+    CameraPolish::Hook_CameraUpdatePos.Stop();
     Unload();
 }
 void OnDisabled() { Unload(); }

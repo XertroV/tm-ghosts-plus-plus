@@ -376,7 +376,7 @@ void DrawScrubber() {
         } else if (lastSetStartTime < 0 && !scrubberMgr.isScrubbing) {
             // do nothing b/c auto time, but update pauseAt so scrubber shows time correctly
             scrubberMgr.pauseAt = t;
-        } else if ((t*setProg == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) > 0.01f)) {
+        } else if (((t*setProg == 0. && t != setProg) || (t > 0.)) && Math::Abs(t - setProg) > 0.01f) {
             // check if we have a new setProg; or t/setProg is 0
             log_debug('t and setProg different: ' + vec2(t, setProg).ToString() + "; " + ps.Now + ", " + playerStartTime + ", " + lastGhostsStartOrSpawnTime);
             scrubberMgr.SetProgress(setProg, scrubberMgr.isScrubbing);
@@ -823,7 +823,6 @@ class ScrubberMgr {
 
         // if we're spectating a ghost, update kinematics time
         KinematicsControl::IsApplied = isSpectating;
-        CameraPolish::Hook_CameraUpdatePos.SetApplied(isSpectating);
         if (isSpectating) {
             auto currDur = ps.Now - newStartTime;
             if (currDur > 0) {
@@ -831,7 +830,9 @@ class ScrubberMgr {
             }
         }
 
-        NoFlashCar::IsApplied = IsPaused || !unpausedFlag;
+        // the patch needs to be async otherwise the function won't be found (since we are running out of MLHook context)
+        CameraPolish::Hook_CameraUpdatePos.SetAppliedSoon(isSpectating);
+        NoFlashCar::IsApplied = (pauseAt > 50.0) && (IsPaused || (!unpausedFlag)); //  && 0.0 < playbackSpeed && playbackSpeed < 0.4
 
         if (IsPaused || isScrubbing) {
             Call_Ghosts_SetStartTime(ps, newStartTime);

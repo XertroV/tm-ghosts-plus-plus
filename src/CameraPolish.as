@@ -7,7 +7,7 @@ namespace CameraPolish {
     vec2 lastFov;
 
     const string Pattern_CameraUpdatePosCall = "E8 ?? ?? ?? ?? 8B F0 85 C0  74 ?? 8B 43 08";
-    FunctionHookHelper@ Hook_CameraUpdatePos = FunctionHookHelper(Pattern_CameraUpdatePosCall, 0x0, 0, "CameraPolish::_OnCameraUpdatePos", Dev::PushRegisters::Basic, true);
+    FunctionHookHelperAsync@ Hook_CameraUpdatePos = FunctionHookHelperAsync(Pattern_CameraUpdatePosCall, 0x0, 0, "CameraPolish::_OnCameraUpdatePos", Dev::PushRegisters::Basic, true);
 
     void _OnCameraUpdatePos(uint64 rdx) {
         // quickest way to check if we want to bail is playground script

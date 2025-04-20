@@ -113,12 +113,13 @@ namespace GhostClipsMgr {
         SetGhostClipPlayerUnpaused(GetMainClipPlayer(mgr), currTime, totalTime);
         SetGhostClipPlayerUnpaused(GetPBClipPlayer(mgr), currTime, totalTime);
     }
-    // if total time is not provided, then the current values are used.
+    // if total time is not provided, (!) then the current values are used. -- but it's set to -100 when pausing...
     void UnpauseClipPlayers(NGameGhostClips_SMgr@ mgr, float currTime) {
         auto tmp = GetMainClipPlayer(mgr);
         if (tmp is null) @tmp = GetPBClipPlayer(mgr);
         if (tmp is null) return;
         auto totalTime = ClipPlayer_GetTotalTime(tmp);
+        if (totalTime < 0.0) totalTime = lastClipLength;
         SetGhostClipPlayerUnpaused(GetMainClipPlayer(mgr), currTime, totalTime);
         SetGhostClipPlayerUnpaused(GetPBClipPlayer(mgr), currTime, totalTime);
     }
@@ -332,21 +333,35 @@ string[] GetGhostClipPlayerDebugValues(CGameCtnMediaClipPlayer@ player) {
 
 void SetGhostClipPlayerPaused(CGameCtnMediaClipPlayer@ player, float timestamp) {
     if (player is null) return;
+    CacheLastClipLength(player);
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME, timestamp);
+    // also set curr time 3 b/c NoFlashCar patch doesn't always update it.
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME3, timestamp);
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TOTAL_TIME, float(-100.0));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP, uint8(0));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE, uint8(1));
-    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3, float(0.1));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3, float(1.0));
 }
 
-void SetGhostClipPlayerSmallDeltaTime(CGameCtnMediaClipPlayer@ player) {
-    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_FRAME_DELTA, float(0.0001));
-    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_FRAME_DELTA2, float(0.0001));
+float lastClipLength = 1.0;
+void CacheLastClipLength(CGameCtnMediaClipPlayer@ player) {
+    if (player is null) return;
+    auto _lastClipLength = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TOTAL_TIME);
+    if (_lastClipLength > 0.0) {
+        lastClipLength = _lastClipLength;
+    }
 }
+
+// void SetGhostClipPlayerSmallDeltaTime(CGameCtnMediaClipPlayer@ player) {
+//     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_FRAME_DELTA, float(0.0001));
+//     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_FRAME_DELTA2, float(0.0001));
+// }
 
 void SetGhostClipPlayerUnpaused(CGameCtnMediaClipPlayer@ player, float timestamp, float totalTime) {
     if (player is null) return;
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME, timestamp);
+    // isn't always updated b/c of NoFlashCar patch, so set it if it matters.
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME3, timestamp);
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TOTAL_TIME, float(totalTime));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP, uint8(1));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE, uint8(1));
