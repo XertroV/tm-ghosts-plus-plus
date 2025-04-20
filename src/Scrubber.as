@@ -40,6 +40,7 @@ bool S_NeverHideScrubber = false;
 
 
 
+
 bool g_ThrowOnDoPause = false;
 
 
@@ -290,9 +291,14 @@ void DrawScrubber() {
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
             + (ghostsNotVisible ? " (Ghosts Off)" : "")
             ;
+        auto progBefore = setProg;
         setProg = UI::SliderFloat("##ghost-scrub", setProg, 0, Math::Max(maxTime, t), fmtString, UI::SliderFlags::NoInput);
         bool startedScrub = UI::IsItemClicked();
         clickTogglePause = (UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right)) || clickTogglePause;
+        // if we hold left shift while scrubbing, it'll go slower:
+        if (progBefore != setProg && scrubberMgr.isScrubbing && UI::IsKeyDown(UI::Key::LeftShift)) {
+            setProg = (setProg - progBefore) * 0.1 + progBefore;
+        }
 
         UI::SameLine();
         bool changeCurrSpeed = UI::Button(currSpeedLabel + "##scrubber-next-speed", vec2(btnWidth, 0));
@@ -316,6 +322,7 @@ void DrawScrubber() {
             + ", pauseAt: " + scrubberMgr.pauseAt
             + ", setProg: " + setProg
             + ", ps.Now: " + ps.Now
+            + ", isScb'g: " + scrubberMgr.isScrubbing
             );
         // g_ThrowOnDoPause = UI::Checkbox("Throw on DoPause", g_ThrowOnDoPause);
         UI::PopFont();
@@ -369,9 +376,10 @@ void DrawScrubber() {
         } else if (lastSetStartTime < 0 && !scrubberMgr.isScrubbing) {
             // do nothing b/c auto time, but update pauseAt so scrubber shows time correctly
             scrubberMgr.pauseAt = t;
-        } else if ((t == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) > 20)) {
+        } else if ((t*setProg == 0. && t != setProg) || (t > 0. && Math::Abs(t - setProg) > 0.01f)) {
+            // check if we have a new setProg; or t/setProg is 0
             log_debug('t and setProg different: ' + vec2(t, setProg).ToString() + "; " + ps.Now + ", " + playerStartTime + ", " + lastGhostsStartOrSpawnTime);
-            scrubberMgr.SetProgress(setProg);
+            scrubberMgr.SetProgress(setProg, true);
             t = setProg;
         }
         if (changeCurrSpeed || currSpeedBw) {
@@ -408,6 +416,9 @@ bool m_UseAltCam = false;
 bool m_KeepGhostsWhenOffsetting = true;
 
 float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isSpectating, float setProg) {
+    // 0: cinematic?, 1: normal, 2: freecam
+    auto forcedCamType = ps.UIManager.UIAll.SpectatorForceCameraType;
+
     UI::BeginDisabled(!isSpectating);
     bool exit = UI::Button(Icons::Reply + "##scrubber-back", vec2(btnWidth, 0));
     UI::EndDisabled();
@@ -418,7 +429,7 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     UI::SameLine();
     bool stepFwd = UI::Button((scrubberMgr.IsPaused ? Icons::StepForward : Icons::Forward) + "##scrubber-step-fwd", vec2(btnWidth, 0));
     UI::SameLine();
-    bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
+    bool clickCamera = UI::Button(ScrubCameraModeIcon(forcedCamType) + "##scrubber-toggle-cam", vec2(btnWidth, 0));
     bool rmbCamera = UI::IsItemHovered() && UI::IsMouseClicked(UI::MouseButton::Right);
     AddSimpleTooltip("While spectating, cycle between cinematic cam, free cam, and the player camera.");
     UI::SameLine();
@@ -490,13 +501,12 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
             ;
     } else if (clickCamera || rmbCamera) {
         bool fwd = !rmbCamera;
-        auto cam = ps.UIManager.UIAll.SpectatorForceCameraType;
-        auto newCam = cam;
+        auto newCam = forcedCamType;
         // we use 0x3 instead of 0x1 b/c it's the same but avoids ghost scrubber blocking our calls to Ghosts_SetStartTime
-        if (cam == 0) newCam = fwd ? 2 : 3;
-        if (cam == 1) newCam = fwd ? 0 : 2;
-        if (cam == 2) newCam = fwd ? 3 : 0; // cam7 / free
-        if (cam >= 3) newCam = fwd ? 0 : 2;
+        if (forcedCamType == 0) newCam = fwd ? 2 : 3; // cinematic
+        if (forcedCamType == 1) newCam = fwd ? 0 : 2; // normal
+        if (forcedCamType == 2) newCam = fwd ? 3 : 0; // cam7 / free
+        if (forcedCamType >= 3) newCam = fwd ? 0 : 2; // normal (3) or unknown ( gt 3 )
         ps.UIManager.UIAll.SpectatorForceCameraType = lastSetForcedCamera = newCam;
         if (newCam == 2) {
             auto gt = GetApp().CurrentPlayground.GameTerminals[0];
@@ -507,6 +517,12 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     }
 
     return setProg;
+}
+
+string ScrubCameraModeIcon(int forcedCamType) {
+    if (forcedCamType == 0) return Icons::VideoCamera;
+    if (forcedCamType == 2) return Icons::Arrows;
+    return Icons::Camera;
 }
 
 uint lastSetForcedCamera = 1;
@@ -616,7 +632,7 @@ class ScrubberMgr {
     }
 
     bool get_IsPaused() {
-        return mode == ScrubberMode::Paused;
+        return mode == ScrubberMode::Paused || !unpausedFlag;
     }
 
     bool get_IsStdPlayback() {
@@ -659,10 +675,27 @@ class ScrubberMgr {
         }
     }
 
-    void SetProgress(double setProg) {
+    void SetProgress(double setProg, bool allowEasing = false) {
         // trace("SetProgress: " + setProg);
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
-        pauseAt = setProg;
+        // Either A: update pauseAt directly, or B: smoothly approach it
+        // A: pauseAt = setProg;
+        // B:
+        if (allowEasing && S_ApplyScrubEasing) {
+            auto diff = setProg - pauseAt;
+            diff = diff < 0.0 ? -diff : diff;
+            // miliseconds
+            if (diff > 0.01) {
+                auto decay = S_ScrubEasingDecay;
+                if (setProg <= 0.0) decay *= 4.0;
+                pauseAt = SmoothFollow(pauseAt, setProg, g_DT_sec, decay);
+            } else {
+                pauseAt = setProg;
+            }
+        } else {
+            pauseAt = setProg;
+        }
+
         // setting to -1 will sync to player
         auto newStartTime = setProg >= 0.0 ? ps.Now - pauseAt : -1.0; // pauseAt == 0.0 ? -1.0;
         if (pauseAt < 0.0) pauseAt = 0.0;
@@ -673,6 +706,7 @@ class ScrubberMgr {
             log_debug("pause via setprog: " + IsStdPlayback + ", " + unpausedFlag);
             auto mgr = GhostClipsMgr::Get(GetApp());
             if (mgr !is null) GhostClipsMgr::PauseClipPlayers(mgr, pauseAt / 1000.);
+            else log_debug("ScrubberMgr::SetProgress: mgr is null !?");
         } else {
             // auto mgr = GhostClipsMgr::Get(GetApp());
             // GhostClipsMgr::UnpauseClipPlayers(mgr, pauseAt / 1000.);

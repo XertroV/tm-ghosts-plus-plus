@@ -49,6 +49,11 @@ bool S_AutoloadFavoritedPlayers = false;
 [Setting category="General" name="Number to autoload?" description="Will limit the number of automatically loaded ghosts from favorited players. More ghosts = more lag loading a map." min=0 max=20]
 uint S_AutoloadFavoritedPlayersNb = 6;
 
+[Setting category="General" name="Scrubber Easing: Enable (\\$<\\$4f4New!\\$>)"]
+bool S_ApplyScrubEasing = true;
+
+[Setting category="General" name="Scrubber Easing: Strength (default: 10) (\\$<\\$4f4New!\\$>)" min=1 max=25 drag]
+float S_ScrubEasingDecay = 10.0f;
 
 enum KeyboardShape
 {
