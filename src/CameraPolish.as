@@ -1,12 +1,12 @@
 // When near the end of a replay, the camera can unpleasantly skip to a thumbnail/spectator view
 // Function that updates camera iso4 at 0x578 in system cameras:
-// E8 ?? ?? ?? ?? 8B F0 85 C0  74 ?? 8B 43 08
+// E8 ?? ?? ?? ?? 8B F0 85 C0 74 ?? 8B 43 08
 
 namespace CameraPolish {
     iso4 lastLoc;
     vec2 lastFov;
 
-    const string Pattern_CameraUpdatePosCall = "E8 ?? ?? ?? ?? 8B F0 85 C0  74 ?? 8B 43 08";
+    const string Pattern_CameraUpdatePosCall = "E8 ?? ?? ?? ?? 8B F0 85 C0 74 ?? 8B 43 08";
     FunctionHookHelperAsync@ Hook_CameraUpdatePos = FunctionHookHelperAsync(Pattern_CameraUpdatePosCall, 0x0, 0, "CameraPolish::_OnCameraUpdatePos", Dev::PushRegisters::Basic, true);
 
     void _OnCameraUpdatePos(uint64 rdx) {
