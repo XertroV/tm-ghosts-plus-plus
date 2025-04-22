@@ -437,6 +437,7 @@ bool IsPlayerDriving() {
     if (cp is null) return false;
     if (cp.GameTerminals.Length == 0) return false;
     auto gt = cp.GameTerminals[0];
+    if (gt.UISequence_Current == SGamePlaygroundUIConfig::EUISequence::Finish) return true;
     if (gt.UISequence_Current != SGamePlaygroundUIConfig::EUISequence::Playing) return false;
     if (gt.GUIPlayer is null || gt.ControlledPlayer is null) return false;
     return gt.GUIPlayer.User.Id.Value == gt.ControlledPlayer.User.Id.Value;
