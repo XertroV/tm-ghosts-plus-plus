@@ -41,6 +41,8 @@ void CheckUpdateAutoUnlockTimelineSolo(CSmArenaRulesMode@ ps, CGameCtnEditor@ ed
     if (editor !is null) return;
     if (IsTimerUnlocked(ps)) return;
     if (ps.UIManager.UIAll.UISequence == 0) return; // Seq == None
+    if (ps.UIManager.UIAll.UISequence == CGamePlaygroundUIConfig::EUISequence::Finish) return;
+    if (ps.UIManager.UIAll.UISequence == CGamePlaygroundUIConfig::EUISequence::UIInteraction) return;
     if (IsPlayerDriving()) return;
     if (int(ps.Now) < 0) return;
     if (ps.Now < 3500) return;

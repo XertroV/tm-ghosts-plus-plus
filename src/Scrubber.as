@@ -195,7 +195,10 @@ void DrawScrubber() {
         lastHover = Time::Now;
     }
 
-    bool showBeforeStart = (int(ps.StartTime) - ps.Now) > 0 && S_ShowScrubberBeforeStart;
+    bool showBeforeStart = S_ShowScrubberBeforeStart && (
+        (int(ps.StartTime) - ps.Now) > 0
+        || playerStartTime > ps.Now
+    );
     bool showScrubber = isSpectating || showBeforeStart || (Time::Now - lastHover) < S_HoverHideDelay;
     auto @mgr = GhostClipsMgr::Get(app);
     showScrubber = showScrubber && scrubberMgr !is null;
@@ -319,7 +322,7 @@ void DrawScrubber() {
             + ", llgrt:" + lastLoadedGhostRaceTime
             + ", lsst:" + lastSetStartTime
             + ", lgsost:" + lastGhostsStartOrSpawnTime
-            + ", startTime: " + startTime
+            + ", startTime: " + int64(startTime)
             + ", mtp:" + maxTimePre
             + ", pauseAt: " + scrubberMgr.pauseAt
             + ", setProg: " + setProg
