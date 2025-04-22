@@ -281,8 +281,8 @@ void DrawScrubber() {
 #endif
         UI::SetNextItemWidth(scrubberWidth / UI::GetScale());
         maxTime = 0.0;
-        maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime);
-        maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime);
+        maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime + 60);
+        maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime + 60);
         auto maxTimePre = maxTime;
         // maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Min(maxTime, ps.Now);
