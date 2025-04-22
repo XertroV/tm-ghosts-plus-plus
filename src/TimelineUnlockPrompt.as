@@ -43,10 +43,10 @@ void CheckUpdateAutoUnlockTimelineSolo(CSmArenaRulesMode@ ps, CGameCtnEditor@ ed
     if (ps.UIManager.UIAll.UISequence == 0) return; // Seq == None
     if (IsPlayerDriving()) return;
     if (int(ps.Now) < 0) return;
-    if (ps.Now < 4000) return;
+    if (ps.Now < 3500) return;
     // log_info("[PRE ] Auto-unlocking timeline; ps.Now: " + ps.Now + "; ps.StartTime: " + ps.StartTime + "; ps.UIManager.UIAll.UISequence: " + ps.UIManager.UIAll.UISequence);
-    UnlockPlaygroundTimer(ps);
     log_info("Auto-unlocking timeline; ps.Now: " + ps.Now + "; ps.StartTime: " + ps.StartTime + "; ps.UIManager.UIAll.UISequence: " + ps.UIManager.UIAll.UISequence);
+    UnlockPlaygroundTimer(ps);
 #if DEV
     // UI::ShowNotification("Timeline unlocked!", "The timeline has been unlocked automatically.");
 #endif

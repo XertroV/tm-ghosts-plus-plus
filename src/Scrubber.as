@@ -291,8 +291,10 @@ void DrawScrubber() {
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
             + (ghostsNotVisible ? " (Ghosts Off)" : "")
             ;
+        float minTime = Math::Min(0.0, float(int(ps.Now)) - float(playerStartTime) - 10.0);
+        minTime = Math::Max(minTime, -1600.0); // we don't expect the player to have a curr time < -1.5s since that is the start delay.
         auto progBefore = setProg;
-        setProg = UI::SliderFloat("##ghost-scrub", setProg, 0, Math::Max(maxTime, t), fmtString, UI::SliderFlags::NoInput);
+        setProg = UI::SliderFloat("##ghost-scrub", setProg, minTime, Math::Max(maxTime, t), fmtString, UI::SliderFlags::NoInput);
         bool startedScrub = UI::IsItemClicked();
         clickTogglePause = (UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right)) || clickTogglePause;
         // if we hold left shift while scrubbing, it'll go slower:
