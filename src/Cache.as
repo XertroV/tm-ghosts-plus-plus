@@ -197,6 +197,34 @@ namespace Cache {
         }
     }
 
+    void AddSavedGhost(CGameCtnGhost@ g, const string &in fileName) {
+        auto login = g.GhostLogin;
+        auto wsid = LoginToWSID(login);
+        auto name = g.GhostNickname;
+        auto time = g.RaceTime;
+        auto stamp = Time::Stamp;
+        auto uid = g.Validate_ChallengeUid.GetName();
+        auto displayName = NadeoServices::GetDisplayNameAsync(wsid);
+
+        // auto RecId = CalcRecId(wsid, uid, time, stamp);
+
+        auto j = Json::Object();
+        j['wsid'] = wsid;
+        j['uid'] = uid;
+        j['time'] = time;
+        j['timestamp'] = stamp;
+        j['date'] = Time::FormatString("%Y-%m-%d", stamp);
+        j['fileName'] = fileName;
+        j['replayUrl'] = GetGhostLocalURL(fileName);
+        j['key'] = fileName;
+        j['name'] = name;
+        AddLogin(wsid, login, displayName);
+        Ghosts[fileName] = GhostsArr.Length;
+        GhostsArr.InsertLast(j);
+        SaveToGhostsCache(j);
+        g_Saved.OnNewGhostSaved();
+    }
+
     void AddRecord(CMapRecord@ rec, const string &in login, const string &in nickname) {
         auto RecId = CalcRecId(rec.WebServicesUserId, rec.MapUid.GetName(), rec.Time, rec.Timestamp);
         auto gs = Ghosts;
@@ -241,11 +269,12 @@ namespace Cache {
         Ghosts[key] = GhostsArr.Length;
         GhostsArr.InsertLast(j);
         SaveToGhostsCache(j);
-
     }
 
     string GetGhostFilename(const string &in key) {
-        return GHOSTS_DIR + key + ".ghost.gbx";
+        auto r = GHOSTS_DIR + key;
+        if (!key.EndsWith(".ghost.gbx")) r += ".ghost.gbx";
+        return r;
     }
 
     void SaveGhostFile(const string &in key, MemoryBuffer@ buf) {

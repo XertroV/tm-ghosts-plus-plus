@@ -213,7 +213,7 @@ class SaveGhostsTab : Tab {
         UI::BeginDisabled(saving.Find(id) >= 0);
         clicked = UI::Button(Icons::FloppyO + "##" + i);
         AddSimpleTooltip("Save " + gm.GhostNickname + "'s " + rt + " ghost for later.");
-        if (clicked) SaveGhost(gm, id);
+        if (clicked) startnew(CoroutineFuncUserdata(SaveGhost), gm);
         UI::EndDisabled();
 
         UI::TableNextColumn();
@@ -313,11 +313,33 @@ class SaveGhostsTab : Tab {
         if (ix >= 0) saving.RemoveAt(ix);
     }
 
-    void SaveGhost(CGameCtnGhost@ gm, uint id) {
-        saving.InsertLast(id);
+    string GenGhostFileName(const string &in login, const string &in uid, const string &in nickname, const string &in ts) {
+        return string::Join({nickname, uid, ts}, "_") + ".ghost.gbx";
+    }
+
+    void SaveGhost(ref@ ghostRef) {
+        auto gm = cast<CGameCtnGhost@>(ghostRef);
+        if (gm is null) throw("null ghostRef");
+        auto fileName = GenGhostFileName(gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(Time::Stamp));
+        // locally hosted http server
+        auto uploadUrl = HTTP_BASE_URL + "save_ghost/" + fileName;
+        auto gs = CreateGhostScript(gm);
+
+        if (gs is null) {
+            NotifyWarning("Failed to create CGameGhostScript");
+            return;
+        }
+
+        GetApp().Network.ClientManiaAppPlayground.DataFileMgr.Ghost_Upload(uploadUrl, gs, "");
+
+        yield(10);
+
+        CleanupGhostScript(gs);
+        Cache::AddSavedGhost(gm, fileName);
+
         // we could upload the ghost like archivist, but it's easier to just get the current LB ghost
         // GetApp().PlaygroundScript.ScoreMgr.Map_GetPlayerListRecordList()
-        startnew(CoroutineFuncUserdata(RunSaveGhost), ref(array<string> = {gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(id)}));
+        // startnew(CoroutineFuncUserdata(RunSaveGhost), ref(array<string> = {gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(id)}));
     }
 
     void RunSaveGhost(ref@ r) {

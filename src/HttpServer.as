@@ -19,16 +19,17 @@ void StartHttpServer() {
 
 /* Request handler -- saving ghosts */
 
-HttpResponse@ RouteRequests(const string &in type, const string &in route, dictionary@ headers, const string &in data) {
+HttpResponse@ RouteRequests(const string &in type, const string &in route, dictionary@ headers, MemoryBuffer@ body) {
     log_trace("Route: " + route);
-    log_trace("Data length: " + data.Length);
-    if (route.StartsWith('/save_ghost/')) return HandleGhostUpload(type, route, headers, data);
-    if (route.StartsWith('/get_ghost/')) return HandleGetGhost(type, route, headers, data);
+    if (body is null) @body = MemoryBuffer();
+    log_trace("Data length: " + body.GetSize());
+    if (route.StartsWith('/save_ghost/')) return HandleGhostUpload(type, route, headers, body);
+    if (route.StartsWith('/get_ghost/')) return HandleGetGhost(type, route, headers, body);
     log_trace("Did not find route.");
     return _404_Response;
 }
 
-HttpResponse@ HandleGetGhost(const string &in type, const string &in route, dictionary@ headers, const string &in data) {
+HttpResponse@ HandleGetGhost(const string &in type, const string &in route, dictionary@ headers, MemoryBuffer@ body) {
     if (type != "GET") return HttpResponse(405, "Must be a GET request.");
     if (!route.StartsWith("/get_ghost/")) return _404_Response;
     try {
@@ -45,22 +46,29 @@ HttpResponse@ HandleGetGhost(const string &in type, const string &in route, dict
 }
 
 // todo
-HttpResponse@ HandleGhostUpload(const string &in type, const string &in route, dictionary@ headers, const string &in data) {
+HttpResponse@ HandleGhostUpload(const string &in type, const string &in route, dictionary@ headers, MemoryBuffer@ body) {
     if (type != "POST" && type != "GET") return HttpResponse(405, "Must be a POST or GET request.");
     if (!route.ToLower().EndsWith(".ghost.gbx")) {
         return _404_Response;
     }
     uint suffix = 0;
-    while (IO::FileExists(Net::UrlDecode(ReplayPathWithSuffix(route, suffix)))) {
+
+    auto lastSlash = route.LastIndexOf("/");
+    if (lastSlash == -1) {
+        return HttpResponse(400, "Bad path: " + route);
+    }
+    auto filename = Net::UrlDecode(route.SubStr(lastSlash + 1));
+
+    auto fullPath = Cache::GetGhostFilename(filename);
+    while (IO::FileExists(fullPath)) {
         suffix++;
         if (suffix >= 100) throw("More than 100 replays with the same filename...");
     }
-    auto fname = Net::UrlDecode(ReplayPathWithSuffix(route, suffix));
-    string folderPath = GetFolderPath(fname);
+    string folderPath = GetFolderPath(fullPath);
 
     if (type == "GET") {
         try {
-            IO::File gfile(fname, IO::FileMode::Read);
+            IO::File gfile(fullPath, IO::FileMode::Read);
             return HttpResponse(200, gfile.ReadToEnd());
         } catch {
             return HttpResponse(500, "Exception reading ghost: " + getExceptionInfo());
@@ -68,15 +76,16 @@ HttpResponse@ HandleGhostUpload(const string &in type, const string &in route, d
     }
 
     if (S_ShowSaveNotifications) {
-        Notify("Saving ghost to: " + fname);
+        Notify("Saving ghost to: " + fullPath);
     }
     if (!IO::FolderExists(folderPath)) {
         IO::CreateFolder(folderPath, true);
     }
-    IO::File ghostFile(fname, IO::FileMode::Write);
-    ghostFile.Write(data);
-    ghostFile.Close();
-    return HttpResponse(200, fname);
+    Cache::SaveGhostFile(filename, body);
+    // IO::File ghostFile(fullPath, IO::FileMode::Write);
+    // ghostFile.Write(body);
+    // ghostFile.Close();
+    return HttpResponse(200, fullPath);
 }
 
 
@@ -162,7 +171,7 @@ class HttpResponse {
 }
 
 // Returns status
-funcdef HttpResponse@ ReqHandlerFunc(const string &in type, const string &in route, dictionary@ headers, const string &in data);
+funcdef HttpResponse@ ReqHandlerFunc(const string &in type, const string &in route, dictionary@ headers, MemoryBuffer@ body);
 
 /* An http server. Call `.StartServer()` to start listening. Default port is 29805 and default host is localhost. */
 class HttpServer {
@@ -265,17 +274,18 @@ class HttpServer {
             log_warn("Unsupported HTTP version: " + httpVersion);
             return;
         }
-        string data;
+        MemoryBuffer@ buf;
         if (headers.Exists('Content-Length')) {
             auto len = Text::ParseInt(string(headers['Content-Length']));
-            data = client.ReadRaw(len);
+            // data = client.ReadRaw(len);
+            @buf = client.ReadBuffer(len);
         }
         if (client.Available() > 0) {
             log_warn("After reading headers and body there are " + client.Available() + " bytes remaining!");
         }
         HttpResponse@ resp = HttpResponse();
         try {
-            @resp = RequestHandler(reqType, reqRoute, headers, data);
+            @resp = RequestHandler(reqType, reqRoute, headers, buf);
         } catch {
             log_error("Exception in RequestHandler: " + getExceptionInfo());
             resp.status = 500;
