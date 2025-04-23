@@ -253,6 +253,11 @@ void DrawScrubber() {
             * (GetCurrFontSize() / 16.) * UI::GetScale();
         auto btnWidthFull = btnWidth + ScrubberWindow::spacing.x;
         float setProg = scrubberMgr.pauseAt;
+        if (scrubberMgr.pauseAt == 0.0) setProg = t;
+        if (Math::Abs(t - setProg) > 2.0) {
+            log_debug('t and setprog differet at init: ' + vec2(t, setProg).ToString() + "; " + ps.Now + ", " + playerStartTime + ", " + lastGhostsStartOrSpawnTime);
+        }
+
         if (showAdvanced && drawAdvOnTop) {
             setProg = DrawAdvancedScrubberExtras(ps, btnWidth, isSpectating, setProg);
         }
