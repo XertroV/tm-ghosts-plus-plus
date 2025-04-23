@@ -11,7 +11,8 @@ CGameGhostScript@ CreateGhostScript(CGameCtnGhost@ g) {
     Dev::SetOffset(gs, 0x18, uint(-1));
     Dev::SetOffset(gs, 0x1C, uint(0));
     Dev::SetOffset(gs, 0x20, gPtr);
-    // toto: set CTmRaceResultNod
+    // CTmRaceResultNod goes here, but keeping it null is fine for ghost upload.
+    Dev::SetOffset(gs, 0x28, uint64(0));
     Dev::SetOffset(gs, 0x30, uint64(0));
     Dev::SetOffset(gs, 0x38, uint64(0));
     Dev::SetOffset(gs, 0x40, uint64(0));
