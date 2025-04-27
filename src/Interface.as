@@ -268,6 +268,7 @@ class SaveGhostsTab : Tab {
     void WatchGhostsToLoopThem() {
         if (watchLoopActive) return;
         watchLoopActive = true;
+        auto app = GetApp();
         // main ghost watch loop
         while (IsSpectatingGhost() && watchLoopActive) {
             // curr loaded max time
@@ -276,7 +277,7 @@ class SaveGhostsTab : Tab {
             // CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
 
             // while PS exists and now < finish time of longest ghost
-            while (IsSpectatingGhost() && int(GetApp().PlaygroundScript.Now) < (int(lastSpectatedGhostRaceTime) + lastSetStartTime - 10)) {
+            while (IsSpectatingGhost() && int(app.PlaygroundScript.Now) < (int(lastSpectatedGhostRaceTime) + lastSetStartTime + 60 - 10)) {
                 yield();
             }
             if (!IsSpectatingGhost()) break;
@@ -380,6 +381,10 @@ class SaveGhostsTab : Tab {
         }
         UI::End();
     }
+}
+
+int64 MostRecentGhostTimeMax() {
+    return 60 + (lastLoadedGhostRaceTime > lastSpectatedGhostRaceTime ? lastLoadedGhostRaceTime : lastSpectatedGhostRaceTime);
 }
 
 class LoadGhostsTab : Tab {

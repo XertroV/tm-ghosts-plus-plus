@@ -253,9 +253,12 @@ void DrawScrubber() {
             * (GetCurrFontSize() / 16.) * UI::GetScale();
         auto btnWidthFull = btnWidth + ScrubberWindow::spacing.x;
         float setProg = scrubberMgr.pauseAt;
-        if (scrubberMgr.pauseAt == 0.0) setProg = t;
+        // if the scrubber is in the reset position, just use the current time.
+        // this can happen when spectating ghosts + unlock timeline at the same time.
+        if (scrubberMgr.pauseAt == 0.0) setProg = MaxD(t, -2000.0);
         if (Math::Abs(t - setProg) > 2.0) {
             log_debug('t and setprog differet at init: ' + vec2(t, setProg).ToString() + "; " + ps.Now + ", " + playerStartTime + ", " + lastGhostsStartOrSpawnTime);
+            // setProg = t;
         }
 
         if (showAdvanced && drawAdvOnTop) {
@@ -294,7 +297,7 @@ void DrawScrubber() {
         auto maxTimePre = maxTime;
         // maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
         maxTime = Math::Min(maxTime, ps.Now);
-        string labelTime = Time::Format(int64(Math::Abs(t) + lastSetGhostOffset));
+        string labelTime = Time::Format(int64(Math::Max(t, setProg) + lastSetGhostOffset));
         if (t < 0) labelTime = "-" + labelTime;
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
             + (ghostsNotVisible ? " (Ghosts Off)" : "")
@@ -933,4 +936,8 @@ class ScrubberDebugTab : Tab {
 bool Within(vec2 &in pos, vec4 &in rect) {
     return pos.x >= rect.x && pos.x < (rect.x + rect.z)
         && pos.y >= rect.y && pos.y < (rect.y + rect.w);
+}
+
+double MaxD(double a, double b) {
+    return a > b ? a : b;
 }

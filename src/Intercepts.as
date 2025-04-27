@@ -203,7 +203,6 @@ bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack, CMwNod@ nod) {
         dev_trace("SetForcedTarget_Ghost called for same ghost instance id; ignoring but applying last SpectatorForceCameraType");
         auto uiAll = cast<CGamePlaygroundUIConfig>(nod);
         if (uiAll !is null) uiAll.SpectatorForceCameraType = lastSetForcedCamera;
-        return false;
     }
 
     auto mgr = GhostClipsMgr::Get(GetApp());
