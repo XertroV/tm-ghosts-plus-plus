@@ -93,7 +93,7 @@ class GhostFinder {
     }
 
     void AddJsonTimes(Json::Value@ arr) {
-        Meta::PluginCoroutine@[] coros;
+        awaitable@[] coros;
         for (uint i = 0; i < arr.Length; i++) {
             coros.InsertLast(startnew(CoroutineFuncUserdata(AddJsonTime), arr[i]));
         }

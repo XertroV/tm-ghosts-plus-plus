@@ -64,7 +64,7 @@ namespace Core {
     }
 
     void LoadGhostsAsync(CMapRecord@[]@ recs) {
-        Meta::PluginCoroutine@[] coros;
+        awaitable@[] coros;
         for (uint i = 0; i < recs.Length; i++) {
             coros.InsertLast(startnew(LoadGhostAsync, array<string> = {string(recs[i].FileName), recs[i].ReplayUrl}));
         }
