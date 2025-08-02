@@ -241,9 +241,10 @@ void WatchAndRemoveFadeOut() {
     }
 }
 
+float g_DT = 20;
 float g_DT_sec = 0.02;
 void Update(float dt) {
-    g_DT_sec = dt * 0.001;
+    g_DT_sec = (g_DT = dt) * 0.001;
 }
 
 uint lastRefresh = 0;

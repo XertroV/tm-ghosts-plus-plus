@@ -146,7 +146,8 @@ void DrawInputsForVisId(uint targetVisId) {
 }
 
 
-float maxTime = 0.;
+double maxTime = 0.;
+double maxTimePre = 0.;
 uint lastHover;
 bool showAdvanced = false;
 uint oneTimeLog = 0;
@@ -291,12 +292,7 @@ void DrawScrubber() {
         nvg::StrokeWidth(2.0);
 #endif
         UI::SetNextItemWidth(scrubberWidth / UI::GetScale());
-        maxTime = 0.0;
-        maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime + 60);
-        maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime + 60);
-        auto maxTimePre = maxTime;
-        // maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
-        maxTime = Math::Min(maxTime, ps.Now);
+        UpdateMaxScrubberTime(ps);
         string labelTime = Time::Format(int64(Math::Max(t, setProg) + lastSetGhostOffset));
         if (t < 0) labelTime = "-" + labelTime;
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
@@ -694,13 +690,15 @@ class ScrubberMgr {
     void SetProgress(double setProg, bool allowEasing = false) {
         // trace("SetProgress: " + setProg);
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+        // disable easing for long ghosts (bad experience)
+        allowEasing = allowEasing && MaxTime < 300. * 1000.;
         // Either A: update pauseAt directly, or B: smoothly approach it
         // A: pauseAt = setProg;
         // B:
         if (allowEasing && S_ApplyScrubEasing) {
             auto diff = setProg - pauseAt;
             diff = diff < 0.0 ? -diff : diff;
-            // miliseconds
+            // milliseconds
             if (diff > 0.01) {
                 auto decay = S_ScrubEasingDecay;
                 if (setProg <= 0.0) decay *= 4.0;
@@ -890,6 +888,11 @@ class ScrubberMgr {
             DoUnpause();
         isScrubbing = false;
     }
+
+    // returns units in milliseconds
+    float get_MaxTime() {
+        return maxTime;
+    }
 }
 
 ScrubberMgr@ scrubberMgr = ScrubberMgr();
@@ -910,6 +913,20 @@ void ML_PG_Callback(ref@ r) {
 
 
 
+
+double UpdateMaxScrubberTime(CSmArenaRulesMode@ ps = null, bool resetBeforeUpdate = false) {
+    if (resetBeforeUpdate) {
+        maxTime = 0.0;
+    }
+    maxTime = Math::Max(maxTime, lastSpectatedGhostRaceTime + 60);
+    maxTime = Math::Max(maxTime, lastLoadedGhostRaceTime + 60);
+    maxTimePre = maxTime;
+    // maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
+    if (ps !is null) {
+        maxTime = Math::Min(maxTime, double(ps.Now));
+    }
+    return maxTime;
+}
 
 class ScrubberDebugTab : Tab {
     ScrubberDebugTab() {
