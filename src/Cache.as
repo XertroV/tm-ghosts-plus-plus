@@ -64,7 +64,7 @@ namespace Cache {
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
             auto g = mgr.Ghosts[i].GhostModel;
             if (string(g.GhostNickname) == name && g.RaceTime == time) {
-                AddLogin(LoginToWSID(g.GhostLogin), g.GhostLogin, name);
+                AddLogin(NadeoServices::LoginToAccountId(g.GhostLogin), g.GhostLogin, name);
                 break;
             }
         }
@@ -199,7 +199,7 @@ namespace Cache {
 
     void AddSavedGhost(CGameCtnGhost@ g, const string &in fileName) {
         auto login = g.GhostLogin;
-        auto wsid = LoginToWSID(login);
+        auto wsid = NadeoServices::LoginToAccountId(login);
         auto name = g.GhostNickname;
         auto time = g.RaceTime;
         auto stamp = Time::Stamp;

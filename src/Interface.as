@@ -237,8 +237,8 @@ class SaveGhostsTab : Tab {
         auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
         auto g = mgr.Ghosts[i].GhostModel;
 
-        // SendEvent_TMGame_Record_Spectate(LoginToWSID(g.GhostLogin));
-        Update_ML_SetSpectateID(LoginToWSID(g.GhostLogin));
+        // SendEvent_TMGame_Record_Spectate(NadeoServices::LoginToAccountId(g.GhostLogin));
+        Update_ML_SetSpectateID(NadeoServices::LoginToAccountId(g.GhostLogin));
 
         auto ghostPlayTime = int(ps.Now) - lastSetStartTime;
         // if we choose a ghost that has already finished, restart ghosts
@@ -307,7 +307,7 @@ class SaveGhostsTab : Tab {
         if (ps is null) throw("null playground script");
         auto mgr = GhostClipsMgr::Get(GetApp());
         auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
-        Update_ML_SetGhostUnloaded(LoginToWSID(mgr.Ghosts[i].GhostModel.GhostLogin));
+        Update_ML_SetGhostUnloaded(NadeoServices::LoginToAccountId(mgr.Ghosts[i].GhostModel.GhostLogin));
         log_info("unloading ghost with instance id: " + id);
         ps.GhostMgr.Ghost_Remove(MwId(id));
         auto ix = saving.Find(id);
@@ -349,7 +349,7 @@ class SaveGhostsTab : Tab {
         auto uid = args[1];
         auto nickname = args[2];
         auto id = Text::ParseUInt(args[3]);
-        auto recs = Core::GetMapPlayerListRecordList({LoginToWSID(login)}, uid);
+        auto recs = Core::GetMapPlayerListRecordList({NadeoServices::LoginToAccountId(login)}, uid);
         if (recs is null) {
             NotifyWarning("Failed to get ghost download link: " + string::Join({nickname, login, uid}, " / "));
             return;
@@ -501,7 +501,7 @@ class PlayersTab : Tab {
     void AddWSID(const string &in wsid) {
         string login;
         try {
-            login = WSIDToLogin(wsid);
+            login = NadeoServices::AccountIdToLogin(wsid);
         } catch {
             NotifyError("Invalid WSID: " + wsid);
             return;
@@ -604,7 +604,7 @@ class FavoritesTab : PlayersTab {
 
         Json::Value@[] @favs = {};
         Cache::GetFavoritesFromNameFilter("", favs);
-        auto nbToLoad = Math::Min(favs.Length, S_AutoloadFavoritedPlayersNb);
+        uint nbToLoad = Math::Min(favs.Length, S_AutoloadFavoritedPlayersNb);
         for (uint i = 0; i < nbToLoad; i++) {
             OnClickFindGhost(Cache::GetLogin(favs[i]['key']));
         }

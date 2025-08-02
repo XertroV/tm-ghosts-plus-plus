@@ -198,7 +198,7 @@ void DrawScrubber() {
 
     bool showBeforeStart = S_ShowScrubberBeforeStart && (
         (int(ps.StartTime) - ps.Now) > 0
-        || playerStartTime > ps.Now
+        || uint(playerStartTime) > ps.Now
     );
     bool showScrubber = isSpectating || showBeforeStart || (Time::Now - lastHover) < S_HoverHideDelay;
     auto @mgr = GhostClipsMgr::Get(app);
@@ -822,7 +822,7 @@ class ScrubberMgr {
 
         if (!isSpectating) {
             lastSetForcedCamera = 1;
-            lastSpectatedGhostInstanceId.Value = -1;
+            lastSpectatedGhostInstanceId.Value = uint(-1);
         }
 
 

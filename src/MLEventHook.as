@@ -13,7 +13,7 @@ class ResetHook : MLHook::HookMLEventsByType {
 class ToggleHook : MLHook::HookMLEventsByType {
     ToggleHook() {
         super("TMGame_Record_ToggleGhost");
-        startnew(CoroutineFunc(this.ClearDebounce)).WithRunContext(Meta::RunContext::BeforeScripts);
+        Meta::StartWithRunContext(Meta::RunContext::BeforeScripts, CoroutineFunc(this.ClearDebounce));
     }
 
     dictionary debounceToggles;
@@ -55,7 +55,7 @@ class ToggleHook : MLHook::HookMLEventsByType {
         // we want to find the fastest ghost with this WSID so we can remove all instances of it
         int bestTime = -1;
         int[] bestIds;
-        string login = WSIDToLogin(wsid);
+        string login = NadeoServices::AccountIdToLogin(wsid);
         for (uint i = 0; i < mgr.Ghosts.Length; i++) {
             auto g = mgr.Ghosts[i].GhostModel;
             if (g.GhostLogin != login) continue;
@@ -99,7 +99,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
         if (g_SaveGhostTab is null) warn("AfterSpectate got null g_SaveGhostTab?!");
         else g_SaveGhostTab.StartWatchGhostsLoopLoop();
 
-        return;
+        if (true) return;
 
         // ! unreachable
 
@@ -119,7 +119,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
             NGameGhostClips_SClipPlayerGhost@ g = GhostClipsMgr::GetGhostFromInstanceId(mgr, currSpecId);
             if (g !is null) {
                 // we want to unspectate this player, but not load a ghost.
-                if (LoginToWSID(g.GhostModel.GhostLogin) == wsid) {
+                if (NadeoServices::LoginToAccountId(g.GhostModel.GhostLogin) == wsid) {
                     // sleep(100);
                     // ExitSpectatingGhost();
                     if (scrubberMgr !is null) scrubberMgr.ResetAll();
@@ -189,7 +189,7 @@ class SpectateHook : MLHook::HookMLEventsByType {
 
     // disabled / unused
     void FindAndSpec(uint64 instId64) {
-        return;
+        if (true) return;
         // yield();
         // yield();
         // yield();
@@ -244,7 +244,7 @@ void Update_ML_SyncAll() {
     for (uint i = 0; i < mgr.Ghosts.Length; i++) {
         auto g = mgr.Ghosts[i].GhostModel;
         if (g.GhostNickname.StartsWith("$")) continue;
-        auto wsid = LoginToWSID(g.GhostLogin);
+        auto wsid = NadeoServices::LoginToAccountId(g.GhostLogin);
         ghostWsidsLoaded[wsid] = true;
     }
     auto wsids = ghostWsidsLoaded.GetKeys();
