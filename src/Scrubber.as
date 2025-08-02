@@ -458,9 +458,9 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     UI::EndDisabled();
     UI::SameLine();
     DrawUnlockTimelineButton(ps);
-    UI::SameLine();
-    S_AutoUnlockTimelineSolo = UI::Checkbox("Auto-Unlock", S_AutoUnlockTimelineSolo);
-    AddSimpleTooltip("Automatically unlock the timeline when you load a map.\n\n\\$iNote: 'unlock timeline' button is disabled while you are driving.");
+    // UI::SameLine();
+    // S_AutoUnlockTimelineSolo = UI::Checkbox("Auto-Unlock", S_AutoUnlockTimelineSolo);
+    // AddSimpleTooltip("Automatically unlock the timeline when you load a map.\n\n\\$iNote: 'unlock timeline' button is disabled while you are driving.");
     UI::SameLine();
     DrawGhostOpacityControls();
 

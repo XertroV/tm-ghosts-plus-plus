@@ -21,8 +21,8 @@ void DrawUnlockTimelinePromptWindow() {
                 g_ShowUnlockTimerPrompt = false;
             }
         }
-        UI::Separator();
-        S_AutoUnlockTimelineSolo = UI::Checkbox("Automatically unlock the timeline in Solo", S_AutoUnlockTimelineSolo);
+        // UI::Separator();
+        // S_AutoUnlockTimelineSolo = UI::Checkbox("Automatically unlock the timeline in Solo", S_AutoUnlockTimelineSolo);
         UI::Separator();
         S_SuppressUnlockTimelinePrompt = UI::Checkbox("Don't remind me again?", S_SuppressUnlockTimelinePrompt);
     }
