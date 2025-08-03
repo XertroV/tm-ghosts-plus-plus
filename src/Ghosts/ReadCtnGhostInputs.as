@@ -10,7 +10,7 @@ class BittableMemoryBuffer {
         auto LenBytes = buf.GetSize();
         Length = LenBytes * 8;
         data.Reserve(LenBytes);
-        for (int i = 0; i < LenBytes; i++) {
+        for (uint i = 0; i < LenBytes; i++) {
             data.InsertLast(buf.ReadUInt8());
         }
     }
@@ -26,7 +26,7 @@ class BittableMemoryBuffer {
 
     uint64 ReadNumber(int bits) {
         uint64 res = 0;
-        for (uint i = 0; i < bits; i++) {
+        for (int i = 0; i < bits; i++) {
             res |= ReadBit() << i;
         }
         return res;
@@ -200,7 +200,7 @@ namespace Ghosts_PP {
     IInputChange@[]@ GetGhostInputData(CGameCtnGhost@ ghost) {
         IInputChange@[] ret;
         auto data = GetProcessedGhostInputData(ghost);
-        for (int i = 0; i < data.Length; i++) {
+        for (uint i = 0; i < data.Length; i++) {
             ret.InsertLast(data[i]);
         }
         return ret;
@@ -210,7 +210,7 @@ namespace Ghosts_PP {
         CheckpointIxTime@[] ret;
         auto g = DGameCtnGhost(ghost);
         auto cps = g.Checkpoints;
-        for (int i = 0; i < cps.Length; i++) {
+        for (uint i = 0; i < cps.Length; i++) {
             auto cp = cps.GetCP(i);
             ret.InsertLast(CheckpointIxTime(uint(cp.cpIndex), int64(cp.cpTime)));
         }

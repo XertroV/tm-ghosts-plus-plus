@@ -22,7 +22,7 @@ void Main() {
         while (GetApp().RootMap !is null) yield();
     }
     // startnew(WindowFocusCoro);
-    startnew(Loop_BeforeScripts).WithRunContext(Meta::RunContext::BeforeScripts);
+    Meta::StartWithRunContext(Meta::RunContext::BeforeScripts, Loop_BeforeScripts);
     startnew(MapCoro);
     startnew(ClearTaskCoro);
     startnew(SetupIntercepts);
@@ -42,7 +42,7 @@ void Main() {
         @g_GhostFinder = GhostFinder();
     }
 
-    startnew(ForceGhostAlphaLoop).WithRunContext(Meta::RunContext::AfterMainLoop);
+    Meta::StartWithRunContext(Meta::RunContext::AfterMainLoop, ForceGhostAlphaLoop);
 
 #if FALSE
     startnew(RunGhostTest);
@@ -103,7 +103,7 @@ bool IsTimeAttackDebounced(CTrackManiaNetworkServerInfo@ si) {
 }
 
 void LoadFonts() {
-    @g_fontStd = UI::LoadFont("DroidSans.ttf", 16., -1, -1, true, true, true);
+    @g_fontStd = UI::LoadFont("DroidSans.ttf", 16.);
     @g_fontBold = UI::LoadFont("DroidSans-bold.ttf");
     @g_fontLarge = UI::LoadFont("DroidSans.ttf", 20.);
     @g_fontLarger = UI::LoadFont("DroidSans.ttf", 26.);

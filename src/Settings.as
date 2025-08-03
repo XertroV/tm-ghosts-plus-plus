@@ -34,7 +34,7 @@ float S_EngineSoundsDB = -20.;
 // [Setting category="General" name="Swap the play/pause button with the reset ghosts button"]
 // bool S_SwapPauseAndRestart = false;
 
-[Setting category="General" name="Automatically unlock the timeline in Solo"]
+// [Setting category="General" name="Automatically unlock the timeline in Solo"]
 bool S_AutoUnlockTimelineSolo = false;
 
 [Setting category="General" name="Suppress unlock timeline prompt"]

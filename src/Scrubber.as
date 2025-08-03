@@ -32,6 +32,9 @@ Font S_FontSize = Font::Large;
 [Setting category="Scrubber Size / Pos" name="Show the advanced tools above the scrubber"]
 bool S_ForceShowAdvOnTop = false;
 
+[Setting category="Scrubber Size / Pos" name="Always show advanced tools"]
+bool S_AlwaysShowAdv = false;
+
 [Setting category="Scrubber Size / Pos" name="After hover hide delay" min=0 max=10000 description="When driving, the scrubber will auto-disappear after this many miliseconds."]
 uint S_HoverHideDelay = 2500;
 
@@ -198,7 +201,7 @@ void DrawScrubber() {
 
     bool showBeforeStart = S_ShowScrubberBeforeStart && (
         (int(ps.StartTime) - ps.Now) > 0
-        || playerStartTime > ps.Now
+        || uint(playerStartTime) > ps.Now
     );
     bool showScrubber = isSpectating || showBeforeStart || (Time::Now - lastHover) < S_HoverHideDelay;
     auto @mgr = GhostClipsMgr::Get(app);
@@ -233,7 +236,7 @@ void DrawScrubber() {
     }
 
     bool drawAdvOnTop = S_ForceShowAdvOnTop || (ScrubberWindow::pos.y + (ScrubberWindow::ySize * 2.) / UI::GetScale() > ScrubberWindow::screen.y);
-    if (drawAdvOnTop && showAdvanced) ScrubberWindow::pos.y -= (ScrubberWindow::ySize - (ScrubberWindow::spacing.y + ScrubberWindow::fp.y) / UI::GetScale());
+    if (drawAdvOnTop && ShowAdvancedTools()) ScrubberWindow::pos.y -= (ScrubberWindow::ySize - (ScrubberWindow::spacing.y + ScrubberWindow::fp.y) / UI::GetScale());
 
     ScrubberWindow::SetUpWindow();
 
@@ -262,7 +265,7 @@ void DrawScrubber() {
             // setProg = t;
         }
 
-        if (showAdvanced && drawAdvOnTop) {
+        if (ShowAdvancedTools() && drawAdvOnTop) {
             setProg = DrawAdvancedScrubberExtras(ps, btnWidth, isSpectating, setProg);
         }
 
@@ -317,7 +320,9 @@ void DrawScrubber() {
         UI::SameLine();
 
         // bool clickCamera = UI::Button(Icons::Camera + "##scrubber-toggle-cam", vec2(btnWidth, 0));
+        UI::BeginDisabled(S_AlwaysShowAdv);
         bool toggleAdv = UI::Button(Icons::Cogs + "##scrubber-toggle-adv", vec2(btnWidth, 0));
+        UI::EndDisabled();
 
 #if DEV
         // dev label below
@@ -347,7 +352,7 @@ void DrawScrubber() {
         if (toggleAdv) {
             showAdvanced = !showAdvanced;
         }
-        if (showAdvanced) {
+        if (ShowAdvancedTools()) {
             if (!drawAdvOnTop)
                 setProg = DrawAdvancedScrubberExtras(ps, btnWidth, isSpectating, setProg);
             else if (toggleAdv) {
@@ -458,9 +463,9 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     UI::EndDisabled();
     UI::SameLine();
     DrawUnlockTimelineButton(ps);
-    UI::SameLine();
-    S_AutoUnlockTimelineSolo = UI::Checkbox("Auto-Unlock", S_AutoUnlockTimelineSolo);
-    AddSimpleTooltip("Automatically unlock the timeline when you load a map.\n\n\\$iNote: 'unlock timeline' button is disabled while you are driving.");
+    // UI::SameLine();
+    // S_AutoUnlockTimelineSolo = UI::Checkbox("Auto-Unlock", S_AutoUnlockTimelineSolo);
+    // AddSimpleTooltip("Automatically unlock the timeline when you load a map.\n\n\\$iNote: 'unlock timeline' button is disabled while you are driving.");
     UI::SameLine();
     DrawGhostOpacityControls();
 
@@ -526,6 +531,10 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     }
 
     return setProg;
+}
+
+bool ShowAdvancedTools() {
+    return showAdvanced || S_AlwaysShowAdv;
 }
 
 string ScrubCameraModeIcon(int forcedCamType) {
@@ -822,7 +831,7 @@ class ScrubberMgr {
 
         if (!isSpectating) {
             lastSetForcedCamera = 1;
-            lastSpectatedGhostInstanceId.Value = -1;
+            lastSpectatedGhostInstanceId.Value = uint(-1);
         }
 
 

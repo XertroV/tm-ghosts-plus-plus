@@ -1,8 +1,8 @@
 // borrowed from multidash borrowed from Dashboard
 
 namespace Inputs {
-    int g_NvgFont = nvg::LoadFont("DroidSans.ttf", true, true);
-    int g_NvgFontBold = nvg::LoadFont("DroidSans-bold.ttf", true, true);
+    int g_NvgFont = nvg::LoadFont("DroidSans.ttf");
+    int g_NvgFontBold = nvg::LoadFont("DroidSans-bold.ttf");
     float padding = -1;
 
     void DrawInputs(CSceneVehicleVisState@ vis, const vec2 &in size) {

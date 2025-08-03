@@ -106,7 +106,7 @@ class GhostFinder {
         uint time = j['score'];
         j['time'] = time;
         string accountId = j['accountId'];
-        string login = WSIDToLogin(accountId);
+        string login = NadeoServices::AccountIdToLogin(accountId);
         string name = NadeoServices::GetDisplayNameAsync(accountId);
         j['login'] = login;
         j['name'] = name;
@@ -178,7 +178,7 @@ class GhostFinder {
         for (uint i = 0; i < recs.Length; i++) {
             auto j = recs[i];
             auto accountId = string(j['accountId']);
-            auto login = WSIDToLogin(accountId);
+            auto login = NadeoServices::AccountIdToLogin(accountId);
             j['time'] = int(j['score']);
             j['login'] = login;
             j['name'] = NadeoServices::GetDisplayNameAsync(accountId);
