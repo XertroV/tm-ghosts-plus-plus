@@ -6,6 +6,9 @@ const string[] KnownSafeVersions = {
 };
 const string configUrl = "https://openplanet.dev/plugin/ghosts-pp/config/version-compat";
 
+[Setting hidden]
+bool S_SavedOkayGameVersion = "";
+
 /**
  * New version checklist:
  * - Update KnownSafeVersions
@@ -33,7 +36,9 @@ void EnsureGameVersionCompatibility() {
     if (GameVersionSafe) return;
     bool fromOpenplanet = GetStatusFromOpenplanet();
     trace("Got GameVersionSafe status: " + fromOpenplanet);
-    GameVersionSafe = GameVersionSafe || fromOpenplanet;
+    GameVersionSafe = GameVersionSafe
+        || fromOpenplanet
+        || TmGameVersion == S_SavedOkayGameVersion;
 }
 
 void WarnBadGameVersion() {
@@ -88,6 +93,10 @@ void OverrideGameSafetyCheck_Settings() {
     UI::Text("Check request ended: " + tostring(requestEnded));
     if (!GameVersionSafe && UI::Button("Disable safety features and run anyway")) {
         OverrideGameSafetyCheck_GhostsPP();
+    }
+    if (!GameVersionSafe && UI::Button("Disable safety features and run and remember game version")) {
+        OverrideGameSafetyCheck_GhostsPP();
+        S_SavedOkayGameVersion = TmGameVersion;
     }
 }
 
