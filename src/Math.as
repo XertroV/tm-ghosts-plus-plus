@@ -3,3 +3,19 @@
 float SmoothFollow(float current, float target, float dt, float decayRate = 8.0) {
     return target + (current - target) * Math::Clamp(Math::Exp(decayRate * dt * -1.0), 0.0, 1.0);
 }
+
+namespace MathX {
+    // alternate clamp that does not throw
+    float Clamp(float value, float min, float max) {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+
+    // alternate clamp that does not throw
+    int Clamp(int value, int min, int max) {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+}
