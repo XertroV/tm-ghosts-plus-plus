@@ -307,9 +307,13 @@ void DrawScrubber() {
         setProg = UI::SliderFloat("##ghost-scrub", setProg, minTime, Math::Max(maxTime, t), fmtString, UI::SliderFlags::NoInput);
         bool startedScrub = UI::IsItemClicked();
         clickTogglePause = (UI::IsItemHovered() && !scrubberMgr.isScrubbing && UI::IsMouseClicked(UI::MouseButton::Right)) || clickTogglePause;
-        // if we hold left shift while scrubbing, it'll go slower:
-        if (progBefore != setProg && scrubberMgr.isScrubbing && UI::IsKeyDown(UI::Key::LeftShift)) {
-            setProg = (setProg - progBefore) * 0.1 + progBefore;
+        // if we hold a button we might wany to modify how the scrubber behaves.
+        if (progBefore != setProg && scrubberMgr.isScrubbing) {
+            // hold left shift while scrubbing, it'll go slower:
+            if (UI::IsKeyDown(UI::Key::LeftShift)) {
+                setProg = (setProg - progBefore) * 0.1 + progBefore;
+            }
+            // holding left ctrl handled in ScrubberMgr::SetProgress
         }
 
         UI::SameLine();
@@ -699,12 +703,12 @@ class ScrubberMgr {
     void SetProgress(double setProg, bool allowEasing = false) {
         // trace("SetProgress: " + setProg);
         auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
-        // disable easing for long ghosts (bad experience)
-        allowEasing = allowEasing && MaxTime < 300. * 1000.;
+        // disable easing for long (>4min) ghosts (bad experience)
+        allowEasing = allowEasing && MaxTime < 240. * 1000.;
         // Either A: update pauseAt directly, or B: smoothly approach it
         // A: pauseAt = setProg;
-        // B:
-        if (allowEasing && S_ApplyScrubEasing) {
+        // B: smoothly approach provided ctrl isn't down
+        if (allowEasing && S_ApplyScrubEasing && !UI::IsKeyDown(UI::Key::LeftCtrl)) {
             auto diff = setProg - pauseAt;
             diff = diff < 0.0 ? -diff : diff;
             // milliseconds
