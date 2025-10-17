@@ -7,7 +7,7 @@ const string[] KnownSafeVersions = {
 const string configUrl = "https://openplanet.dev/plugin/ghosts-pp/config/version-compat";
 
 [Setting hidden]
-bool S_SavedOkayGameVersion = "";
+string S_SavedOkayGameVersion = "";
 
 /**
  * New version checklist:

@@ -297,7 +297,7 @@ void DrawScrubber() {
         UI::SetNextItemWidth(scrubberWidth / UI::GetScale());
         UpdateMaxScrubberTime(ps);
         string labelTime = Time::Format(int64(Math::Max(t, setProg) + lastSetGhostOffset));
-        if (t < 0) labelTime = "-" + labelTime;
+        // if (t < 0) labelTime = "-" + labelTime;
         auto fmtString = labelTime + " / " + Time::Format(int64(maxTime + lastSetGhostOffset))
             + (ghostsNotVisible ? " (Ghosts Off)" : "")
             ;
