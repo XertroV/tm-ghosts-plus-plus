@@ -474,23 +474,24 @@ float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isS
     DrawGhostOpacityControls();
 
     bool clickSetOffset = false;
+    // S_HideSetOffset is const true to permanently disable setting offsets
     if (!S_HideSetOffset) {
-        UI::SameLine();
-        UI::Dummy(vec2(10, 0));
-        UI::SameLine();
-        UI::AlignTextToFramePadding();
-        UI::Text("Set Ghosts Offset");
-        AddSimpleTooltip("This can be used to exceed the usual limits on ghosts.");
-        UI::SameLine();
-        UI::SetNextItemWidth(btnWidth * 3.0);
-        m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, lastLoadedGhostRaceTime == 0 ? 10000 : Math::Min(lastLoadedGhostRaceTime / 10, 60000));
-        m_NewGhostOffset = MathX::Clamp(m_NewGhostOffset, 0, lastLoadedGhostRaceTime == 0 ? 9999999 : (lastLoadedGhostRaceTime * 2));
-        UI::SameLine();
-        clickSetOffset = UI::Button("Set Offset: " + Time::Format(m_NewGhostOffset));
-        UI::SameLine();
-        m_KeepGhostsWhenOffsetting = UI::Checkbox("Keep Existing?", m_KeepGhostsWhenOffsetting);
-        UI::SameLine();
-        UI::Dummy(vec2(10, 0));
+        // UI::SameLine();
+        // UI::Dummy(vec2(10, 0));
+        // UI::SameLine();
+        // UI::AlignTextToFramePadding();
+        // UI::Text("Set Ghosts Offset");
+        // AddSimpleTooltip("This can be used to exceed the usual limits on ghosts.");
+        // UI::SameLine();
+        // UI::SetNextItemWidth(btnWidth * 3.0);
+        // m_NewGhostOffset = UI::InputInt("##set-ghost-offset", m_NewGhostOffset, lastLoadedGhostRaceTime == 0 ? 10000 : Math::Min(lastLoadedGhostRaceTime / 10, 60000));
+        // m_NewGhostOffset = MathX::Clamp(m_NewGhostOffset, 0, int(lastLoadedGhostRaceTime) <= 0 ? 9999999 : (lastLoadedGhostRaceTime * 2));
+        // UI::SameLine();
+        // clickSetOffset = UI::Button("Set Offset: " + Time::Format(m_NewGhostOffset));
+        // UI::SameLine();
+        // m_KeepGhostsWhenOffsetting = UI::Checkbox("Keep Existing?", m_KeepGhostsWhenOffsetting);
+        // UI::SameLine();
+        // UI::Dummy(vec2(10, 0));
     }
     // UI::SameLine();
 
@@ -550,6 +551,10 @@ string ScrubCameraModeIcon(int forcedCamType) {
 uint lastSetForcedCamera = 1;
 
 void UpdateGhostsSetOffsets() {
+    warn("DEPRECATED FUNCTION CALLED: UpdateGhostsSetOffsets");
+    warn("Disabled to prevent cheating with ghost offsets");
+    return;
+    /*
     auto app = GetApp();
     CSmArenaRulesMode@ ps = cast<CSmArenaRulesMode>(app.PlaygroundScript);
     dictionary seenGhosts;
@@ -602,6 +607,7 @@ void UpdateGhostsSetOffsets() {
         }
     }
     lastSetGhostOffset = m_NewGhostOffset;
+    */
 }
 
 

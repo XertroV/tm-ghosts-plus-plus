@@ -40,8 +40,10 @@ bool S_AutoUnlockTimelineSolo = false;
 [Setting category="General" name="Suppress unlock timeline prompt"]
 bool S_SuppressUnlockTimelinePrompt = false;
 
-[Setting category="General" name="Hide set offset in advanced tools"]
-bool S_HideSetOffset = true;
+// DISABLE THIS SETTING SO THAT USERS CANNOT SET OFFSETS
+// USED TO CHEAT BY SETTING AN OFFSET OF e.g., 500 MS FOR WR GHOSTS
+// [Setting category="General" name="Hide set offset in advanced tools"]
+const bool S_HideSetOffset = true;
 
 [Setting category="General" name="Autoload favorited players?" description="Automatically load ghosts from favorited players when entering a map"]
 bool S_AutoloadFavoritedPlayers = false;
