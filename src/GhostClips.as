@@ -1,9 +1,71 @@
 NGameGhostClips_SMgr@ GetGhostClipsMgr(CGameCtnApp@ app) {
     if (app.GameScene is null) return null;
-    auto nod = Dev::GetOffsetNod(app.GameScene, 0x120);
+    if (GhostClipsMgrOffset == 0) {
+        TryReadingGhostClipsMgrOffset();
+        if (GhostClipsMgrOffset == 0) return null;
+    }
+    auto nod = Dev::GetOffsetNod(app.GameScene, GhostClipsMgrOffset);
     if (nod is null) return null;
     return Dev::ForceCast<NGameGhostClips_SMgr@>(nod).Get();
 }
+
+uint16 GhostClipsMgrOffset = 0;
+void TryReadingGhostClipsMgrOffset() {
+    if (GhostClipsMgrOffset != 0) return;
+    auto gcMgrClsId = Reflection::GetType("NGameGhostClips_SMgr").ID;
+    auto desc = FindManager(gcMgrClsId);
+    if (desc is null) return;
+    GhostClipsMgrOffset = desc.Offset;
+#if DEV
+    dev_trace("Found GhostClipsMgrOffset: " + Text::Format("0x%04x", GhostClipsMgrOffset) + " from manager: " + desc.name);
+    auto d2 = FindManager(0x6016000); // hms mgr vis dyna
+    if (d2 is null) {
+        dev_trace("Could not find HMS mgr vis dyna");
+    } else {
+        dev_trace("Found HMS mgr vis dyna at index " + d2.index + " name: " + d2.name);
+    }
+#endif
+}
+
+uint16 GameSceneOffset = GetOffset("CGameCtnApp", "GameScene");
+const uint16 O_ISceneVis_HackScene = GetOffset("ISceneVis", "HackScene");
+
+ManagerDesc@ FindManager(uint wantedTypeId) {
+	auto app = GetApp();
+	if (app.GameScene is null) return null;
+	auto mgrsListOff = O_ISceneVis_HackScene - 0x18;
+    auto mgrs = Dev::GetOffsetNod(app.GameScene, mgrsListOff);
+    if (mgrs is null) return null;
+	// auto mgrPtr = Dev::GetOffsetUint64(app.GameScene, mgrsListOff);
+	auto mgrCount = Dev::GetOffsetUint32(app.GameScene, mgrsListOff + 0x8);
+	for (uint i = 0; i < mgrCount; i++) {
+		auto typeId = Dev::GetOffsetUint32(mgrs, i * 0x18);
+        if (typeId != wantedTypeId) continue;
+		auto ptr = Dev::GetOffsetUint64(mgrs, i * 0x18 + 0x8);
+		auto mgrIx = Dev::GetOffsetUint32(mgrs, i * 0x18 + 0x10);
+        auto ty = Reflection::GetType(typeId);
+        auto name = (ty is null ? "Unknown" : ty.Name) + " ("+Text::Format("%08x", typeId)+")";
+        return ManagerDesc(name, typeId, ptr, mgrIx);
+    }
+    return null;
+}
+
+class ManagerDesc {
+    string name;
+    uint32 typeId;
+    uint64 ptr;
+    uint32 index;
+    ManagerDesc(const string &in name, uint32 typeId, uint64 ptr, uint32 index) {
+        this.name = name;
+        this.typeId = typeId;
+        this.ptr = ptr;
+        this.index = index;
+    }
+    uint16 get_Offset() {
+        return index * 0x8 + 0x10;
+    }
+}
+
 
 namespace GhostClipsMgr {
     const uint16 GhostsOffset = GetOffset("NGameGhostClips_SMgr", "Ghosts");

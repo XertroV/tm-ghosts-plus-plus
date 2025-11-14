@@ -42,6 +42,7 @@ bool S_SuppressUnlockTimelinePrompt = false;
 
 // DISABLE THIS SETTING SO THAT USERS CANNOT SET OFFSETS
 // USED TO CHEAT BY SETTING AN OFFSET OF e.g., 500 MS FOR WR GHOSTS
+// also: function disabled and button/ui stuff commented.
 // [Setting category="General" name="Hide set offset in advanced tools"]
 const bool S_HideSetOffset = true;
 
