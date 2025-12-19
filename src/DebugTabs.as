@@ -7,10 +7,10 @@ class DebugClipsTab : Tab {
     void DrawInner() override {
         auto mgr = GhostClipsMgr::Get(GetApp());
         if (mgr is null) return;
-        auto clip1 = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20));
-        uint64 clip1Ptr = Dev::GetOffsetUint64(mgr, 0x20);
-        auto clip2 = cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x40));
-        uint64 clip2Ptr = Dev::GetOffsetUint64(mgr, 0x40);
+        auto clip1 = GhostClipsMgr::GetMainClipPlayer(mgr);
+        auto clip2 = GhostClipsMgr::GetPBClipPlayer(mgr);
+        uint64 clip1Ptr = Dev::GetOffsetUint64(mgr, GhostClipsMgr::O_GhostClipsMgr_ClipPlayer1);
+        uint64 clip2Ptr = Dev::GetOffsetUint64(mgr, GhostClipsMgr::O_GhostClipsMgr_ClipPlayer2);
         auto debug1 = GetGhostClipPlayerDebugValues(clip1);
         auto debug2 = GetGhostClipPlayerDebugValues(clip2);
 

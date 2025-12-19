@@ -191,14 +191,21 @@ namespace GhostClipsMgr {
     //     SetGhostClipPlayerSmallDeltaTime(GetPBClipPlayer(mgr));
     // }
 
+    uint16 O_GhostClipsMgr_ClipPlayer1 {
+        get { return FLAG_GameVer2025 ? 0x20 : 0x30; }
+    }
+    uint16 O_GhostClipsMgr_ClipPlayer2 {
+        get { return O_GhostClipsMgr_ClipPlayer1 + 0x20; }
+    };
+
     // all ghosts but 1 PB ghost, null if there are no ghosts
     CGameCtnMediaClipPlayer@ GetMainClipPlayer(NGameGhostClips_SMgr@ mgr) {
-        return cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x20));
+        return cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, O_GhostClipsMgr_ClipPlayer1));
     }
 
     // One ghost only, always PB (PBs can also be in the other clip player tho too). Can be null if you unload PB ghosts
     CGameCtnMediaClipPlayer@ GetPBClipPlayer(NGameGhostClips_SMgr@ mgr) {
-        return cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, 0x40));
+        return cast<CGameCtnMediaClipPlayer>(Dev::GetOffsetNod(mgr, O_GhostClipsMgr_ClipPlayer2));
     }
 
     vec2 AdvanceClipPlayersByDelta(NGameGhostClips_SMgr@ mgr, float playbackSpeed = 1.0) {

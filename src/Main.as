@@ -15,6 +15,7 @@ void Main() {
     trace('ghosts++ checking permissions');
     CheckRequiredPermissions();
     trace('checked permissions');
+    SetGameVerFlags();
     CheckAndSetGameVersionSafe();
     if (!KnownSafe) {
         while (!GameVersionSafe) yield();
