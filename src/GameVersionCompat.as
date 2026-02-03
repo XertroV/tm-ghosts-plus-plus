@@ -5,6 +5,7 @@ const string[] KnownSafeVersions = {
     "2024-12-04_12_20", "2024-12-12_15_15",
     "2025-07-04_14_15", // "2025-11-07_18_33",
     "2025-12-17_20_05", "2025-12-19_19_41",
+    "2026-01-26_15_06",
 };
 const string configUrl = "https://openplanet.dev/plugin/ghosts-pp/config/version-compat";
 
