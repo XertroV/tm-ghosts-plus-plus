@@ -89,7 +89,6 @@ namespace Core {
             return;
         }
         auto instId = gm.Ghost_Add(task.Ghost, S_UseGhostLayer);
-        print('Instance ID: ' + instId.GetName() + " / " + Text::Format("%08x", instId.Value));
         LoadingGhosts_GhostDone(1);
     }
 
@@ -105,7 +104,6 @@ namespace Core {
         }
         for (uint i = 0; i < task.Ghosts.Length; i++) {
             auto instId = gm.Ghost_Add(task.Ghosts[i], S_UseGhostLayer);
-            print('Instance ID: ' + instId.GetName() + " / " + Text::Format("%08x", instId.Value));
             if (onlyFirst) break;
         }
     }

@@ -23,6 +23,75 @@ UrlTab@ g_UrlTab = UrlTab();
 
 Tab@[]@ tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug, g_UrlTab, g_LeaderboardTab};
 
+void RestoreGhostSpectatorState(CSmArenaRulesMode@ ps, uint targetId, bool updateProgress) {
+    ps.UIManager.UIAll.Spectator_SetForcedTarget_Ghost(MwId(targetId));
+    if (!IsSpectatingGhost(ps)) return;
+
+    if (updateProgress && scrubberMgr !is null && lastSetStartTime >= 0) {
+        scrubberMgr.SetProgress(Math::Max(0.0, double(ps.Now - lastSetStartTime)), false);
+    }
+    ps.UIManager.UIAll.SpectatorForceCameraType = lastSetForcedCamera = 1;
+    if (S_SpecCamera == ScrubberSpecCamera::None) {
+        GameCamera().ActiveCam = uint(ScrubberSpecCamera::Cam1);
+    }
+}
+
+void RestoreGhostSpectatorStateAfterReset() {
+    yield();
+    yield();
+
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    if (ps is null || !IsSpectatingGhost(ps)) return;
+
+    auto targetId = GetCurrentlySpecdGhostInstanceId(ps);
+    if (targetId == 0x0FF00000) return;
+
+    RestoreGhostSpectatorState(ps, targetId, true);
+}
+
+void RestoreGhostSpectatorStateAfterSeek() {
+    yield();
+    yield();
+
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    if (ps is null || !IsSpectatingGhost(ps)) return;
+
+    auto targetId = GetCurrentlySpecdGhostInstanceId(ps);
+    if (targetId == 0x0FF00000) return;
+
+    RestoreGhostSpectatorState(ps, targetId, false);
+}
+
+void InitializeGhostFollowCamera(ref@ data) {
+    auto args = cast<array<int64>>(data);
+    auto targetId64 = args[0];
+    bool initializeCamera = args[1] != 0;
+    if (!initializeCamera) return;
+    yield();
+    yield();
+
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    if (ps is null || !IsSpectatingGhost(ps) || scrubberMgr is null) return;
+
+    auto targetId = uint(targetId64);
+
+    ps.UIManager.UIAll.Spectator_SetForcedTarget_Ghost(MwId(targetId));
+    if (!IsSpectatingGhost(ps)) return;
+    scrubberMgr.SetPaused(scrubberMgr.pauseAt, true);
+    sleep(100);
+    scrubberMgr.TogglePause(scrubberMgr.pauseAt);
+    RestoreGhostSpectatorState(ps, targetId, false);
+}
+
+bool IsLocalPlayerReady() {
+    auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
+    auto cp = cast<CSmArenaClient>(GetApp().CurrentPlayground);
+    if (ps is null || cp is null || cp.Players.Length == 0 || ps.UIManager is null) return false;
+
+    auto player = cast<CSmPlayer>(cp.Players[0]);
+    return player !is null && ps.UIManager.UIAll.UISequence == CGamePlaygroundUIConfig::EUISequence::Playing;
+}
+
 /** Render function called every frame intended for `UI`.
 */
 void RenderInterface() {
@@ -36,6 +105,7 @@ void RenderInterface() {
 #else
     if (GetApp().PlaygroundScript is null) return;
 #endif
+    if (!IsLocalPlayerReady()) return;
 
     if (!Cache::hasDoneInit) startnew(Cache::Initialize);
     UI::SetNextWindowSize(600, 300, UI::Cond::FirstUseEver);
@@ -56,15 +126,6 @@ void RenderInterface() {
         } else if (!Cache::IsInitialized) {
             UI::Text("Loading...");
         } else {
-            // if (UI::BeginChild("main-lhs", vec2(300., 0))) {
-            //     UI::AlignTextToFramePadding();
-            //     UI::Text("Current Ghosts:");
-            //     UI::Indent();
-            //     g_SaveGhostTab.DrawInner();
-            //     UI::Unindent();
-            // }
-            // UI::EndChild();
-            // UI::SameLine();
             if (UI::BeginChild("main-rhs")) {
             UI::BeginTabBar("save or load ghosts");
             g_SaveGhostTab.Draw();
@@ -118,13 +179,29 @@ class SaveGhostsTab : Tab {
     }
 
     uint[] saving;
+    bool needsFirstSpectateCameraInit = true;
 
     void DrawInner() override {
         auto mgr = GhostClipsMgr::Get(GetApp());
         if (mgr is null) return;
+        UI::BeginDisabled(g_LeaderboardTab is null || g_LeaderboardTab.wrLoadRequestActive);
+        if (UI::Button("Load WR##current-ghosts")) g_LeaderboardTab.RequestWorldRecord();
+        UI::EndDisabled();
         if (mgr.Ghosts.Length == 0) {
             UI::Text("No ghosts loaded.");
             return;
+        }
+
+        array<string> seenGhosts;
+        array<uint> visibleGhostIxs;
+        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+            auto gm = mgr.Ghosts[i].GhostModel;
+            if (gm is null) continue;
+
+            string key = gm.GhostLogin + "|" + gm.GhostNickname + "|" + tostring(gm.RaceTime) + "|" + gm.Validate_ChallengeUid.GetName();
+            if (seenGhosts.Find(key) >= 0) continue;
+            seenGhosts.InsertLast(key);
+            visibleGhostIxs.InsertLast(i);
         }
 
         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
@@ -140,13 +217,13 @@ class SaveGhostsTab : Tab {
             UI::TableSetupColumn("Save", UI::TableColumnFlags::WidthFixed, 32.);
             UI::TableSetupColumn("Unload", UI::TableColumnFlags::WidthFixed, 32.);
 
-            UI::ListClipper clip(mgr.Ghosts.Length);
+            UI::ListClipper clip(visibleGhostIxs.Length);
             while (clip.Step()) {
-                for (int i = clip.DisplayStart; i < Math::Min(clip.DisplayEnd, mgr.Ghosts.Length); i++) {
-                    UI::PushID(i);
-                    auto item = mgr.Ghosts[i];
-                    auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
-                    DrawSaveGhost(mgr.Ghosts[i], i, id);
+                for (int displayIx = clip.DisplayStart; displayIx < Math::Min(clip.DisplayEnd, visibleGhostIxs.Length); displayIx++) {
+                    uint ghostIx = visibleGhostIxs[displayIx];
+                    UI::PushID(ghostIx);
+                    auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, ghostIx);
+                    DrawSaveGhost(mgr.Ghosts[ghostIx], ghostIx, displayIx, id);
                     UI::PopID();
                 }
             }
@@ -176,7 +253,7 @@ class SaveGhostsTab : Tab {
 #endif
     }
 
-    void DrawSaveGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i, uint id) {
+    void DrawSaveGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint ghostIx, uint displayIx, uint id) {
         CGameCtnGhost@ gm = gc.GhostModel;
         auto clip = gc.Clip;
         auto rt = Time::Format(gm.RaceTime);
@@ -185,13 +262,15 @@ class SaveGhostsTab : Tab {
 
         UI::TableNextColumn();
         UI::AlignTextToFramePadding();
-        UI::Text(Text::Format("%02d. ", i+1)); // + Text::Format("%08x", id));
+        UI::Text(Text::Format("%02d. ", displayIx + 1)); // + Text::Format("%08x", id));
 #if SIG_DEVELOPER
         AddSimpleTooltip("InstanceId: " + Text::Format("0x%08x", id));
 #endif
 
         UI::TableNextColumn();
-        UI::Text(Text::OpenplanetFormatCodes(gm.GhostNickname));
+    string name = gm.GhostNickname;
+    if (IsWorldRecordGhost(gm)) name = "[WR] " + name;
+    UI::Text(Text::OpenplanetFormatCodes(name));
 
         // UI::TableNextColumn();
         // UI::Text(GhostLogoToStr(gm.m_GhostNameLogoType));
@@ -200,26 +279,33 @@ class SaveGhostsTab : Tab {
         UI::Text(rt);
 
         UI::TableNextColumn();
-        bool clicked = UI::Button(Icons::ThList + "##" + i);
+        bool clicked = UI::Button(Icons::ThList + "##" + ghostIx);
         AddSimpleTooltip("Inputs");
         if (clicked) ShowInputs(gm);
 
         UI::TableNextColumn();
-        clicked = UI::Button(Icons::Eye + "##" + i);
+        clicked = UI::Button(Icons::Eye + "##" + ghostIx);
         AddSimpleTooltip("Spectate");
-        if (clicked) startnew(CoroutineFuncUserdataInt64(SpectateGhost), int64(i));
+        if (clicked) startnew(CoroutineFuncUserdataInt64(SpectateGhost), int64(ghostIx));
 
         UI::TableNextColumn();
         UI::BeginDisabled(saving.Find(id) >= 0);
-        clicked = UI::Button(Icons::FloppyO + "##" + i);
+        clicked = UI::Button(Icons::FloppyO + "##" + ghostIx);
         AddSimpleTooltip("Save " + gm.GhostNickname + "'s " + rt + " ghost for later.");
         if (clicked) startnew(CoroutineFuncUserdata(SaveGhost), gm);
         UI::EndDisabled();
 
         UI::TableNextColumn();
-        clicked = UI::Button(Icons::Times + "##" + i);
+        clicked = UI::Button(Icons::Times + "##" + ghostIx);
         AddSimpleTooltip("Unload ghost");
-        if (clicked) UnloadGhost(i);
+        if (clicked) UnloadGhost(ghostIx);
+    }
+
+    bool IsWorldRecordGhost(CGameCtnGhost@ gm) {
+        if (gm is null || g_GhostFinder is null || g_GhostFinder.NbRecords == 0) return false;
+        auto wrAccountId = g_GhostFinder.GetTopRecordAccountId();
+        if (wrAccountId.Length == 0) return false;
+        return NadeoServices::LoginToAccountId(gm.GhostLogin) == wrAccountId;
     }
 
     void SpectateGhost(int64 _i) {
@@ -237,6 +323,12 @@ class SaveGhostsTab : Tab {
         auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
         auto g = mgr.Ghosts[i].GhostModel;
 
+        if (lastSpectatedGhostInstanceId.Value != id) {
+            hasManualTimelinePosition = false;
+            manualTimelineStartTime = 0;
+            if (scrubberMgr !is null) scrubberMgr.pauseAt = Math::Max(0.0, double(ps.Now - lastSetStartTime));
+        }
+
         // SendEvent_TMGame_Record_Spectate(NadeoServices::LoginToAccountId(g.GhostLogin));
         Update_ML_SetSpectateID(NadeoServices::LoginToAccountId(g.GhostLogin));
 
@@ -251,9 +343,10 @@ class SaveGhostsTab : Tab {
         //cast<CSmPlayer>(cp.Players[0]).;
         ps.UnspawnPlayer(cast<CSmScriptPlayer>(cast<CSmPlayer>(cp.Players[0]).ScriptAPI));
         ps.UIManager.UIAll.ForceSpectator = true;
-        // normally 1 but this works and prevents ghost scrubber doing annoying things
-        ps.UIManager.UIAll.SpectatorForceCameraType = 3;
         ps.UIManager.UIAll.Spectator_SetForcedTarget_Ghost(MwId(id));
+        auto initializeCamera = needsFirstSpectateCameraInit;
+        needsFirstSpectateCameraInit = false;
+        startnew(CoroutineFuncUserdata(InitializeGhostFollowCamera), ref(array<int64> = {int64(id), initializeCamera ? 1 : 0}));
         // ps.UIManager.UIAll.UISequence = CGamePlaygroundUIConfig::EUISequence::EndRound;
 
         if (scrubberMgr !is null && !scrubberMgr.IsStdPlayback)
@@ -290,6 +383,8 @@ class SaveGhostsTab : Tab {
                         startnew(CoroutineFunc(scrubberMgr.DoPause));
                         EngineSounds::SetEngineSoundVdBFromSettings_SpawnCoro();
                     }
+                    manualTimelineStartTime = app.PlaygroundScript.Now;
+                    hasManualTimelinePosition = true;
                     scrubberMgr.SetProgress(0.001);
                 }
             } catch {
@@ -321,26 +416,32 @@ class SaveGhostsTab : Tab {
     void SaveGhost(ref@ ghostRef) {
         auto gm = cast<CGameCtnGhost@>(ghostRef);
         if (gm is null) throw("null ghostRef");
-        auto fileName = GenGhostFileName(gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(Time::Stamp));
-        // locally hosted http server
-        auto uploadUrl = HTTP_BASE_URL + "save_ghost/" + fileName;
-        auto gs = CreateGhostScript(gm);
-
-        if (gs is null) {
-            NotifyWarning("Failed to create CGameGhostScript");
+        auto mgr = GhostClipsMgr::Get(GetApp());
+        if (mgr is null) {
+            NotifyWarning("Cannot save: ghost manager is unavailable.");
             return;
         }
 
-        GetApp().Network.ClientManiaAppPlayground.DataFileMgr.Ghost_Upload(uploadUrl, gs, "");
+        uint ghostIndex = uint(-1);
+        for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+            if (mgr.Ghosts[i].GhostModel is gm) {
+                ghostIndex = i;
+                break;
+            }
+        }
+        if (ghostIndex == uint(-1)) {
+            NotifyWarning("Cannot save: ghost is no longer loaded.");
+            return;
+        }
 
-        yield(10);
-
-        CleanupGhostScript(gs);
-        Cache::AddSavedGhost(gm, fileName);
-
-        // we could upload the ghost like archivist, but it's easier to just get the current LB ghost
-        // GetApp().PlaygroundScript.ScoreMgr.Map_GetPlayerListRecordList()
-        // startnew(CoroutineFuncUserdata(RunSaveGhost), ref(array<string> = {gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(id)}));
+        auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, ghostIndex);
+        saving.InsertLast(id);
+        RunSaveGhost(ref(array<string> = {
+            gm.GhostLogin,
+            gm.Validate_ChallengeUid.GetName(),
+            gm.GhostNickname,
+            tostring(id)
+        }));
     }
 
     void RunSaveGhost(ref@ r) {
@@ -350,33 +451,69 @@ class SaveGhostsTab : Tab {
         auto nickname = args[2];
         auto id = Text::ParseUInt(args[3]);
         auto recs = Core::GetMapPlayerListRecordList({NadeoServices::LoginToAccountId(login)}, uid);
-        if (recs is null) {
+        if (recs is null || recs.Length == 0) {
             NotifyWarning("Failed to get ghost download link: " + string::Join({nickname, login, uid}, " / "));
+            auto ix = saving.Find(id);
+            if (ix >= 0) saving.RemoveAt(ix);
             return;
         }
         auto rec = recs[0];
         Cache::AddRecord(rec, login, nickname);
-        // don't remove from the saving list b/c it'll get reset on map change
-        // auto ix = saving.Find(id);
-        // if (ix >= 0) saving.RemoveAt(ix);
+        auto ix = saving.Find(id);
+        if (ix >= 0) saving.RemoveAt(ix);
     }
 
     void OnMapChange() override {
         saving.RemoveRange(0, saving.Length);
+        needsFirstSpectateCameraInit = true;
+        if (currInputs !is null) currInputs.RemoveRange(0, currInputs.Length);
+        showAllInputs = false;
+        showInputsWindow = false;
     }
 
     TmInputChange@[]@ currInputs;
     bool showInputsWindow = false;
+    bool showAllInputs = false;
+    string currInputsKey = "";
     void ShowInputs(CGameCtnGhost@ g) {
+        if (g is null) return;
+        string key = g.GhostLogin + "|" + g.GhostNickname + "|" + tostring(g.RaceTime) + "|" + g.Validate_ChallengeUid.GetName();
+        if (showInputsWindow && currInputsKey == key) {
+            showInputsWindow = false;
+            return;
+        }
         @currInputs = GetProcessedGhostInputData(g);
+        currInputsKey = key;
+        showAllInputs = false;
         showInputsWindow = true;
     }
 
     void DrawInputs() {
         if (!showInputsWindow) return;
         if (UI::Begin("Ghost Inputs", showInputsWindow)) {
-            for (uint i = 0; i < currInputs.Length; i++) {
-                UI::Text(currInputs[i].ToString());
+            if (currInputs is null || currInputs.Length == 0) {
+                UI::Text("Input data is unavailable for this ghost.");
+            } else {
+                uint64 currentTime = scrubberMgr is null ? 0 : uint64(Math::Max(0.0, scrubberMgr.pauseAt));
+                int currentTick = int(Math::Floor((double(currentTime) - double(currInputs[0].startOffset)) / 10.0));
+                currentTick = Math::Max(0, Math::Min(currentTick, int(currInputs.Length - 1)));
+                TmInputChange@ currentInput = currInputs[currentTick];
+                string inputText;
+                if (showAllInputs) {
+                    string[] inputLines;
+                    for (uint i = 0; i < currInputs.Length; i++) {
+                        inputLines.InsertLast(currInputs[i].ToString());
+                    }
+                    inputText = string::Join(inputLines, "\n");
+                    UI::Text("All inputs (" + currInputs.Length + " ticks)");
+                } else {
+                    UI::Text("Replay time: " + Time::Format(int64(currentTime)) + " | Input tick: " + currentInput.Tick);
+                    inputText = currentInput.ToString();
+                }
+                if (UI::Button("Copy input")) IO::SetClipboard(inputText);
+                UI::SameLine();
+                if (UI::Button(showAllInputs ? "Show current" : "Show all")) showAllInputs = !showAllInputs;
+                UI::TextWrapped(inputText);
             }
         }
         UI::End();
@@ -524,7 +661,6 @@ class PlayersTab : Tab {
     void FindAndLoadGhost(ref@ r) {
         auto j = cast <Json::Value>(r);
         string login = j['key'];
-        trace(Json::Write(j));
         string wsid = j['wsid'];
         auto names = j['names'].GetKeys();
 
@@ -798,8 +934,46 @@ class MedalsTab : Tab {
     }
 }
 class LeaderboardTab : Tab {
+    bool wrLoadRequestActive = false;
+
     LeaderboardTab() {
         super("Leaderboard");
+    }
+
+    void RequestWorldRecord() {
+        if (wrLoadRequestActive) return;
+        wrLoadRequestActive = true;
+        startnew(CoroutineFunc(this.LoadWorldRecordOnDemand));
+    }
+
+    void LoadWorldRecordOnDemand() {
+        string mapUid = s_currMap;
+        if (g_GhostFinder is null) {
+            NotifyWarning("World record is unavailable: no map leaderboard.");
+            wrLoadRequestActive = false;
+            return;
+        }
+
+        g_GhostFinder.EnsureLoaded();
+        while (!g_GhostFinder.IsInitialized) {
+            yield();
+            if (mapUid != s_currMap) {
+                wrLoadRequestActive = false;
+                return;
+            }
+        }
+        if (g_GhostFinder.NbRecords == 0 || mapUid != s_currMap) {
+            wrLoadRequestActive = false;
+            return;
+        }
+
+        g_GhostFinder.ForLBRecord(0, LBRecordMapF(this.LoadWorldRecord));
+        wrLoadRequestActive = false;
+    }
+
+    void LoadWorldRecord(uint rank, uint time, Json::Value@ j) {
+        if (j is null) return;
+        startnew(CoroutineFuncUserdata(this.LoadRecord), j);
     }
 
     void DrawInner() override {
@@ -886,6 +1060,7 @@ class LeaderboardTab : Tab {
 
     void OnMapChange() override {
         loading.RemoveRange(0, loading.Length);
+        wrLoadRequestActive = false;
     }
 }
 

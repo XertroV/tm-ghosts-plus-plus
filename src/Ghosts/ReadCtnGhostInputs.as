@@ -6,6 +6,7 @@ class BittableMemoryBuffer {
 
     BittableMemoryBuffer(MemoryBuffer@ buf) {
         @this.buf = buf;
+        if (buf is null) return;
         buf.Seek(0);
         auto LenBytes = buf.GetSize();
         Length = LenBytes * 8;
@@ -62,15 +63,19 @@ class BittableMemoryBuffer {
 
 MemoryBuffer@ GetRawGhostInputData(CGameCtnGhost@ ghost) {
     // dev_trace("GetRawGhostInputData");
+    if (ghost is null) return null;
     auto g = DGameCtnGhost(ghost);
     // dev_trace("DGameCtnGhost");
     auto inputs = g.Inputs.GetPlayerInput(0);
     // dev_trace("DGameCtnGhost_PlayerInput");
-    auto data = inputs.InputData;
+    auto dataPtr = inputs.GetUint64(0x10);
+    if (dataPtr == 0) return null;
+    auto data = DGameCtnGhost_PlayerInputData(dataPtr);
     // dev_trace("DGameCtnGhost_PlayerInputData");
     auto buf = MemoryBuffer(data.BytesLen);
     auto ptr = data.BytesPtr;
     uint len = data.BytesLen;
+    if (ptr == 0 || len == 0) return null;
     // dev_trace('getting buffer of data; len=' + len + '; ptr=' + Text::FormatPointer(ptr));
     uint offset = 0;
     uint64 tmp64;
@@ -136,6 +141,7 @@ enum EStart {
 // }
 
 class TmInputChange : Ghosts_PP::IInputChange {
+    int startOffset;
     int tick;
     uint64 states;
     uint16 mouseAccuX;
@@ -146,7 +152,8 @@ class TmInputChange : Ghosts_PP::IInputChange {
     bool horn;
     uint8 characterStates;
 
-    TmInputChange(int tick, uint64 states, uint16 mouseAccuX, uint16 mouseAccuY, int8 steer, bool gas, bool brake, bool horn, uint8 characterStates) {
+    TmInputChange(int tick, int startOffset, uint64 states, uint16 mouseAccuX, uint16 mouseAccuY, int8 steer, bool gas, bool brake, bool horn, uint8 characterStates) {
+        this.startOffset = startOffset;
         this.tick = tick;
         this.states = states;
         this.mouseAccuX = mouseAccuX;
@@ -168,7 +175,7 @@ class TmInputChange : Ghosts_PP::IInputChange {
     bool get_Horn() { return horn; }
     uint8 get_CharacterStates() { return characterStates; }
 
-    int64 get_Time() { return tick * 10; }
+    int64 get_Time() { return tick * 10 + startOffset; }
     bool get_FreeLook() { return states & 8192 != 0; }
     bool get_ActionSlot1() { return states & (1 << 14) != 0; }
     bool get_ActionSlot2() { return states & (1 << 15) != 0; }
@@ -220,11 +227,17 @@ namespace Ghosts_PP {
 
 TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
     // dev_trace("GetProcessedGhostInputData");
-    auto buf = BittableMemoryBuffer(GetRawGhostInputData(ghost));
-    // dev_trace("[GetProcessedGhostInputData] got buffer");
-    auto ticks = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0).ticks;
-    // dev_trace("[GetProcessedGhostInputData] got ticks=" + ticks);
     TmInputChange@[] res;
+    if (ghost is null) return res;
+    auto buf = BittableMemoryBuffer(GetRawGhostInputData(ghost));
+    if (buf.buf is null || buf.Length == 0) return res;
+    // dev_trace("[GetProcessedGhostInputData] got buffer");
+    auto playerInput = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0);
+    auto startOffset = playerInput.startOffset;
+    auto ticks = playerInput.ticks;
+    // dev_trace("[GetProcessedGhostInputData] got ticks=" + ticks);
+    bool parseUntilBufferEnd = ticks <= 0;
+    if (ticks > 1000000) return res;
 
     EStart started = EStart::NotStarted;
 
@@ -241,20 +254,20 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
     bool sameChar = false;
     bool sameVech = false;
 
-    for (int i = 0; i < ticks; i++) {
+    states = 0;
+    mouseAccuX = 0;
+    mouseAccuY = 0;
+    steer = 0;
+    gas = false;
+    brake = false;
+    horn = false;
+    characterStates = 0;
+
+    for (int i = 0; parseUntilBufferEnd ? buf.Position < buf.Length - 2 : i < ticks; i++) {
         // dev_trace("[GetProcessedGhostInputData] processing tick " + i);
         different = false;
         bool sameState = buf.ReadBit() == 1;
         bool onlyHorn = false;
-
-        states = 0;
-        mouseAccuX = 0;
-        mouseAccuY = 0;
-        steer = 0;
-        gas = false;
-        brake = false;
-        horn = false;
-        characterStates = 0;
 
         if (!sameState) {
             onlyHorn = buf.ReadBit() > 0;
@@ -302,13 +315,21 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
             }
         }
 
-        if (different) {
-            auto change = TmInputChange(i, states, mouseAccuX, mouseAccuY, steer, gas, brake, horn, characterStates);
-            // dev_trace('Got input change: ' + change.ToString());
-            res.InsertLast(change);
-        }
+        auto change = TmInputChange(i, startOffset, states, mouseAccuX, mouseAccuY, steer, gas, brake, horn, characterStates);
+        // dev_trace('Got input change: ' + change.ToString());
+        res.InsertLast(change);
     }
 
+    int firstGasOffTick = -1;
+    int lastGasOffTick = -1;
+    for (uint i = 0; i < res.Length; i++) {
+        if (!res[i].Gas) {
+            if (firstGasOffTick < 0) firstGasOffTick = res[i].Tick;
+            lastGasOffTick = res[i].Tick;
+        }
+    }
+    log_info("[Inputs] parsed startOffset=" + startOffset + ", ticks=" + ticks + ", bufferBits=" + buf.Length + ", changes=" + res.Length
+        + ", firstGasOffTick=" + firstGasOffTick + ", lastGasOffTick=" + lastGasOffTick);
     return res;
 }
 
@@ -429,6 +450,7 @@ class DGameCtnGhost_InputData_Byte : RawBufferElem {
 
 	uint8 get_v() { return (this.GetUint8(0x0)); }
 }
+
 
 void dev_trace(const string &in msg) {
 #if DEV

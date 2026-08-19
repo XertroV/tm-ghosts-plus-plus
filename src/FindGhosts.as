@@ -23,6 +23,13 @@ class GhostFinder {
         return knownTimes.Length;
     }
 
+    string GetTopRecordAccountId() {
+        if (apiRespForTimes.Length == 0) return "";
+        auto j = apiRespForTimes[0];
+        if (j is null || j.GetType() != Json::Type::Object) return "";
+        return string(j['accountId']);
+    }
+
     void ForEachLBRecord(LBRecordMapF@ f) {
         for (uint i = 0; i < knownTimes.Length; i++) {
             auto rt = knownTimes[i];
