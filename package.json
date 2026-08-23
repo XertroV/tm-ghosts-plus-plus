@@ -1,0 +1,19 @@
+{
+  "name": "ghosts-pp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ghosts++ build tooling",
+  "scripts": {
+    "preproc": "node tools/preproc.mjs",
+    "dev": "node tools/build.mjs dev",
+    "prerelease": "node tools/build.mjs prerelease",
+    "release": "node tools/build.mjs release",
+    "watch": "node tools/watch.mjs",
+    "verify": "node tools/verify-offsets.mjs",
+    "log": "node tools/log.mjs"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.5.16"
+  }
+}

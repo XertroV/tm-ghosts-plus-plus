@@ -1,5 +1,5 @@
-const uint16 O_CTNGHOST_PRESTIGE = GetOffset("CGameCtnGhost", "LightTrailColor") - 0x10;
-const uint16 O_CTNGHOST_SKINPACKDESC = GetOffset("CGameCtnGhost", "ModelIdentAuthor") + 0x20;
+const uint16 O_CTNGHOST_PRESTIGE = GetOffsetSafe("CGameCtnGhost", "LightTrailColor") - 0x10;
+const uint16 O_CTNGHOST_SKINPACKDESC = GetOffsetSafe("CGameCtnGhost", "ModelIdentAuthor") + 0x20;
 
 string CGameCtnGhost_GetPrestigeOpts(CGameCtnGhost@ g) {
     if (g is null) return "";

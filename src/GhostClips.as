@@ -27,8 +27,8 @@ void TryReadingGhostClipsMgrOffset() {
 #endif
 }
 
-uint16 GameSceneOffset = GetOffset("CGameCtnApp", "GameScene");
-const uint16 O_ISceneVis_HackScene = GetOffset("ISceneVis", "HackScene");
+uint16 GameSceneOffset = GetOffsetSafe("CGameCtnApp", "GameScene");
+const uint16 O_ISceneVis_HackScene = GetOffsetSafe("ISceneVis", "HackScene");
 
 ManagerDesc@ FindManager(uint wantedTypeId) {
 	auto app = GetApp();
@@ -68,7 +68,7 @@ class ManagerDesc {
 
 
 namespace GhostClipsMgr {
-    const uint16 GhostsOffset = GetOffset("NGameGhostClips_SMgr", "Ghosts");
+    const uint16 GhostsOffset = GetOffsetSafe("NGameGhostClips_SMgr", "Ghosts");
     const uint16 GhostInstIdsOffset = GhostsOffset + 0x10;
 
     NGameGhostClips_SMgr@ Get(CGameCtnApp@ app) {
@@ -341,7 +341,7 @@ vec2 ClipPlayer_AdvanceByDelta(CGameCtnMediaClipPlayer@ player, float playbackSp
 // +8 from after EdMediaTracks
 
 // Was 0x60 in 2024-01-10;
-const uint16 O_GHOSTCLIPPLAYER_EDMEDIATRACKS = GetOffset("CGameCtnMediaClipPlayer", "EdMediaTracks");
+const uint16 O_GHOSTCLIPPLAYER_EDMEDIATRACKS = GetOffsetSafe("CGameCtnMediaClipPlayer", "EdMediaTracks");
 // const int16 O_GCP_CONSTS_OFF = (O_GHOSTCLIPPLAYER_EDMEDIATRACKS - 0x60) + 0x8;
 // -0x60 for orig size. +8 for 2024-06-20_19_53 added values but before the stuff we care about
 

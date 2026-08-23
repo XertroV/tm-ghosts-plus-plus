@@ -60,17 +60,99 @@ class BittableMemoryBuffer {
     }
 }
 
+/**
+ * Upper bound on a ghost's input data. Inputs are compact -- even a very long run is a
+ * few hundred KB -- so anything past this is a misread, not a real ghost.
+ */
+const uint MAX_GHOST_INPUT_BYTES = 32 * 1024 * 1024;
+
+// Ticks run at roughly 100Hz, so this allows a run of about 27 hours -- far past anything
+// real, which is the point: reject garbage without second-guessing long runs.
+const uint MAX_GHOST_INPUT_TICKS = 10000000;
+// Observed 12 on build 2026-02-02_17_51. Kept loose so a format bump does not read as
+// corruption.
+const int MAX_GHOST_INPUT_VERSION = 1000;
+
+/**
+ * Can this ghost's inputs be read at all? Safe to call every frame from UI code.
+ *
+ * Plenty of ghosts carry no recorded inputs -- leaderboard and medal ghosts especially --
+ * and their input struct is left unpopulated. Checking up front lets the button disable
+ * itself instead of the click taking the game down.
+ */
+/**
+ * Sanity-checks a PlayerInput record before its pointers are followed.
+ *
+ * A ghost that never recorded inputs still has the struct; its contents are simply not
+ * meaningful. Following an InputData pointer read out of such a record is how the game
+ * gets taken down, since an unmapped read is not catchable. The tick count and format
+ * version are the two fields cheap enough to check and specific enough to be worth it: on
+ * a real record they are a positive tick count roughly proportional to run length, and a
+ * small version number. Measured reference on build 2026-02-02_17_51: ticks=2539,
+ * version=12 for a 23.818s run.
+ *
+ * Bounds are deliberately loose. The goal is to reject obvious garbage, not to pin down
+ * values from a single observed ghost.
+ */
+bool InputRecordLooksReal(DGameCtnGhost_PlayerInput@ pi) {
+    if (pi is null) return false;
+    if (pi.ticks <= 0 || uint(pi.ticks) > MAX_GHOST_INPUT_TICKS) return false;
+    if (pi.version <= 0 || pi.version > MAX_GHOST_INPUT_VERSION) return false;
+    return true;
+}
+
+bool GhostHasInputData(CGameCtnGhost@ ghost) {
+    if (ghost is null) return false;
+    // Never walk these structures when the layout check has failed: a read through a
+    // stale offset can hit unmapped memory, which is not a catchable error.
+    if (!Compat::Available("ghost-inputs")) return false;
+    try {
+        auto inputBufs = DGameCtnGhost(ghost).Inputs;
+        if (inputBufs.Length == 0) return false;
+        auto pi = inputBufs.GetPlayerInput(0);
+        if (!InputRecordLooksReal(pi)) return false;
+        auto data = pi.InputData;
+        return !Dev_PointerLooksBad(data.BytesPtr, false)
+            && data.BytesLen > 0
+            && data.BytesLen <= MAX_GHOST_INPUT_BYTES;
+    } catch {
+        return false;
+    }
+}
+
 MemoryBuffer@ GetRawGhostInputData(CGameCtnGhost@ ghost) {
     // dev_trace("GetRawGhostInputData");
+    Compat::Require("ghost-inputs");
     auto g = DGameCtnGhost(ghost);
     // dev_trace("DGameCtnGhost");
-    auto inputs = g.Inputs.GetPlayerInput(0);
+    auto inputBufs = g.Inputs;
+    if (inputBufs.Length == 0) throw("this ghost has no recorded inputs");
+    auto inputs = inputBufs.GetPlayerInput(0);
     // dev_trace("DGameCtnGhost_PlayerInput");
+    if (!InputRecordLooksReal(inputs)) {
+        throw("this ghost's input record is not populated (ticks=" + inputs.ticks +
+              ", version=" + inputs.version + ")");
+    }
     auto data = inputs.InputData;
     // dev_trace("DGameCtnGhost_PlayerInputData");
-    auto buf = MemoryBuffer(data.BytesLen);
     auto ptr = data.BytesPtr;
     uint len = data.BytesLen;
+    // Trace level: free in normal use, and the only evidence of where a stackless crash
+    // happened when someone raises the log level to report one.
+    log_trace("[inputread] InputData=" + Text::FormatPointer(Dev_GetPointerForNod(ghost))
+        + " BytesPtr=" + Text::FormatPointer(ptr) + " BytesLen=" + len
+        + " ticks=" + inputs.ticks + " version=" + inputs.version);
+    // Both of these come straight out of game memory. Reading them unchecked is what
+    // crashes the game: an unmapped pointer, or a garbage length that walks the read loop
+    // clean off the end of the heap. Neither is recoverable once it happens.
+    if (len == 0) throw("this ghost has no recorded inputs (empty input buffer)");
+    if (Dev_PointerLooksBad(ptr, false)) {
+        throw("ghost input data pointer is not usable: " + Text::FormatPointer(ptr));
+    }
+    if (len > MAX_GHOST_INPUT_BYTES) {
+        throw("ghost input data length looks wrong (" + len + " bytes) -- refusing to read it");
+    }
+    auto buf = MemoryBuffer(len);
     // dev_trace('getting buffer of data; len=' + len + '; ptr=' + Text::FormatPointer(ptr));
     uint offset = 0;
     uint64 tmp64;
@@ -80,10 +162,20 @@ MemoryBuffer@ GetRawGhostInputData(CGameCtnGhost@ ghost) {
     //     if (offset < 100) dev_trace("Read bytes: " + Text::FormatPointer(tmp64));
     //     offset += 8;
     // }
+    // One byte first, on its own, so the log distinguishes "BytesPtr is not readable at
+    // all" from "it is readable but the buffer is shorter than BytesLen claims". Those
+    // need different fixes and look identical from a crash with no stack.
+    log_trace("[inputread] reading first byte at " + Text::FormatPointer(ptr));
+    uint8 firstByte = Dev::ReadUInt8(ptr);
+    log_trace("[inputread] first byte ok: " + firstByte + " -- reading remaining "
+        + (len - 1) + " bytes");
+    buf.Write(firstByte);
+    offset = 1;
     while (offset < len) {
         buf.Write(Dev::ReadUInt8(ptr + offset));
         offset++;
     }
+    log_trace("[inputread] copied " + offset + " bytes without faulting");
     buf.Seek(0);
     if (buf.GetSize() != len) {
         warn("Expected " + len + " bytes, but got " + buf.GetSize());
@@ -135,7 +227,23 @@ enum EStart {
 //     }
 // }
 
-class TmInputChange : Ghosts_PP::IInputChange {
+/**
+ * Parsed input state for one tick.
+ *
+ * Deliberately does NOT implement Ghosts_PP::IInputChange. That interface is `shared`,
+ * and shared types live in a module Openplanet compiles separately from this plugin's
+ * own. Storing instances of a class bound to it into a local array crashed the game --
+ * construction succeeded, the very first InsertLast did not, with no exception and no
+ * stack. Traced to the exact statement:
+ *
+ *   t0: TmInputChange constructed
+ *   (dies before "t0: appended")
+ *
+ * The interface still exists for other plugins; TmInputChangeExport below adapts to it at
+ * the export boundary, which is the only place the cross-module type belongs. Internal
+ * code has no reason to pay for the ABI.
+ */
+class TmInputChange {
     int tick;
     uint64 states;
     uint16 mouseAccuX;
@@ -197,11 +305,47 @@ class TmInputChange : Ghosts_PP::IInputChange {
 
 
 namespace Ghosts_PP {
+    /**
+     * Adapts a parsed TmInputChange to the shared cross-plugin interface.
+     *
+     * Kept separate from TmInputChange so the shared type is only ever instantiated here,
+     * at the export boundary, and never in the parse loop -- see the note on TmInputChange.
+     */
+    class TmInputChangeExport : IInputChange {
+        private TmInputChange@ c;
+        TmInputChangeExport(TmInputChange@ c) { @this.c = c; }
+
+        int32 get_Tick() { return c.Tick; }
+        uint64 get_States() { return c.States; }
+        uint16 get_MouseAccuX() { return c.MouseAccuX; }
+        uint16 get_MouseAccuY() { return c.MouseAccuY; }
+        int8 get_Steer() { return c.Steer; }
+        bool get_Gas() { return c.Gas; }
+        bool get_Brake() { return c.Brake; }
+        bool get_Horn() { return c.Horn; }
+        uint8 get_CharacterStates() { return c.CharacterStates; }
+        int64 get_Time() { return c.Time; }
+        bool get_FreeLook() { return c.FreeLook; }
+        bool get_ActionSlot1() { return c.ActionSlot1; }
+        bool get_ActionSlot2() { return c.ActionSlot2; }
+        bool get_ActionSlot3() { return c.ActionSlot3; }
+        bool get_ActionSlot4() { return c.ActionSlot4; }
+        bool get_ActionSlot5() { return c.ActionSlot5; }
+        bool get_ActionSlot6() { return c.ActionSlot6; }
+        bool get_ActionSlot7() { return c.ActionSlot7; }
+        bool get_ActionSlot8() { return c.ActionSlot8; }
+        bool get_ActionSlot9() { return c.ActionSlot9; }
+        bool get_ActionSlot0() { return c.ActionSlot0; }
+        bool get_Respawn() { return c.Respawn; }
+        bool get_SecondaryRespawn() { return c.SecondaryRespawn; }
+        string ToString() { return c.ToString(); }
+    }
+
     IInputChange@[]@ GetGhostInputData(CGameCtnGhost@ ghost) {
         IInputChange@[] ret;
         auto data = GetProcessedGhostInputData(ghost);
         for (uint i = 0; i < data.Length; i++) {
-            ret.InsertLast(data[i]);
+            ret.InsertLast(TmInputChangeExport(data[i]));
         }
         return ret;
     }
@@ -218,12 +362,18 @@ namespace Ghosts_PP {
     }
 }
 
+// Traced unconditionally: every failure in this path so far has been a hard crash with no
+// exception and no stack, so the last line written is the only evidence of where it died.
+void InputTrace(const string &in msg) {
+    log_trace("[inputread] " + msg);
+}
+
 TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
     // dev_trace("GetProcessedGhostInputData");
     auto buf = BittableMemoryBuffer(GetRawGhostInputData(ghost));
-    // dev_trace("[GetProcessedGhostInputData] got buffer");
+    InputTrace("bit buffer built: " + buf.Length + " bits");
     auto ticks = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0).ticks;
-    // dev_trace("[GetProcessedGhostInputData] got ticks=" + ticks);
+    InputTrace("re-read ticks: " + ticks + " -- entering parse loop");
     TmInputChange@[] res;
 
     EStart started = EStart::NotStarted;
@@ -242,7 +392,14 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
     bool sameVech = false;
 
     for (int i = 0; i < ticks; i++) {
-        // dev_trace("[GetProcessedGhostInputData] processing tick " + i);
+        // Progress tracing. Nothing in this loop touches raw memory, so it should not be
+        // able to fault -- but it demonstrably does not reach the end. Knowing *which*
+        // iteration it dies on separates "the first one is malformed" from "it runs off
+        // the end of the bit buffer near the finish".
+        if (i < 4 || i % 250 == 0) {
+            InputTrace("tick " + i + "/" + ticks + " bitpos=" + buf.Position
+                + "/" + buf.Length + " changes=" + res.Length);
+        }
         different = false;
         bool sameState = buf.ReadBit() == 1;
         bool onlyHorn = false;
@@ -309,27 +466,51 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
         }
     }
 
+    InputTrace("parse loop done: " + res.Length + " input changes");
     return res;
 }
 
-const uint16 O_CTN_GHOST_CHECKPOINTS_BUF = GetOffset("CGameCtnGhost", "NbRespawns") + 0x8;
-const uint16 O_CTN_GHOST_PLAYER_INPUTS_BUF = GetOffset("CGameCtnGhost", "Validate_GameModeCustomData") + (0x1A0 - 0x188);
+const uint16 O_CTN_GHOST_CHECKPOINTS_BUF = GetOffsetSafe("CGameCtnGhost", "NbRespawns") + 0x8;
+const uint16 O_CTN_GHOST_PLAYER_INPUTS_BUF = GetOffsetSafe("CGameCtnGhost", "Validate_GameModeCustomData") + (0x1A0 - 0x188);
 
 
 /// ! This file is generated in editor++: codegen/Game/CGameCtnGhost.xtoml !
 /// ! Do not edit this file manually !
 
+/**
+ * The CGameCtnGhost layout these offsets have been *measured* against.
+ *
+ * This is load-bearing, not documentation. Every hardcoded delta in this file assumes a
+ * particular field layout, and reading through a stale one is not survivable: an unmapped
+ * read takes the game down without raising a catchable exception. The "ghost-inputs" and
+ * "ghost-telemetry" probes compare this against the size the game reports and disable
+ * those features when they disagree, rather than reading anyway.
+ *
+ * Measured on build 2026-02-02_17_51 (struct size 0x340) with the ghost struct dump in
+ * GhostStructDump.as, against a 4-checkpoint map:
+ *
+ *   +0x038 len=5  = NbRespawns + 0x8                  checkpoints (4 CPs + finish)
+ *   +0x1a8 len=1  = Validate_GameModeCustomData + 0x18 player inputs
+ *   +0x2f8 len=1  = Validate_ExtraTool_Info + 0xc8     entity records
+ *   PlayerInput:     version +0x08, ticks +0x0C, InputData +0x10
+ *   PlayerInputData: BytesPtr +0x18, BytesLen +0x20 (repeated at +0x28)
+ *
+ * Only the entity-record delta had moved from the values generated against the older
+ * 0x330 layout; everything else measured identical.
+ */
+const uint DGAMECTNGHOST_VERIFIED_SIZE = 0x340;
+
 class DGameCtnGhost : RawBufferElem {
 	DGameCtnGhost(RawBufferElem@ el) {
-		if (el.ElSize != 0x330) throw("invalid size for DGameCtnGhost");
+		if (el.ElSize != DGAMECTNGHOST_VERIFIED_SIZE) throw("invalid size for DGameCtnGhost");
 		super(el.Ptr, el.ElSize);
 	}
 	DGameCtnGhost(uint64 ptr) {
-		super(ptr, 0x330);
+		super(ptr, DGAMECTNGHOST_VERIFIED_SIZE);
 	}
 	DGameCtnGhost(CGameCtnGhost@ nod) {
 		if (nod is null) throw("not a CGameCtnGhost");
-		super(Dev_GetPointerForNod(nod), 0x330);
+		super(Dev_GetPointerForNod(nod), DGAMECTNGHOST_VERIFIED_SIZE);
 	}
 	CGameCtnGhost@ get_Nod() {
 		return cast<CGameCtnGhost>(Dev_GetNodFromPointer(ptr));

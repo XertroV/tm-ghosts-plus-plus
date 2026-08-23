@@ -1,5 +1,12 @@
 #if FALSE
-const uint16 O_CTN_GHOST_ENT_RECORD_DATA = GetOffset("CGameCtnGhost", "Validate_ExtraTool_Info") + (0x2E0 - 0x220);
+// Measured on build 2026-02-02_17_51 via the ghost struct dump: the entity-record buffer
+// sits at Validate_ExtraTool_Info + 0xC8. It was +0xC0 (0x2E0 - 0x220), derived against
+// the older 0x330-byte CGameCtnGhost -- the struct's extra 0x10 bytes were inserted
+// between this anchor and the buffer, shifting it by 8.
+//
+// The checkpoint and player-input buffer offsets were measured in the same pass and are
+// unchanged, so this is the only top-level delta that moved.
+const uint16 O_CTN_GHOST_ENT_RECORD_DATA = GetOffsetSafe("CGameCtnGhost", "Validate_ExtraTool_Info") + 0xC8;
 
 CSceneVehicleVis::EntRecordDelta@[]@ GetSamplesFromGhost(CGameCtnGhost@ ghost) {
     auto entRecordData = cast<CPlugEntRecordData>(Dev::GetOffsetNod(ghost, O_CTN_GHOST_ENT_RECORD_DATA));

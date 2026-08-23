@@ -77,6 +77,15 @@ class RawBufferElem {
     protected uint64 ptr;
     protected uint size;
     RawBufferElem(uint64 ptr, uint size) {
+        // RawBuffer validates its pointer; this class did not, which is how a null or
+        // stale pointer read straight out of game memory reached Dev::Read* and took the
+        // whole game down with an access violation. CheckOffset() below only bounds the
+        // offset within the declared struct size -- it never establishes that the base
+        // address is mapped. Throwing here turns an unrecoverable crash into a catchable
+        // exception. Alignment is not required: byte buffers index at 1-byte strides.
+        if (Dev_PointerLooksBad(ptr, false)) {
+            throw("Bad struct pointer: " + Text::FormatPointer(ptr));
+        }
         this.ptr = ptr;
         this.size = size;
     }
@@ -475,7 +484,14 @@ uint GetMwId(const string &in name) {
 }
 
 
-bool Dev_PointerLooksBad(uint64 ptr) {
+/**
+ * Heuristic check that a pointer read out of game memory is plausible.
+ *
+ * requireAlignment is opt-out because elements of byte-sized buffers (input data, for
+ * one) are legitimately unaligned; the address-range check still catches null and the
+ * garbage values that actually cause crashes.
+ */
+bool Dev_PointerLooksBad(uint64 ptr, bool requireAlignment = true) {
     #if WINDOWS_WINE
         if (ptr < 0x1000000) return true;
     #else
@@ -483,7 +499,7 @@ bool Dev_PointerLooksBad(uint64 ptr) {
         if (ptr < 0x10000000000) return true;
     #endif
     if (ptr > 0x40000000000) return true;
-    if (ptr % 8 != 0) return true;
+    if (requireAlignment && ptr % 8 != 0) return true;
     if (ptr == 0) return true;
     return false;
 }
@@ -519,6 +535,12 @@ CMwNod@ Dev_GetArbitraryNodAt(uint64 ptr) {
         NodPtrs::InitializeTmpPointer();
     }
     if (ptr == 0) throw('null pointer passed');
+    // NodPtrs::Unload() frees the scratch page during teardown. Writing through the stale
+    // handle afterwards is a use-after-free the game does not survive, and teardown is
+    // exactly when late coroutines still call in here. Fail loudly instead.
+    if (NodPtrs::g_TmpSpaceAsNod is null) {
+        throw('nod pointer scratch space has been released (plugin is shutting down)');
+    }
     Dev::SetOffset(NodPtrs::g_TmpSpaceAsNod, 0, ptr);
     return Dev::GetOffsetNod(NodPtrs::g_TmpSpaceAsNod, 0);
 }

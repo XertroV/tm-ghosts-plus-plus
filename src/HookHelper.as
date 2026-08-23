@@ -39,6 +39,13 @@ class HookHelper {
         if (patternPtr == 0) patternPtr = Dev::FindPattern(pattern);
     }
 
+    // Exposed so a capability probe can ask whether this hook's pattern resolved, rather
+    // than re-running Dev::FindPattern itself. Zero means "not found yet": with
+    // findPtrEarly the scan is started via startnew() and may still be in flight.
+    uint64 get_PatternPtr() {
+        return patternPtr;
+    }
+
     bool Apply() {
         if (hookInfo !is null) return false;
         if (patternPtr == 0) patternPtr = Dev::FindPattern(pattern);

@@ -15,6 +15,9 @@ namespace NoFlashCar {
             return MP_Set338Pattern1.IsApplied && MP_Set338Pattern2.IsApplied;
         }
         set {
+            // Applying is gated on the probe; un-applying never is, so that a patch which
+            // is already in place can always be removed (on unload, for instance).
+            if (value && !Compat::Available("no-flash-car")) return;
             MP_Set338Pattern1.IsApplied = value;
             MP_Set338Pattern2.IsApplied = value;
         }

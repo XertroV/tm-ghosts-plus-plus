@@ -66,8 +66,105 @@ bool _CGSHPI_CloseInGameMenu(CMwStack &in stack) {
 
 uint lastLoadedGhostRaceTime = 0;
 bool ghostAddSkipIntercept = false;
+[Setting category="Ghosts" name="Prevent duplicate ghosts" description="Blocks loading a ghost that is already loaded -- same player, same time. Without this the game's own \"Personal best\" ghost and your record from the leaderboard both load, leaving two identical ghosts driving on top of each other."]
+bool S_PreventDuplicateGhosts = true;
+
+/**
+ * Is this exact run already loaded?
+ *
+ * Identity is player login plus race time. Nickname is unusable for this: the game's own
+ * PB ghost is called "$...Personal best" rather than the player's name, so a name
+ * comparison never matches it against the same run from the leaderboard.
+ *
+ * Fails open -- an unidentifiable ghost is allowed through, because a duplicate is a much
+ * smaller problem than silently refusing to load something legitimate.
+ */
+/**
+ * Ghosts added since the last map change, as "login|time".
+ *
+ * The clips manager is not necessarily updated between two Ghost_Add calls in the same
+ * frame, so checking it alone misses a same-frame double add -- which is what loading the
+ * PB ghost twice at map start looks like.
+ */
+string[] g_RecentGhostAddKeys;
+uint[] g_RecentGhostAddTimes;
+
+/**
+ * How long an add stays "recent".
+ *
+ * Only needs to span the gap between two adds racing each other before the clips manager
+ * catches up -- the same frame, in practice. Deliberately short: entries must expire, or
+ * unloading a ghost and loading it again would be refused as a duplicate.
+ */
+const uint RECENT_GHOST_ADD_MS = 2000;
+
+string GhostAddKey(const string &in login, int raceTime) {
+    return login + "|" + raceTime;
+}
+
+bool WasGhostRecentlyAdded(const string &in login, int raceTime) {
+    PruneRecentGhostAdds();
+    return g_RecentGhostAddKeys.Find(GhostAddKey(login, raceTime)) >= 0;
+}
+
+void NoteGhostAdded(const string &in login, int raceTime) {
+    PruneRecentGhostAdds();
+    g_RecentGhostAddKeys.InsertLast(GhostAddKey(login, raceTime));
+    g_RecentGhostAddTimes.InsertLast(Time::Now);
+}
+
+void PruneRecentGhostAdds() {
+    while (g_RecentGhostAddTimes.Length > 0
+            && g_RecentGhostAddTimes[0] + RECENT_GHOST_ADD_MS < Time::Now) {
+        g_RecentGhostAddTimes.RemoveAt(0);
+        g_RecentGhostAddKeys.RemoveAt(0);
+    }
+}
+
+/** Called on map change: ghosts do not survive it, so neither should this list. */
+void ClearRecentGhostAdds() {
+    g_RecentGhostAddKeys.RemoveRange(0, g_RecentGhostAddKeys.Length);
+    g_RecentGhostAddTimes.RemoveRange(0, g_RecentGhostAddTimes.Length);
+}
+
+bool IsGhostAlreadyLoaded(const string &in login, int raceTime) {
+    if (login.Length == 0) return false;
+    auto mgr = GhostClipsMgr::Get(GetApp());
+    if (mgr is null) return false;
+    for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+        auto gm = mgr.Ghosts[i].GhostModel;
+        if (gm is null) continue;
+        if (int(gm.RaceTime) == raceTime && gm.GhostLogin == login) return true;
+    }
+    return false;
+}
+
 bool _Ghost_Add(CMwStack &in stack, CMwNod@ nod) {
     if (ghostAddSkipIntercept) return true;
+
+    // Runs BEFORE the ps.Now < 1000 early-out below. Ghosts are added within the first
+    // second of a map load, so anything gated behind that check never sees them -- which
+    // is precisely the window where the PB ghost gets added twice.
+    if (S_PreventDuplicateGhosts) {
+        auto addingGhost = cast<CGameGhostScript>(stack.CurrentNod(1));
+        if (addingGhost !is null && addingGhost.Result !is null) {
+            auto ctn = GetCtnGhost(addingGhost);
+            if (ctn !is null && ctn.GhostLogin.Length > 0) {
+                int raceTime = addingGhost.Result.Time;
+                // Two checks, because they cover different cases: the clips manager
+                // catches a ghost already present, and the recent-adds list catches two
+                // adds landing before the manager has been updated.
+                if (IsGhostAlreadyLoaded(ctn.GhostLogin, raceTime)
+                        || WasGhostRecentlyAdded(ctn.GhostLogin, raceTime)) {
+                    log_info("blocking duplicate ghost add: " + addingGhost.Nickname
+                        + " / " + Time::Format(raceTime) + " / login " + ctn.GhostLogin);
+                    return false;
+                }
+                NoteGhostAdded(ctn.GhostLogin, raceTime);
+            }
+        }
+    }
+
     auto ps = cast<CSmArenaRulesMode>(GetApp().PlaygroundScript);
     if (ps is null || ps.Now < 1000) return true;
 
@@ -139,6 +236,31 @@ bool g_BlockNextGhostsSetTimeAny;
 bool g_BlockAllGhostsSetTimeNow = true;
 bool g_AllowNextForceGhostDespiteNowBlock = true;
 uint lastBlockedSetStartTimeNow = 1;
+
+/**
+ * When we were last actually spectating a ghost. Updated from the scrubber each frame.
+ *
+ * The end-of-run restart this guards against fires at precisely the moment a ghost stops
+ * being spectatable, so testing IsSpectatingGhost() at that instant answers "no" and lets
+ * the restart through -- ghosts jump back to the start and the timeline pins itself at
+ * 0:00.001 with nothing playing. Asking whether we were spectating a moment ago is the
+ * question that was actually meant.
+ */
+uint lastSpectatingGhostAt = 0;
+const uint SPECTATING_RECENTLY_MS = 1500;
+
+void NoteSpectatingGhost() {
+    lastSpectatingGhostAt = Time::Now;
+}
+
+bool WasSpectatingGhostRecently() {
+    if (IsSpectatingGhost()) {
+        lastSpectatingGhostAt = Time::Now;
+        return true;
+    }
+    return lastSpectatingGhostAt > 0
+        && lastSpectatingGhostAt + SPECTATING_RECENTLY_MS >= Time::Now;
+}
 int lastSetStartTime = 5000;
 bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
     auto ghostStartTime = stack.CurrentInt(0);
@@ -151,7 +273,7 @@ bool _Ghosts_SetStartTime(CMwStack &in stack, CMwNod@ nod) {
 
     auto ps = cast<CSmArenaRulesMode>(nod);
 
-    if (g_BlockAllGhostsSetTimeNow && IsSpectatingGhost() && Time::Now > allowSetStartTimeNow_BeforeEq) {
+    if (g_BlockAllGhostsSetTimeNow && WasSpectatingGhostRecently() && Time::Now > allowSetStartTimeNow_BeforeEq) {
         bool isNearlyNow = ghostStartTime == int(ps.Now) - 1;
         if (ghostStartTime == int(ps.Now) || isNearlyNow) {
             warn("blocking ghost SetStartTime Now" + (isNearlyNow ? "-1" : ""));
@@ -185,21 +307,42 @@ void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, int startTime) {
 MwId lastSpectatedGhostInstanceId = MwId(uint(-1));
 uint lastSpectatedGhostRaceTime = 0;
 
+/**
+ * How long after blocking a "SetStartTime Now" we keep refusing target changes.
+ *
+ * When a ghost reaches the end of its run the mode tries to restart it, and the follow-up
+ * Spectator_SetForcedTarget_Ghost is what resets the camera. Suppressing that follow-up
+ * only works if the window is still open when it arrives.
+ *
+ * This was 2ms. Time::Now is in milliseconds, so at 60fps -- one frame being ~16ms -- the
+ * window had almost always closed by the time the follow-up landed, and the camera reset
+ * anyway (upstream #33). The rest of this file already uses 100ms for the same kind of
+ * guard (see allowSetStartTimeNow_BeforeEq), so 2 looks like it was meant as a frame
+ * count rather than a duration.
+ */
+const uint BLOCK_AFTER_SET_START_TIME_MS = 100;
+
 bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack, CMwNod@ nod) {
-    bool blockAfterBlockedSetStartTime = lastBlockedSetStartTimeNow + 2 >= Time::Now
-        && IsSpectatingGhost();
-#if DEV
-#else
-    if (blockAfterBlockedSetStartTime) {
-        // if we just blocked a set start time, don't let the mode change target ghost
-        log_trace("blocking SetForcedTarget_Ghost due to blocked SetStartTime Now");
-        return false;
-    }
-#endif
-
-
     auto ghostInstId = stack.CurrentId(0);
-    if (lastSpectatedGhostInstanceId.Value == ghostInstId.Value) {
+    bool sameGhost = lastSpectatedGhostInstanceId.Value == ghostInstId.Value;
+
+    // Suppress only the mode re-asserting the ghost already being spectated. That is the
+    // end-of-run camera reset this guard exists for (upstream #33).
+    //
+    // Scoping it to the same ghost matters: a target change to a *different* ghost is the
+    // player choosing one. Blocking that leaves the camera detached with nothing playing
+    // until the timeline is scrubbed or unlocked -- which is what widening this window
+    // from 2ms to 100ms caused, until it was narrowed to same-ghost re-asserts only.
+    //
+    // g_AllowNextForceGhostDespiteNowBlock stays as a second exemption, for target changes
+    // the player asked for explicitly (records UI, or the Spectate button).
+    bool blockSameGhostReassert =
+        lastBlockedSetStartTimeNow + BLOCK_AFTER_SET_START_TIME_MS >= Time::Now
+        && IsSpectatingGhost()
+        && sameGhost
+        && !g_AllowNextForceGhostDespiteNowBlock;
+
+    if (sameGhost) {
         dev_trace("SetForcedTarget_Ghost called for same ghost instance id; ignoring but applying last SpectatorForceCameraType");
         auto uiAll = cast<CGamePlaygroundUIConfig>(nod);
         if (uiAll !is null) uiAll.SpectatorForceCameraType = lastSetForcedCamera;
@@ -209,23 +352,20 @@ bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack, CMwNod@ nod) {
     auto ghost = mgr is null ? null : GhostClipsMgr::GetGhostFromInstanceId(mgr, ghostInstId.Value);
 
     if (ghost !is null) {
-        log_trace('SetForcedTarget_Ghost: ' + (ghost is null ? "null" : string(ghost.GhostModel.GhostNickname)) + " / InstanceId: " + Text::Format("#%08x", lastSpectatedGhostInstanceId.Value) + " / RaceTime: " + lastSpectatedGhostRaceTime);
+        // Logs the incoming instance id, not the previous one -- the old line reported
+        // lastSpectatedGhostInstanceId here, which is whatever we were watching before.
+        log_trace('SetForcedTarget_Ghost: ' + string(ghost.GhostModel.GhostNickname)
+            + " / InstanceId: " + Text::Format("#%08x", ghostInstId.Value)
+            + " / RaceTime: " + ghost.GhostModel.RaceTime);
     } else {
         log_info("SetForcedTarget_Ghost called for a ghost that does not exist; inst id: " + Text::Format("#%08x", ghostInstId.Value));
     }
 
-#if DEV
-    // if we just blocked a set start time, don't let the mode change target ghost
-    if (blockAfterBlockedSetStartTime) {
-        log_trace("[DEV] Blocking set forced target ghost due to blocked set start time now");
+    if (blockSameGhostReassert) {
+        log_trace("blocking SetForcedTarget_Ghost: mode re-asserting the same ghost right after a blocked SetStartTime Now");
         return false;
     }
-#endif
 
-    // if (lastBlockedSetStartTimeNow == Time::Now && !g_AllowNextForceGhostDespiteNowBlock) {
-    //     warn("Blocking set forced target ghost due to blocked set start time now");
-    //     return false;
-    // }
     g_AllowNextForceGhostDespiteNowBlock = false;
 
     lastSpectatedGhostInstanceId = ghostInstId;

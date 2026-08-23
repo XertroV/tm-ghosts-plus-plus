@@ -15,14 +15,19 @@ void Main() {
     trace('ghosts++ checking permissions');
     CheckRequiredPermissions();
     trace('checked permissions');
+    TeardownStep("Main: begin");
     SetGameVerFlags();
-    CheckAndSetGameVersionSafe();
-    if (!KnownSafe) {
-        while (!GameVersionSafe) yield();
-        // initialization problems when GameVersionSafe is false in a map
-        while (GetApp().RootMap !is null) yield();
-    }
+    // Upstream blocked here until a hand-maintained list said this game build was safe,
+    // which is what left Ghosts++ inert after an update. Instead, probe each fragile
+    // feature independently and carry on: anything that fails disables only itself.
+    TeardownStep("Main: registering capabilities");
+    Compat::RegisterAllCapabilities();
+    TeardownStep("Main: probing capabilities");
+    Compat::ProbeAll();
+    TeardownStep("Main: probes done");
+    startnew(Compat::ReprobeWhenPlaygroundLoaded);
     // startnew(WindowFocusCoro);
+    TeardownStep("Main: starting coros");
     Meta::StartWithRunContext(Meta::RunContext::BeforeScripts, Loop_BeforeScripts);
     startnew(MapCoro);
     startnew(ClearTaskCoro);
@@ -30,7 +35,9 @@ void Main() {
     startnew(InitGP);
     startnew(LoadFonts);
     startnew(OnUpdatedGpsScrubbingSetting);
+    startnew(DedupeGhosts::Coro);
     trace('started coros');
+    TeardownStep("Main: coros started");
     trace('checking spec');
     if (GetApp().PlaygroundScript !is null) {
         trace('in playground! getting current values');
@@ -143,27 +150,61 @@ void _OnEnabledOrStart() {
 bool g_Initialized = false;
 
 void Unload() {
-    // nothing to do if game version is not safe, moreover, we might accidentally call unsafe stuff if we do it in this situation
-    if (GameVersionSafe) {
-        trace('unloading ghosts++ #1 paused');
-        // if (scrubberPaused) GhostClipsMgr::UnpauseClipPlayers(GhostClipsMgr::Get(GetApp()), 0., 60.0);
-        if (scrubberMgr !is null)
-            scrubberMgr.ResetAll();
-        trace('unloading ghosts++ #2 mlhook');
+    // Each step is independent, and skipping cleanup is worse than a failed step: leaving
+    // an MLHook injection or a scrubber pause behind outlives the plugin. So try them all
+    // and let one failure not stop the rest.
+    trace('unloading ghosts++ #1 paused');
+    // if (scrubberPaused) GhostClipsMgr::UnpauseClipPlayers(GhostClipsMgr::Get(GetApp()), 0., 60.0);
+    try {
+        if (scrubberMgr !is null) scrubberMgr.ResetAll();
+    } catch {
+        log_warn("unload: resetting the scrubber failed: " + getExceptionInfo());
+    }
+    trace('unloading ghosts++ #2 mlhook');
+    try {
         MLHook::UnregisterMLHooksAndRemoveInjectedML();
-        trace('unloading ghosts++ #3 done');
+    } catch {
+        log_warn("unload: removing MLHook injections failed: " + getExceptionInfo());
+    }
+    trace('unloading ghosts++ #3 done');
+    try {
         EngineSounds::Unapply();
         CheckUnhookAllRegisteredHooks();
+    } catch {
+        log_warn("unload: unhooking failed: " + getExceptionInfo());
     }
 }
+// Reloading the plugin crashes the game, consistently, with the log ending mid-init and
+// no exception. These checkpoints exist to pin down which teardown or init step is
+// responsible -- a crash leaves no stack, so the last line written is the evidence.
+// Logged at trace level so they cost a release user nothing unless they raise the
+// log level to report a problem.
+void TeardownStep(const string &in step) {
+    log_trace("[teardown] " + step);
+}
+
 void OnDestroyed() {
-    NodPtrs::Unload();
+    TeardownStep("OnDestroyed: begin");
+    // Order matters: hooks and code patches must come out before anything this module
+    // allocated is freed, or the game can call into script memory that no longer exists.
+    TeardownStep("OnDestroyed: stopping camera hook");
+    CameraPolish::Hook_CameraUpdatePos.Stop();
+    TeardownStep("OnDestroyed: removing code patches");
     NoFlashCar::IsApplied = false;
     KinematicsControl::IsApplied = false;
-    CameraPolish::Hook_CameraUpdatePos.Stop();
+    TeardownStep("OnDestroyed: Unload()");
     Unload();
+    // Freeing the scratch allocation last: anything above may still resolve nod pointers
+    // through it.
+    TeardownStep("OnDestroyed: NodPtrs::Unload");
+    NodPtrs::Unload();
+    TeardownStep("OnDestroyed: end");
 }
-void OnDisabled() { Unload(); }
+void OnDisabled() {
+    TeardownStep("OnDisabled: begin");
+    Unload();
+    TeardownStep("OnDisabled: end");
+}
 
 void OnEnabled() {
     _OnEnabledOrStart();
@@ -205,6 +246,10 @@ void MapCoro() {
 }
 
 void OnMapChange() {
+    ClearRecentGhostAdds();
+    // Camera triggers belong to the map, so what was learned about them does not carry.
+    CameraTimeline::Reset();
+    TelemetryTrace::Reset();
     lastSpectatedGhostRaceTime = 0;
     lastLoadedGhostRaceTime = 0;
     maxTime = 0.;
@@ -251,7 +296,6 @@ void Update(float dt) {
 uint lastRefresh = 0;
 const uint disableTime = 3000;
 void Render() {
-    if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
     if (!g_Initialized) return;
     if (!S_EnableInEditor && GetApp().Editor !is null) return;
@@ -263,7 +307,6 @@ void Render() {
 }
 
 void RenderMenu() {
-    if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
     if (!g_Initialized) return;
     if (UI::MenuItem("\\$888" + Icons::HandPointerO + "\\$z " + PluginName, "", S_ShowWindow)) {
@@ -507,7 +550,7 @@ void Loop_BeforeScripts() {
     }
 }
 
-uint16 O_GAMECTNAPP_BACKTOMENUCALLED = GetOffset("CGameCtnApp", "Editor") - (0x7D8 - 0x7B4);
+uint16 O_GAMECTNAPP_BACKTOMENUCALLED = GetOffsetSafe("CGameCtnApp", "Editor") - (0x7D8 - 0x7B4);
 
 bool IsBackToMenuRequested(CGameManiaPlanet@ app) {
     // 0x7B4 is 1 after BackToMainMenu is called.

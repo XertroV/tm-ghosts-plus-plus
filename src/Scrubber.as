@@ -218,6 +218,20 @@ void DrawScrubber() {
         && (UI::IsGameUIVisible() || S_ShowInputsWhenUIHidden)
         && (!S_HideInputsIfOnlyGhost || nbGhosts > 1)
         && nbGhosts > 0 && ps !is null;
+    // Telemetry is recorded whenever a ghost is being spectated, independently of whether
+    // the inputs overlay is on -- the two are unrelated features that happen to need the
+    // same vis id.
+    if (isSpectating && nbGhosts > 0 && ps !is null && !scrubberMgr.isScrubbing) {
+        auto tInstId = GetCurrentlySpecdGhostInstanceId(ps);
+        auto tg = GhostClipsMgr::GetGhostFromInstanceId(mgr, tInstId);
+        if (tg !is null) {
+            auto tVisId = Dev::GetOffsetUint32(tg, 0x0);
+            if (tVisId < 0x0F000000 && tVisId & 0x04000000 != 0) {
+                TelemetryTrace::Observe(tInstId, tVisId, int(scrubberMgr.pauseAt));
+            }
+        }
+    }
+
     if (showInputs) {
         auto instId = GetCurrentlySpecdGhostInstanceId(ps);
         auto g = GhostClipsMgr::GetGhostFromInstanceId(mgr, instId);
@@ -735,6 +749,9 @@ class ScrubberMgr {
         if (ps !is null) {
             Call_Ghosts_SetStartTime(ps, int(newStartTime));
         }
+        // The timeline just jumped, so any map camera trigger between here and where we
+        // were has been skipped. Put the camera back to what this point of the run used.
+        CameraTimeline::RestoreAt(int(pauseAt));
         if (!IsStdPlayback || !unpausedFlag) {
             log_debug("pause via setprog: " + IsStdPlayback + ", " + unpausedFlag);
             auto mgr = GhostClipsMgr::Get(GetApp());
@@ -837,6 +854,13 @@ class ScrubberMgr {
         if (isSpectating && S_SpecCamera != ScrubberSpecCamera::None) {
             GameCamera().ActiveCam = uint(S_SpecCamera);
             // GameCamera().AltCam = m_UseAltCam;
+        } else if (isSpectating && !isScrubbing) {
+            // Learn which camera the map uses where, so scrubbing can put it back. Only
+            // while playing normally: during a scrub the camera is whatever we just
+            // restored, and recording that would overwrite what the map actually does.
+            // Skipped entirely when a spectator camera override is set, since then the
+            // camera is ours rather than the map's.
+            CameraTimeline::Observe(int(pauseAt));
         }
 
         if (!isSpectating) {
@@ -851,6 +875,11 @@ class ScrubberMgr {
         // only set in some branches
         auto newStartTime = ps.Now - int(pauseAt);
 
+        // Keeps the "was spectating recently" window fed, so the end-of-run restart guard
+        // in _Ghosts_SetStartTime still applies at the moment a run finishes -- which is
+        // exactly when IsSpectatingGhost() flips to false.
+        if (isSpectating) NoteSpectatingGhost();
+
         // if we're spectating a ghost, update kinematics time
         KinematicsControl::IsApplied = isSpectating;
         if (isSpectating) {
@@ -861,7 +890,10 @@ class ScrubberMgr {
         }
 
         // the patch needs to be async otherwise the function won't be found (since we are running out of MLHook context)
-        CameraPolish::Hook_CameraUpdatePos.SetAppliedSoon(isSpectating);
+        // Never request the hook unless its probe passed for this build; always allow the
+        // un-apply through, so an already-installed hook can still be removed.
+        CameraPolish::Hook_CameraUpdatePos.SetAppliedSoon(
+            isSpectating && Compat::Available("camera-polish"));
         NoFlashCar::IsApplied = (pauseAt > 50.0) && (IsPaused || (!unpausedFlag)); //  && 0.0 < playbackSpeed && playbackSpeed < 0.4
 
         if (IsPaused || isScrubbing) {

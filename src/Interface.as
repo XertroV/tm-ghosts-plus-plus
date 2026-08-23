@@ -4,6 +4,8 @@ const string MenuTitle = "\\$dd5" + Icons::HandPointerO + "\\$z " + PluginName;
 const int TABLE_FLAGS = UI::TableFlags::SizingStretchProp | UI::TableFlags::RowBg;
 
 PBTab@ g_PBTab = PBTab();
+CompareTab@ g_CompareTab = CompareTab();
+LibraryTab@ g_LibraryTab = LibraryTab();
 NearTime@ g_NearTimeTab = NearTime();
 AroundRank@ g_AroundRankTab = AroundRank();
 Intervals@ g_IntervalsTab = Intervals();
@@ -21,12 +23,11 @@ ScrubberDebugTab@ g_ScrubDebug = ScrubberDebugTab();
 DebugLaunchedPbGhostTab@ g_DebugLaunchedPbGhostTab = DebugLaunchedPbGhostTab();
 UrlTab@ g_UrlTab = UrlTab();
 
-Tab@[]@ tabs = {g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug, g_UrlTab, g_LeaderboardTab};
+Tab@[]@ tabs = {g_CompareTab, g_PBTab, g_NearTimeTab, g_AroundRankTab, g_IntervalsTab, g_Favorites, g_LoadGhostTab, g_SaveGhostTab, g_Saved, g_Players, g_Medals, g_DebugTab, g_DebugClips, g_ScrubDebug, g_UrlTab, g_LeaderboardTab};
 
 /** Render function called every frame intended for `UI`.
 */
 void RenderInterface() {
-    if (!GameVersionSafe) return;
     if (!permissionsOkay) return;
     if (!g_Initialized) return;
     if (!S_ShowWindow) return;
@@ -69,6 +70,8 @@ void RenderInterface() {
             UI::BeginTabBar("save or load ghosts");
             g_SaveGhostTab.Draw();
             g_LoadGhostTab.Draw();
+            g_CompareTab.Draw();
+            g_LibraryTab.Draw();
 #if SIG_DEVELOPER
             g_DebugTab.Draw();
             g_ScrubDebug.Draw();
@@ -200,9 +203,23 @@ class SaveGhostsTab : Tab {
         UI::Text(rt);
 
         UI::TableNextColumn();
-        bool clicked = UI::Button(Icons::ThList + "##" + i);
-        AddSimpleTooltip("Inputs");
-        if (clicked) ShowInputs(gm);
+        // Deliberately does NOT call GhostHasInputData() here.
+        //
+        // That reaches Dev_GetPointerForNod(), which allocates a real CMwNod and
+        // temporarily overwrites its vtable pointer at offset 0 to read an address back
+        // out. Doing that once per click is how upstream used it. Doing it every frame
+        // for every listed ghost crashed the game on plugin reload. Whether a ghost has
+        // inputs is checked on click instead, in ShowInputs().
+        //
+        // Rule of thumb for this table: per-frame code may read cached values, never raw
+        // game memory.
+        bool canReadInputs = Compat::Available("ghost-inputs");
+        bool clicked = MDisabledButton(!canReadInputs, Icons::ThList + "##" + i);
+        AddSimpleTooltip(canReadInputs ? "Inputs" : Compat::WhyUnavailable("ghost-inputs"));
+        // Off the render thread. ShowInputs() copies a KB of game memory and parses a few
+        // thousand ticks; doing that inside the ImGui pass means a UI callback that runs
+        // for a long time, which is its own hazard regardless of the crash being chased.
+        if (clicked) startnew(CoroutineFuncUserdata(ShowInputsCoro), gm);
 
         UI::TableNextColumn();
         clicked = UI::Button(Icons::Eye + "##" + i);
@@ -210,9 +227,12 @@ class SaveGhostsTab : Tab {
         if (clicked) startnew(CoroutineFuncUserdataInt64(SpectateGhost), int64(i));
 
         UI::TableNextColumn();
-        UI::BeginDisabled(saving.Find(id) >= 0);
+        bool canSave = Compat::Available("ghost-save");
+        UI::BeginDisabled(saving.Find(id) >= 0 || !canSave);
         clicked = UI::Button(Icons::FloppyO + "##" + i);
-        AddSimpleTooltip("Save " + gm.GhostNickname + "'s " + rt + " ghost for later.");
+        AddSimpleTooltip(canSave
+            ? "Save " + gm.GhostNickname + "'s " + rt + " ghost for later."
+            : Compat::WhyUnavailable("ghost-save"));
         if (clicked) startnew(CoroutineFuncUserdata(SaveGhost), gm);
         UI::EndDisabled();
 
@@ -246,6 +266,10 @@ class SaveGhostsTab : Tab {
             Call_Ghosts_SetStartTime(ps, ps.Now); // was ps.Now
         }
         g_BlockNextGhostsSetTimeAny = true;
+        // Clicking Spectate is as deliberate as picking a ghost in the records UI, so
+        // exempt it from the post-SetStartTime block the same way -- otherwise spectating
+        // a ghost right as another one finishes silently does nothing.
+        g_AllowNextForceGhostDespiteNowBlock = true;
 
         log_info("spectating ghost with instance id: " + id);
         //cast<CSmPlayer>(cp.Players[0]).;
@@ -321,22 +345,34 @@ class SaveGhostsTab : Tab {
     void SaveGhost(ref@ ghostRef) {
         auto gm = cast<CGameCtnGhost@>(ghostRef);
         if (gm is null) throw("null ghostRef");
-        auto fileName = GenGhostFileName(gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(Time::Stamp));
-        // locally hosted http server
-        auto uploadUrl = HTTP_BASE_URL + "save_ghost/" + fileName;
-        auto gs = CreateGhostScript(gm);
+        CGameGhostScript@ gs = null;
+        try {
+            auto fileName = GenGhostFileName(gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(Time::Stamp));
+            // locally hosted http server
+            auto uploadUrl = HTTP_BASE_URL + "save_ghost/" + fileName;
+            @gs = CreateGhostScript(gm);
 
-        if (gs is null) {
-            NotifyWarning("Failed to create CGameGhostScript");
+            if (gs is null) {
+                NotifyWarning("Failed to create CGameGhostScript");
+                return;
+            }
+
+            GetApp().Network.ClientManiaAppPlayground.DataFileMgr.Ghost_Upload(uploadUrl, gs, "");
+
+            yield(10);
+
+            CleanupGhostScript(gs);
+            @gs = null;
+            Cache::AddSavedGhost(gm, fileName);
+        } catch {
+            // CleanupGhostScript must still run: the fabricated script holds a raw ghost
+            // pointer it never took a reference for, and leaving it alive is worse than
+            // the original failure.
+            if (gs !is null) CleanupGhostScript(gs);
+            NotifyWarning("Could not save this ghost: " + getExceptionInfo());
+            log_warn("SaveGhost failed: " + getExceptionInfo());
             return;
         }
-
-        GetApp().Network.ClientManiaAppPlayground.DataFileMgr.Ghost_Upload(uploadUrl, gs, "");
-
-        yield(10);
-
-        CleanupGhostScript(gs);
-        Cache::AddSavedGhost(gm, fileName);
 
         // we could upload the ghost like archivist, but it's easier to just get the current LB ghost
         // GetApp().PlaygroundScript.ScoreMgr.Map_GetPlayerListRecordList()
@@ -367,16 +403,60 @@ class SaveGhostsTab : Tab {
 
     TmInputChange@[]@ currInputs;
     bool showInputsWindow = false;
-    void ShowInputs(CGameCtnGhost@ g) {
-        @currInputs = GetProcessedGhostInputData(g);
-        showInputsWindow = true;
+    void ShowInputsCoro(ref@ ghostRef) {
+        auto g = cast<CGameCtnGhost@>(ghostRef);
+        if (g is null) return;
+        ShowInputs(g);
     }
 
+    void ShowInputs(CGameCtnGhost@ g) {
+        try {
+            // Checked on click rather than per frame -- see DrawSaveGhost.
+            if (!GhostHasInputData(g)) {
+                NotifyWarning("This ghost has no recorded inputs to show.\n\nLeaderboard "
+                    "and medal ghosts often carry no input data.");
+                return;
+            }
+            @currInputs = GetProcessedGhostInputData(g);
+            InputTrace("assigned " + (currInputs is null ? -1 : int(currInputs.Length))
+                + " changes; opening window");
+            showInputsWindow = true;
+            tracedFirstDraw = false;
+        } catch {
+            // Reading inputs walks raw game structures; if anything about them is not
+            // what we expect, say so rather than letting it escape into the UI loop.
+            NotifyWarning("Could not read this ghost's inputs: " + getExceptionInfo());
+            log_warn("ShowInputs failed: " + getExceptionInfo());
+        }
+    }
+
+    bool tracedFirstDraw = false;
     void DrawInputs() {
         if (!showInputsWindow) return;
+        if (currInputs is null) {
+            showInputsWindow = false;
+            return;
+        }
+        // One trace on the first draw after opening: this is the boundary between "the
+        // read path finished" and "the window drew", which a stackless crash cannot
+        // otherwise distinguish.
+        if (!tracedFirstDraw) {
+            tracedFirstDraw = true;
+            InputTrace("first draw of Ghost Inputs window, " + currInputs.Length + " rows");
+        }
         if (UI::Begin("Ghost Inputs", showInputsWindow)) {
-            for (uint i = 0; i < currInputs.Length; i++) {
-                UI::Text(currInputs[i].ToString());
+            // Clipped deliberately. A real run produces thousands of input changes, and
+            // drawing one text widget per change per frame pushes ImGui past its 16-bit
+            // index buffer -- which faults in the renderer, with no script exception and
+            // nothing in the log. That was the crash on this window, not the memory reads
+            // that get there. ListClipper draws only the visible rows.
+            UI::Text(currInputs.Length + " input changes");
+            UI::Separator();
+            UI::ListClipper clipper(currInputs.Length);
+            while (clipper.Step()) {
+                for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                    UI::Text(currInputs[i].ToString());
+                }
             }
         }
         UI::End();
@@ -989,17 +1069,33 @@ void _LoadGhostsNear(ref@ r) {
 }
 
 
+/**
+ * Is this leaderboard record already present as a loaded ghost?
+ *
+ * Matching is by account, not display name. The game's own PB ghost is nicknamed
+ * "$...Personal best" rather than the player's name, so a nickname comparison never
+ * recognises it -- and the same run then gets loaded a second time, leaving two identical
+ * ghosts driving on top of each other. Nickname matching stays as a fallback for records
+ * whose account cannot be resolved.
+ */
 bool IsGhostLoaded(Json::Value@ j) {
     int time = int(j['time']);
     auto mgr = GhostClipsMgr::Get(GetApp());
+    if (mgr is null) return false;
+
+    string wsid;
+    if (j.HasKey('accountId')) wsid = string(j['accountId']);
+
     for (uint i = 0; i < mgr.Ghosts.Length; i++) {
         auto gm = mgr.Ghosts[i].GhostModel;
-        if (int(gm.RaceTime) == time) {
-            string name = j['name'];
-            if (gm.GhostNickname == name) {
-                return true;
-            }
+        if (int(gm.RaceTime) != time) continue;
+
+        if (wsid.Length > 0 && gm.GhostLogin.Length > 0) {
+            if (NadeoServices::LoginToAccountId(gm.GhostLogin) == wsid) return true;
         }
+
+        string name = j['name'];
+        if (gm.GhostNickname == name) return true;
     }
     return false;
 }

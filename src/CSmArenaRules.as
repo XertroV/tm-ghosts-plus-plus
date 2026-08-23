@@ -1,4 +1,4 @@
-const uint16 O_CSMARENARULES_MAXGHOSTALPHA = GetOffset("CSmArenaRules", "RulesStateEndTime") + 0x8;
+const uint16 O_CSMARENARULES_MAXGHOSTALPHA = GetOffsetSafe("CSmArenaRules", "RulesStateEndTime") + 0x8;
 
 float CSmArenaRules_GetGhostAlpha(CSmArenaRules@ arenaRules) {
     return Dev::GetOffsetFloat(arenaRules, O_CSMARENARULES_MAXGHOSTALPHA);
