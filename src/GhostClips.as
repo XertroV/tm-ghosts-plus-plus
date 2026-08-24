@@ -191,12 +191,9 @@ namespace GhostClipsMgr {
     //     SetGhostClipPlayerSmallDeltaTime(GetPBClipPlayer(mgr));
     // }
 
-    uint16 O_GhostClipsMgr_ClipPlayer1 {
-        get { return FLAG_GameVer2025 ? 0x20 : 0x30; }
-    }
-    uint16 O_GhostClipsMgr_ClipPlayer2 {
-        get { return O_GhostClipsMgr_ClipPlayer1 + 0x20; }
-    };
+    // 2025 briefly used +0x20; current layout (2024 and 2026) is +0x30.
+    const uint16 O_GhostClipsMgr_ClipPlayer1 = 0x30;
+    const uint16 O_GhostClipsMgr_ClipPlayer2 = O_GhostClipsMgr_ClipPlayer1 + 0x20;
 
     // all ghosts but 1 PB ghost, null if there are no ghosts
     CGameCtnMediaClipPlayer@ GetMainClipPlayer(NGameGhostClips_SMgr@ mgr) {
@@ -372,7 +369,9 @@ uint16 O_GHOSTCLIPPLAYER_DT_COEF_1A8 { get { return 0x1A8 + O_GCP_CONSTS_OFF; } 
 uint16 O_GHOSTCLIPPLAYER_DO_MOTION_INTERP { get { return 0x30C + O_GCP_CONSTS_OFF; } }
 uint16 O_GHOSTCLIPPLAYER_TOTAL_TIME { get { return 0x320 + O_GCP_CONSTS_OFF; } }
 uint16 O_GHOSTCLIPPLAYER_TIME_SPEED_3 { get { return 0x324 + O_GCP_CONSTS_OFF; } }
-uint16 O_GHOSTCLIPPLAYER_SMOOTH_PAUSE { get { return 0x330 + O_GCP_CONSTS_OFF; } }
+// +0x340 int: DoDeltaAdvance. ctor default 1, ghosts force 0.
+// Nonzero -> Advance does cursor += speed * dt * scale. Previously misnamed SMOOTH_PAUSE.
+uint16 O_GHOSTCLIPPLAYER_DO_DELTA_ADVANCE { get { return 0x330 + O_GCP_CONSTS_OFF; } }
 
 // other offsets
 uint16 O_GHOSTCLIPPLAYER_FRAME_DELTA { get { return 0x2F8 + O_GCP_CONSTS_OFF; } }
@@ -392,12 +391,12 @@ string[] GetGhostClipPlayerDebugValues(CGameCtnMediaClipPlayer@ player) {
     float curTime = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_CURR_TIME);
     float totalTime = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TOTAL_TIME);
     uint8 doMotionInterp = Dev::GetOffsetUint32(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP);
-    uint8 otherGhostsVisible = Dev::GetOffsetUint32(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE);
+    uint8 doDeltaAdvance = Dev::GetOffsetUint32(player, O_GHOSTCLIPPLAYER_DO_DELTA_ADVANCE);
     float timeSpeed_33C = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3);
     float timeSpeed_318 = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TIME_SPEED_2);
     float timeSpeed_1B0 = Dev::GetOffsetFloat(player, O_GHOSTCLIPPLAYER_TIME_SPEED_1);
     float isPlayingFlag = Dev::GetOffsetUint32(player, O_GHOSTCLIPPLAYER_IS_PLAYING);
-    return {"totalTime:", tostring(totalTime), "curTime:", tostring(curTime), "doMotionInterp:", tostring(doMotionInterp), "otherGhostsVisible:", tostring(otherGhostsVisible), "1B0: " + timeSpeed_1B0, "318: " + timeSpeed_318, "33C: " + timeSpeed_33C, "CanPause:", tostring(isPlayingFlag)};
+    return {"totalTime:", tostring(totalTime), "curTime:", tostring(curTime), "doMotionInterp:", tostring(doMotionInterp), "doDeltaAdvance:", tostring(doDeltaAdvance), "1B0: " + timeSpeed_1B0, "318: " + timeSpeed_318, "33C: " + timeSpeed_33C, "CanPause:", tostring(isPlayingFlag)};
 }
 
 void SetGhostClipPlayerPaused(CGameCtnMediaClipPlayer@ player, float timestamp) {
@@ -408,7 +407,7 @@ void SetGhostClipPlayerPaused(CGameCtnMediaClipPlayer@ player, float timestamp) 
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME3, timestamp);
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TOTAL_TIME, float(-100.0));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP, uint8(0));
-    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE, uint8(1));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_DELTA_ADVANCE, uint8(0));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3, float(1.0));
 }
 
@@ -433,7 +432,7 @@ void SetGhostClipPlayerUnpaused(CGameCtnMediaClipPlayer@ player, float timestamp
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_CURR_TIME3, timestamp);
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TOTAL_TIME, float(totalTime));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_MOTION_INTERP, uint8(1));
-    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_SMOOTH_PAUSE, uint8(1));
+    Dev::SetOffset(player, O_GHOSTCLIPPLAYER_DO_DELTA_ADVANCE, uint8(0));
     Dev::SetOffset(player, O_GHOSTCLIPPLAYER_TIME_SPEED_3, uint32(0));
 }
 

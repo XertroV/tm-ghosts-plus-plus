@@ -1,5 +1,8 @@
 # CGameCtnGhost
 
+Ghost playback stutter after the physicalized-ghost update: [`research/2026-08-24-GhostPlaybackStutter.md`](research/2026-08-24-GhostPlaybackStutter.md).
+
+
 - 0x38
   - buffer of (checkpointId, raceTime) structs (nat2)
 - 0x70

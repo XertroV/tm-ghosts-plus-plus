@@ -341,6 +341,7 @@ void DrawScrubber() {
             + ", setProg: " + setProg
             + ", ps.Now: " + ps.Now
             + ", isScb'g: " + scrubberMgr.isScrubbing
+            + ", isStdPbk: " + (scrubberMgr.IsStdPlayback ? Icons::Check : Icons::Times)
             );
         // g_ThrowOnDoPause = UI::Checkbox("Throw on DoPause", g_ThrowOnDoPause);
         UI::PopFont();
@@ -763,6 +764,7 @@ class ScrubberMgr {
         GhostClipsMgr::UnpauseClipPlayers(mgr, pauseAt / 1000., float(GhostClipsMgr::GetMaxGhostDuration(mgr)) / 1000.);
         unpausedFlag = true;
     }
+
     void DoPause() {
         log_debug("DoPause");
         // if (g_ThrowOnDoPause) throw("g_ThrowOnDoPause");

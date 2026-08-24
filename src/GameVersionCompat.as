@@ -5,22 +5,12 @@ const string[] KnownSafeVersions = {
     "2024-12-04_12_20", "2024-12-12_15_15",
     "2025-07-04_14_15", // "2025-11-07_18_33",
     "2025-12-17_20_05", "2025-12-19_19_41",
+    "2026-02-02_17_51", "2026-07-22_18_27",
 };
 const string configUrl = "https://openplanet.dev/plugin/ghosts-pp/config/version-compat";
 
 [Setting hidden]
 string S_SavedOkayGameVersion = "";
-
-bool FLAG_GameVer2025 = true;
-void SetGameVerFlags() {
-    auto app = GetApp();
-    auto ver = app.SystemPlatform.ExeVersion;
-    if (ver.StartsWith("2025-0")) {
-        FLAG_GameVer2025 = true;
-        return;
-    }
-    FLAG_GameVer2025 = false;
-}
 
 /**
  * New version checklist:
