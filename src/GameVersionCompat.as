@@ -45,7 +45,13 @@ void EnsureGameVersionCompatibility() {
 }
 
 void WarnBadGameVersion() {
-    NotifyWarning("Game version ("+TmGameVersion+") not marked as compatible with this version of the plugin -- will be inactive!\n\nChecking new versions is a manual process and avoids crashing your game after an update.");
+    NotifyWarning(
+        "This plugin has not been verified to work properly with this game version (" + TmGameVersion + "), "
+        "therefore it's currently disabled.\n\nThere's nothing you need to do - checking new game updates is a "
+        "manual process done by the developer that avoids crashing your game.\n\nTo use the plugin anyway, "
+        "check the last tab of its settings.",
+        20000
+    );
 }
 
 bool requestStarted = true;
@@ -94,12 +100,17 @@ void OverrideGameSafetyCheck_Settings() {
     UI::Text("Game version safe? " + tostring(GameVersionSafe));
     UI::Text("Check request started: " + tostring(requestStarted));
     UI::Text("Check request ended: " + tostring(requestEnded));
-    if (!GameVersionSafe && UI::Button("Disable safety features and run anyway")) {
-        OverrideGameSafetyCheck_GhostsPP();
-    }
-    if (!GameVersionSafe && UI::Button("Disable safety features and run and remember game version")) {
-        OverrideGameSafetyCheck_GhostsPP();
-        S_SavedOkayGameVersion = TmGameVersion;
+    if (!GameVersionSafe) {
+        if (UI::Button("Disable safety features and run anyway")) {
+            OverrideGameSafetyCheck_GhostsPP();
+        }
+        UI::SetItemTooltip("Temporary. Lasts until you restart the game.");
+
+        if (UI::Button("Disable safety features and run and remember game version")) {
+            OverrideGameSafetyCheck_GhostsPP();
+            S_SavedOkayGameVersion = TmGameVersion;
+        }
+        UI::SetItemTooltip("Permanent. Lasts until the game is updated.");
     }
 
     if (GameVersionSafe && S_SavedOkayGameVersion == TmGameVersion) {
