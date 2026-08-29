@@ -1,25 +1,24 @@
-class BittableMemoryBuffer {
-    MemoryBuffer@ buf;
-    uint8[] data;
+// Bit reader that reads directly from the ghost's input buffer in game memory.
+// The old implementation copied the bytes into a MemoryBuffer, then into a uint8[]
+// script array; that allocation churn was associated with nondeterministic corruption
+// of a freshly created result array (crash in openplanet.dll at the first InsertLast),
+// so the parse now avoids bulk script allocations entirely.
+class GhostBitReader {
+    uint64 basePtr;
+    int Length;   // bits
     int Position;
-    int Length;
 
-    BittableMemoryBuffer(MemoryBuffer@ buf) {
-        @this.buf = buf;
-        buf.Seek(0);
-        auto LenBytes = buf.GetSize();
-        Length = LenBytes * 8;
-        data.Reserve(LenBytes);
-        for (uint i = 0; i < LenBytes; i++) {
-            data.InsertLast(buf.ReadUInt8());
-        }
+    GhostBitReader(uint64 _basePtr, int numBits) {
+        basePtr = _basePtr;
+        Length = numBits;
+        Position = 0;
     }
 
     uint8 ReadBit() {
         if (Position >= Length) {
             return 0;
         }
-        auto result = (data[Position / 8] & (1 << (Position % 8))) != 0;
+        auto result = (Dev::ReadUInt8(basePtr + (Position >> 3)) & (1 << (Position & 7))) != 0;
         Position++;
         return result ? 1 : 0;
     }
@@ -32,10 +31,6 @@ class BittableMemoryBuffer {
         return res;
     }
 
-    uint8 Read2Bit() {
-        return uint8(ReadNumber(2));
-    }
-
     int8 ReadSByte() {
         return int8(ReadNumber(8));
     }
@@ -44,53 +39,26 @@ class BittableMemoryBuffer {
         return uint8(ReadNumber(8));
     }
 
-    int16 ReadInt16()
-    {
-        return int16(ReadNumber(16));
-    }
-
-    uint16 ReadUInt16()
-    {
+    uint16 ReadUInt16() {
         return uint16(ReadNumber(16));
     }
-
-    int32 ReadInt32()
-    {
-        return int32(ReadNumber(32));
-    }
 }
 
-MemoryBuffer@ GetRawGhostInputData(CGameCtnGhost@ ghost) {
-    // dev_trace("GetRawGhostInputData");
+GhostBitReader@ GetRawGhostInputDataReader(CGameCtnGhost@ ghost) {
+    if (ghost is null) throw("GetRawGhostInputDataReader: null ghost");
     auto g = DGameCtnGhost(ghost);
-    // dev_trace("DGameCtnGhost");
     auto inputs = g.Inputs.GetPlayerInput(0);
-    // dev_trace("DGameCtnGhost_PlayerInput");
-    auto data = inputs.InputData;
-    // dev_trace("DGameCtnGhost_PlayerInputData");
-    auto buf = MemoryBuffer(data.BytesLen);
+    auto dataPtr = inputs.GetUint64(0x10);
+    if (dataPtr == 0) throw("ghost has no input data pointer");
+    auto data = DGameCtnGhost_PlayerInputData(dataPtr);
     auto ptr = data.BytesPtr;
     uint len = data.BytesLen;
-    // dev_trace('getting buffer of data; len=' + len + '; ptr=' + Text::FormatPointer(ptr));
-    uint offset = 0;
-    uint64 tmp64;
-    // while (offset < len) {
-    //     tmp64 = Dev::ReadUInt64(ptr + offset);
-    //     buf.Write(tmp64);
-    //     if (offset < 100) dev_trace("Read bytes: " + Text::FormatPointer(tmp64));
-    //     offset += 8;
-    // }
-    while (offset < len) {
-        buf.Write(Dev::ReadUInt8(ptr + offset));
-        offset++;
+    if (ptr == 0 || len == 0 || len > 4 * 1024 * 1024) {
+        throw("ghost input data buffer looks invalid (ptr/len)");
     }
-    buf.Seek(0);
-    if (buf.GetSize() != len) {
-        warn("Expected " + len + " bytes, but got " + buf.GetSize());
-    }
-    return buf;
+    return GhostBitReader(ptr, int(len) * 8);
 }
-
+    // dev_trace("GetRawGhostInputData");
 enum EStart {
     NotStarted, Character, Vehicle, VehicleMix
 }
@@ -220,10 +188,12 @@ namespace Ghosts_PP {
 
 TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
     // dev_trace("GetProcessedGhostInputData");
-    auto buf = BittableMemoryBuffer(GetRawGhostInputData(ghost));
-    // dev_trace("[GetProcessedGhostInputData] got buffer");
-    auto ticks = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0).ticks;
-    // dev_trace("[GetProcessedGhostInputData] got ticks=" + ticks);
+    auto buf = GetRawGhostInputDataReader(ghost);
+    auto playerInput = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0);
+    auto ticks = playerInput.ticks;
+    if (ticks < 0 || uint(ticks) > 4 * 1024 * 1024) {
+        throw("ghost input tick count looks invalid (" + ticks + ")");
+    }
     TmInputChange@[] res;
 
     EStart started = EStart::NotStarted;
@@ -311,6 +281,190 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
 
     return res;
 }
+
+#if DEV
+// Diagnostic variant of the parse that builds the result as the shared interface type.
+Ghosts_PP::IInputChange@[]@ GetProcessedGhostInputDataIIC(CGameCtnGhost@ ghost) {
+    auto buf = GetRawGhostInputDataReader(ghost);
+    Ghosts_PP::IInputChange@[] res;
+    auto ticks = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0).ticks;
+    if (ticks < 0 || uint(ticks) > 4 * 1024 * 1024) {
+        throw("ghost input tick count looks invalid (" + ticks + ")");
+    }
+    EStart started = EStart::NotStarted;
+    bool different = false;
+    uint64 states;
+    uint16 mouseAccuX;
+    uint16 mouseAccuY;
+    int8 steer;
+    bool gas;
+    bool brake;
+    bool horn;
+    uint8 characterStates;
+    bool sameChar = false;
+    bool sameVech = false;
+
+    for (int i = 0; i < ticks; i++) {
+        different = false;
+        bool sameState = buf.ReadBit() == 1;
+        bool onlyHorn = false;
+        states = 0;
+        mouseAccuX = 0;
+        mouseAccuY = 0;
+        steer = 0;
+        gas = false;
+        brake = false;
+        horn = false;
+        characterStates = 0;
+        if (!sameState) {
+            onlyHorn = buf.ReadBit() > 0;
+            states = onlyHorn ? buf.ReadNumber(2) : buf.ReadNumber(34);
+            if (started == EStart::NotStarted) {
+                started = EStart(states & 3);
+                if (started == EStart::VehicleMix) {
+                    started = EStart::Vehicle;
+                    horn = states & 64 != 0;
+                }
+            } else if (started == EStart::Vehicle) {
+                horn = onlyHorn ? (states & 2 != 0) : (states & 64 != 0);
+            }
+            different = true;
+        }
+        bool sameMouse = buf.ReadBit() > 0;
+        if (!sameMouse) {
+            mouseAccuX = buf.ReadUInt16();
+            mouseAccuY = buf.ReadUInt16();
+            different = true;
+        }
+        switch (started) {
+            case EStart::Character: {
+                sameChar = buf.ReadBit() > 0;
+                if (!sameChar) {
+                    characterStates = buf.ReadByte();
+                    different = true;
+                }
+                break;
+            }
+            case EStart::Vehicle: {
+                sameVech = buf.ReadBit() > 0;
+                if (!sameVech) {
+                    steer = buf.ReadSByte();
+                    gas = buf.ReadBit() > 0;
+                    brake = buf.ReadBit() > 0;
+                    different = true;
+                }
+                break;
+            }
+        }
+        if (different) {
+            if (res.Length == 0) trace("[INPUTS-DBG] V2: first change constructed, inserting");
+            res.InsertLast(TmInputChange(i, states, mouseAccuX, mouseAccuY, steer, gas, brake, horn, characterStates));
+            if (res.Length == 1) trace("[INPUTS-DBG] V2: first insert returned ok");
+        }
+    }
+    trace("[INPUTS-DBG] V2 parse done: ticks = " + ticks + " changes = " + res.Length);
+    return res;
+}
+#endif
+
+#if DEV
+// One-shot diagnostic: staged VM experiments to isolate the InsertLast crash.
+// V0/V0b/V1 run in any game state; V2/V3 need a loaded ghost. Remove when done.
+class _DbgDummy {
+    int x;
+}
+
+void InputsParseAutoTest() {
+    trace("[INPUTS-DBG] auto-test coro started");
+    yield();
+    yield();
+
+    // V0: unrelated plain class, handle array — VM sanity baseline
+    trace("[INPUTS-DBG] V0: plain dummy class handle-array insert");
+    _DbgDummy@[] v0;
+    v0.InsertLast(_DbgDummy());
+    trace("[INPUTS-DBG] V0 ok len=" + v0.Length);
+
+    // V0b: TmInputChange (implements shared interface) into its own concrete-type array
+    trace("[INPUTS-DBG] V0b: TmInputChange handle-array insert");
+    TmInputChange@[] v0b;
+    v0b.InsertLast(TmInputChange(0, 0, 0, 0, 0, false, false, false, 0));
+    trace("[INPUTS-DBG] V0b ok len=" + v0b.Length);
+
+    // V1: TmInputChange handle into shared-interface-typed array
+    trace("[INPUTS-DBG] V1: IInputChange handle-array insert");
+    Ghosts_PP::IInputChange@[] v1;
+    v1.InsertLast(TmInputChange(0, 0, 0, 0, 0, false, false, false, 0));
+    trace("[INPUTS-DBG] V1 ok len=" + v1.Length);
+
+    // V2/V3 need a CGameCtnGhost. Try play ghosts first, then the menu's DataFileMgr
+    // (loaded via Replay_Load; the menu manager persists in any game state).
+    CGameCtnGhost@ g = null;
+    uint waitedMs = 0;
+    uint toggles = 0;
+    while (waitedMs < 180000) {
+        auto mgrCheck = GhostClipsMgr::Get(GetApp());
+        if (mgrCheck !is null && mgrCheck.Ghosts.Length > 0) {
+            @g = mgrCheck.Ghosts[0].GhostModel;
+            break;
+        }
+        auto maniaPlanet = cast<CGameManiaPlanet>(GetApp());
+        auto menuApp = (maniaPlanet !is null && maniaPlanet.MenuManager !is null) ? maniaPlanet.MenuManager.MenuCustom_CurrentManiaApp : null;
+        if (menuApp !is null && menuApp.DataFileMgr !is null) {
+            auto mGhosts = menuApp.DataFileMgr.Ghosts;
+            if (mGhosts.Length > 0) {
+                try {
+                    @g = cast<CGameCtnGhost>(Dev::GetOffsetNod(mGhosts[0], 0x20));
+                } catch {
+                    trace("[INPUTS-DBG] menu ghost cast threw: " + getExceptionInfo());
+                }
+                trace("[INPUTS-DBG] menu ghost 0 ctnghost: " + (g is null ? string("null") : string(g.GhostNickname)));
+                if (g !is null) break;
+            }
+            if (toggles <= 3) {
+                string[] variants = {
+                    "Autosaves/XertroV_Winter 2026 - 05_PersonalBest_TimeAttack.Replay.Gbx",
+                    "Replays/Autosaves/XertroV_Winter 2026 - 05_PersonalBest_TimeAttack.Replay.Gbx",
+                    "XertroV_Winter 2026 - 05_PersonalBest_TimeAttack.Replay.Gbx"
+                };
+                trace("[INPUTS-DBG] Replay_Load attempt " + toggles + ": " + variants[toggles]);
+                try {
+                    menuApp.DataFileMgr.Replay_Load(variants[toggles]);
+                } catch {
+                    trace("[INPUTS-DBG] Replay_Load threw: " + getExceptionInfo());
+                }
+                toggles++;
+            }
+        }
+        yield();
+        waitedMs += 16;
+    }
+    if (g is null) {
+        trace("[INPUTS-DBG] auto-test: no ghost obtained within wait window; done");
+        return;
+    }
+    trace("[INPUTS-DBG] running parse variants on ghost (" + g.GhostNickname + ", " + g.RaceTime + ")");
+
+    // V2: parse with shared-interface-typed result array
+    trace("[INPUTS-DBG] V2: parse with IInputChange@[] result");
+    try {
+        auto res2 = GetProcessedGhostInputDataIIC(g);
+        trace("[INPUTS-DBG] V2 ok len=" + res2.Length);
+    } catch {
+        trace("[INPUTS-DBG] V2 threw: " + getExceptionInfo());
+    }
+
+    // V3: original parse (TmInputChange@[]) — expected crash site, run last
+    trace("[INPUTS-DBG] V3: parse with TmInputChange@[] result (original)");
+    try {
+        auto res3 = GetProcessedGhostInputData(g);
+        trace("[INPUTS-DBG] V3 ok len=" + res3.Length);
+    } catch {
+        trace("[INPUTS-DBG] V3 threw: " + getExceptionInfo());
+    }
+    trace("[INPUTS-DBG] auto-test done");
+}
+#endif
 
 const uint16 O_CTN_GHOST_CHECKPOINTS_BUF = GetOffset("CGameCtnGhost", "NbRespawns") + 0x8;
 const uint16 O_CTN_GHOST_PLAYER_INPUTS_BUF = GetOffset("CGameCtnGhost", "Validate_GameModeCustomData") + (0x1A0 - 0x188);

@@ -29,6 +29,9 @@ void Main() {
     startnew(InitGP);
     startnew(LoadFonts);
     startnew(OnUpdatedGpsScrubbingSetting);
+#if DEV
+    startnew(InputsParseAutoTest);
+#endif
     trace('started coros');
     trace('checking spec');
     if (GetApp().PlaygroundScript !is null) {
