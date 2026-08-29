@@ -12,12 +12,12 @@ CGameGhostScript@ CreateGhostScript(CGameCtnGhost@ g) {
     Dev::SetOffset(gs, 0x1C, uint(0));
     Dev::SetOffset(gs, 0x20, gPtr);
     // CTmRaceResultNod goes here, but keeping it null is fine for ghost upload.
+    // The struct shrank from 0x58 to 0x38 (CGameGhostScript, per the reflection dump in
+    // OpenplanetNext.json); zeroing out to 0x50 was writing 0x20 bytes past the end and
+    // corrupting the heap (crash on 'Save ghost for later', issue #39). Only fields that
+    // still exist are zeroed now.
     Dev::SetOffset(gs, 0x28, uint64(0));
     Dev::SetOffset(gs, 0x30, uint64(0));
-    Dev::SetOffset(gs, 0x38, uint64(0));
-    Dev::SetOffset(gs, 0x40, uint64(0));
-    Dev::SetOffset(gs, 0x48, uint64(0));
-    Dev::SetOffset(gs, 0x50, uint64(0));
 
 #if DEV
     // auto ptr = Text::FormatPointer(Dev_GetPointerForNod(gs));
