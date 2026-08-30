@@ -231,7 +231,9 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
             states = onlyHorn ? buf.ReadNumber(2) : buf.ReadNumber(34);
 
             if (started == EStart::NotStarted) {
-                started = EStart(states & 3);
+                // uint() first: the AngelScript bytecode optimizer fuses Enum(u64expr)
+                // into an 8-byte write that corrupts the adjacent local (the Inputs crash)
+                started = EStart(uint(states) & 3);
                 if (started == EStart::VehicleMix) {
                     started = EStart::Vehicle;
                     horn = states & 64 != 0;
@@ -320,7 +322,9 @@ Ghosts_PP::IInputChange@[]@ GetProcessedGhostInputDataIIC(CGameCtnGhost@ ghost) 
             onlyHorn = buf.ReadBit() > 0;
             states = onlyHorn ? buf.ReadNumber(2) : buf.ReadNumber(34);
             if (started == EStart::NotStarted) {
-                started = EStart(states & 3);
+                // uint() first: the AngelScript bytecode optimizer fuses Enum(u64expr)
+                // into an 8-byte write that corrupts the adjacent local (the Inputs crash)
+                started = EStart(uint(states) & 3);
                 if (started == EStart::VehicleMix) {
                     started = EStart::Vehicle;
                     horn = states & 64 != 0;
@@ -374,6 +378,24 @@ class _DbgDummy {
     int x;
 }
 
+// Minimal reproduction of the engine bug: the optimizer retargets the 64-bit
+// BAND64 into the 4-byte enum slot, and the extra 4 bytes zero canary's low
+// dword. Returns 42003 when the engine is correct, 3 when the bug is present.
+int _V4EnumFusionProbe() {
+    uint64 big = 3;
+    uint64 canary = 42;
+    EStart t = EStart(big & 3);
+    return int(canary) * 1000 + int(t);
+}
+
+// Same shape with the plugin's workaround (32-bit AND); must always be 42003.
+int _V4WorkaroundProbe() {
+    uint64 big = 3;
+    uint64 canary = 42;
+    EStart t = EStart(uint(big) & 3);
+    return int(canary) * 1000 + int(t);
+}
+
 void InputsParseAutoTest() {
     trace("[INPUTS-DBG] auto-test coro started");
     yield();
@@ -396,6 +418,14 @@ void InputsParseAutoTest() {
     Ghosts_PP::IInputChange@[] v1;
     v1.InsertLast(TmInputChange(0, 0, 0, 0, 0, false, false, false, 0));
     trace("[INPUTS-DBG] V1 ok len=" + v1.Length);
+
+    // V4: direct probe for the VM bug behind the Inputs crash. The bytecode
+    // optimizer fuses Enum(u64expr) into an 8-byte write that zeroes the low
+    // dword of the adjacent local (here: canary). 3 = bug present, 42003 = fixed.
+    int v4a = _V4EnumFusionProbe();
+    trace("[INPUTS-DBG] V4a enum-fusion probe = " + v4a + (v4a == 42003 ? " (engine fixed)" : v4a == 3 ? " (VM BUG PRESENT)" : " (unexpected)"));
+    int v4b = _V4WorkaroundProbe();
+    trace("[INPUTS-DBG] V4b workaround probe = " + v4b + (v4b == 42003 ? " (workaround safe)" : " (UNEXPECTED: workaround unsafe)"));
 
     // V2/V3 need a CGameCtnGhost. Try play ghosts first, then the menu's DataFileMgr
     // (loaded via Replay_Load; the menu manager persists in any game state).

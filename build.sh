@@ -27,6 +27,16 @@ _colortext16 green "🏗️ preprocessing .Script.txt files in ml-scripts"
 
 python3 ./pre-proc-scripts.py
 
+if command -v openplanet-lsp >/dev/null; then
+  _colortext16 green "🔍 openplanet-lsp check"
+  openplanet-lsp check \
+    --plugins-dir "$HOME/OpenplanetNext/Plugins" \
+    --plugins-dir "$(dirname "$PWD")" \
+    .
+else
+  _colortext16 yellow "⚠ openplanet-lsp not found; skipping check"
+fi
+
 pluginSources=( 'src' )
 
 for pluginSrc in ${pluginSources[@]}; do
