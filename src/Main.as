@@ -323,9 +323,9 @@ void NotifyError(const string &in msg) {
     UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Error", msg, vec4(.9, .3, .1, .3), 12000);
 }
 
-void NotifyWarning(const string &in msg) {
+void NotifyWarning(const string &in msg, const int time = 12000) {
     warn(msg);
-    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Warning", msg, vec4(.7, .4, .1, .3), 12000);
+    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Warning", msg, vec4(.7, .4, .1, .3), time);
 }
 
 
