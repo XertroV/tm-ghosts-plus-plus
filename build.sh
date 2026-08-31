@@ -4,8 +4,10 @@ set -e
 
 # USAGE:
 # - Set PLUGINS_DIR to wherever OpenplanetNext/Plugins lives
+# - Set SKIP_LSP=1 to skip the openplanet-lsp check
 # ./build.sh [dev|release]
 # Defaults to `dev` build mode.
+# *_Dev.as files are only copied/packaged in `dev` builds (not prerelease/unittest/release).
 
 # https://greengumdrops.net/index.php/colorize-your-bash-scripts-bash-color-library/
 source ./vendor/_colors.bash
@@ -27,12 +29,22 @@ _colortext16 green "🏗️ preprocessing .Script.txt files in ml-scripts"
 
 python3 ./pre-proc-scripts.py
 
-if command -v openplanet-lsp >/dev/null; then
+if [[ "${SKIP_LSP:-0}" == "1" ]]; then
+  _colortext16 yellow "⚠ SKIP_LSP=1; skipping openplanet-lsp check"
+elif command -v openplanet-lsp >/dev/null; then
   _colortext16 green "🔍 openplanet-lsp check"
+  set +e
   openplanet-lsp check \
     --plugins-dir "$HOME/OpenplanetNext/Plugins" \
     --plugins-dir "$(dirname "$PWD")" \
     .
+  _lsp_exit_code=$?
+  set -e
+  if [[ "$_lsp_exit_code" != "0" ]]; then
+    _colortext16 red "⚠ Error: openplanet-lsp reported errors (see above)."
+    _colortext16 yellow "   To skip: SKIP_LSP=1 ./build.sh $_build_mode"
+    exit 1
+  fi
 else
   _colortext16 yellow "⚠ openplanet-lsp not found; skipping check"
 fi
@@ -76,7 +88,8 @@ for pluginSrc in ${pluginSources[@]}; do
   PLUGIN_RELEASE_LOC=$PLUGINS_DIR/$RELEASE_NAME
 
   function buildPlugin {
-    7z a ./$BUILD_NAME ./$pluginSrc/* ./LICENSE ./README.md
+    # Keep *_Dev.as out of the .op; they are only for `dev` folder builds.
+    7z a ./$BUILD_NAME ./$pluginSrc/* ./LICENSE ./README.md '-xr!*_Dev.as'
 
     cp -v $BUILD_NAME $RELEASE_NAME
 
@@ -96,6 +109,9 @@ for pluginSrc in ${pluginSources[@]}; do
       # cp -LR -v ./external/* $_build_dest/
       cp -LR -v ./info.toml $_build_dest/
       _copy_exit_code="$?"
+      if [[ "$_build_mode" != "dev" ]]; then
+        find "$_build_dest" -name '*_Dev.as' -print -delete
+      fi
       ;;
   esac
 

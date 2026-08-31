@@ -2,6 +2,8 @@
 
 Ghost playback stutter after the physicalized-ghost update: [`research/2026-08-24-GhostPlaybackStutter.md`](research/2026-08-24-GhostPlaybackStutter.md).
 
+Inputs bitstream + EntRecord position samples (for `GetGhostSampleData`): [`../tm-editor-plus-plus/research/2026-08-30-GhostInputsAndPositions.md`](../tm-editor-plus-plus/research/2026-08-30-GhostInputsAndPositions.md).
+
 
 - 0x38
   - buffer of (checkpointId, raceTime) structs (nat2)
