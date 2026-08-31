@@ -701,7 +701,10 @@ class ScrubberMgr {
         pauseAt = setProg;
         if (IsPaused) {
             mode = playbackSpeed == 1.0 ? ScrubberMode::Playback : ScrubberMode::CustomSpeed;
-            if (IsStdPlayback) DoUnpause();
+            // Always restore clip TOTAL_TIME / motion interp. Custom speed still
+            // needs unpausedFlag=false so Update() drives AdvanceClipPlayersByDelta.
+            DoUnpause();
+            if (!IsStdPlayback) unpausedFlag = false;
         } else {
             SetPaused(setProg, true);
         }
