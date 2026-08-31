@@ -66,4 +66,14 @@ namespace Ghosts_PP {
         if (ix <= -1) return null;
         return mgr.Ghosts[ix];
     }
+
+    namespace Dev {
+        Json::Value@ GetWatchDebugState() { // lsp: ignore unused
+#if DEV
+            return BuildWatchDebugState();
+#else
+            return null;
+#endif
+        }
+    }
 }

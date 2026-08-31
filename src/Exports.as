@@ -1,3 +1,4 @@
+// main exports
 namespace Ghosts_PP {
     import void Call_Ghosts_SetStartTime(CSmArenaRulesMode@ ps, uint startTime) from "Ghosts_PP";
     import array<CGameCtnGhost@>@ GetCurrentGhosts(CGameCtnApp@ app) from "Ghosts_PP";
@@ -17,9 +18,17 @@ namespace Ghosts_PP {
 import float CSmArenaRules_GetGhostAlpha(CSmArenaRules@ arenaRules) from "Ghosts_PP";
 import void CSmArenaRules_SetGhostAlpha(CSmArenaRules@ arenaRules, float maxGhostAlpha) from "Ghosts_PP";
 
+// Ghost input/sample data
 namespace Ghosts_PP {
     import IInputChange@[]@ GetGhostInputData(CGameCtnGhost@ ghost) from "Ghosts_PP";
     // import IGhostSample@[]@ GetGhostSampleData(CGameCtnGhost@ ghost) from "Ghosts_PP";
-
     import CheckpointIxTime@[]@ GetGhostCheckpoints(CGameCtnGhost@ ghost) from "Ghosts_PP";
+}
+
+// Dev exports
+namespace Ghosts_PP {
+    namespace Dev {
+        // Dev export, will return null if not in plugin dev build
+        import Json::Value@ GetWatchDebugState() from "Ghosts_PP";
+    }
 }
