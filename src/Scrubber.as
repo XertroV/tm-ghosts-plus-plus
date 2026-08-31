@@ -947,7 +947,9 @@ double UpdateMaxScrubberTime(CSmArenaRulesMode@ ps = null, bool resetBeforeUpdat
     maxTimePre = maxTime;
     // maxTime = Math::Max(maxTime, scrubberMgr.pauseAt);
     if (ps !is null) {
-        maxTime = Math::Min(maxTime, double(ps.Now));
+        // scrubbing past ps.Now causes ghosts to disappear.
+        if (IsSpectatingGhost()) UnlockPlaygroundTimer(ps);
+        // maxTime = Math::Min(maxTime, double(ps.Now));
     }
     return maxTime;
 }
