@@ -9,7 +9,7 @@ void After_UpdateMTClipCurrTime(CMwNod@ rbx) {
         if (rbx is null) warn("rbx null");
         auto clipPlayer = cast<CGameCtnMediaClipPlayer>(rbx);
         if (clipPlayer is null) warn("clipPlayer null");
-        _debug_AfterUpdateMTClipCurrTime_ClipDebug = string::Join(GetGhostClipPlayerDebugValues(clipPlayer), " ");
+        _debug_AfterUpdateMTClipCurrTime_ClipDebug = Text::Join(GetGhostClipPlayerDebugValues(clipPlayer), " ");
         ClipPlayer_SetCurrSeconds3(clipPlayer, GPSScrubbing::TakeClipPlayerTimeToSet());
     }
 }

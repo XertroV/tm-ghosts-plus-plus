@@ -148,7 +148,7 @@ class GhostFinder {
             if (!IsGhostLoaded(found[i]))
                 ret.InsertLast(found[i]['accountId']);
         }
-        log_trace('FindAroundTime ('+time+', '+nb+'): ' + string::Join(ret, ", "));
+        log_trace('FindAroundTime ('+time+', '+nb+'): ' + Text::Join(ret, ", "));
         return ret;
         // if (wsids.Length < 1) {
         //     NotifyWarning('Failed to find times around ' + time);
@@ -241,7 +241,7 @@ class GhostFinder {
                 // the lerping didn't work very well and was very slow to approach on more-played maps
                 // auto t = Math::InvLerp(before.y, after.y, time);
                 // uint guess = Math::Lerp(before.x, after.x, t);
-                // print('b.y, a.y, time, b.x, a.x, t, guess' + string::Join({
+                // print('b.y, a.y, time, b.x, a.x, t, guess' + Text::Join({
                 //     tostring(before.y), tostring(after.y), tostring(time), tostring(before.x), tostring(after.x), tostring(t), tostring(guess)
                 // }, ", "));
                 uint guess = (before.x + after.x) / 2;

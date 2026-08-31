@@ -315,7 +315,7 @@ class SaveGhostsTab : Tab {
     }
 
     string GenGhostFileName(const string &in login, const string &in uid, const string &in nickname, const string &in ts) {
-        return string::Join({nickname, uid, ts}, "_") + ".ghost.gbx";
+        return Text::Join({nickname, uid, ts}, "_") + ".ghost.gbx";
     }
 
     void SaveGhost(ref@ ghostRef) {
@@ -351,7 +351,7 @@ class SaveGhostsTab : Tab {
         auto id = Text::ParseUInt(args[3]);
         auto recs = Core::GetMapPlayerListRecordList({NadeoServices::LoginToAccountId(login)}, uid);
         if (recs is null) {
-            NotifyWarning("Failed to get ghost download link: " + string::Join({nickname, login, uid}, " / "));
+            NotifyWarning("Failed to get ghost download link: " + Text::Join({nickname, login, uid}, " / "));
             return;
         }
         auto rec = recs[0];
@@ -470,7 +470,7 @@ class PlayersTab : Tab {
                     if (jNames.GetType() != Json::Type::Object) break;
                     // trace('j: ' + Json::Write(j));
                     auto names = jNames.GetKeys();
-                    string namesStr = string::Join(names, ", ");
+                    string namesStr = Text::Join(names, ", ");
                     string login = j['key'];
 
                     UI::PushID(i);
@@ -529,7 +529,7 @@ class PlayersTab : Tab {
         auto names = j['names'].GetKeys();
 
         Update_ML_SetGhostLoading(wsid);
-        Core::LoadGhostOfPlayer(wsid, s_currMap, string::Join(names, ", "));
+        Core::LoadGhostOfPlayer(wsid, s_currMap, Text::Join(names, ", "));
         Update_ML_SetGhostLoaded(wsid);
         // no need to refind someones ghost (is there?)
         // auto ix = loading.Find(login);

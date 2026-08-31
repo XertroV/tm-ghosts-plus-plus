@@ -30,7 +30,7 @@ class DebugClipsTab : Tab {
         UI::Text(name);
         UI::Indent();
         CopiableLabel("ptr: " + Text::FormatPointer(ptr), Text::FormatPointer(ptr));
-        UI::Text("Debug vals: " + string::Join(debugVals, ", "));
+        UI::Text("Debug vals: " + Text::Join(debugVals, ", "));
         if (UI::Button("Pause " + name)) {
             SetGhostClipPlayerPaused(clip, 3.0);
         }

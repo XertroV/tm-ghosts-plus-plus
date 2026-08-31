@@ -29,7 +29,7 @@ namespace Core {
         }
         CMapRecord@[] ret;
         log_debug('GetMapPlayerListRecordList found ' + resp.MapRecordList.Length + ' records for ' + wsidsBuf.Length + ' players.');
-        log_debug('wsids: ' + string::Join(wsids, ','));
+        log_debug('wsids: ' + Text::Join(wsids, ','));
         for (uint i = 0; i < resp.MapRecordList.Length; i++) {
             ret.InsertLast(resp.MapRecordList[i]);
         }
@@ -54,7 +54,7 @@ namespace Core {
         log_trace('Getting ghosts for ' + wsids.Length + ' players');
         auto recs = GetMapPlayerListRecordList(wsids, uid);
         if (recs is null || recs.Length == 0) {
-            NotifyWarning("Could not load ghosts for " + string::Join(wsids, ', '));
+            NotifyWarning("Could not load ghosts for " + Text::Join(wsids, ', '));
             LoadingGhosts_GhostError(wsids.Length);
         } else {
             log_trace('Found ' + recs.Length + ' ghosts for ' + wsids.Length + ' players');

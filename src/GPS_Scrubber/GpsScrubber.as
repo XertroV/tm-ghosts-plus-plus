@@ -74,7 +74,7 @@ namespace GPSScrubbing {
                 UI::Text("No clip player");
             } else {
                 UI::Text(_debug_AfterUpdateMTClipCurrTime_ClipDebug);
-                UI::Text(string::Join(GetGhostClipPlayerDebugValues(clipPlayer), " "));
+                UI::Text(Text::Join(GetGhostClipPlayerDebugValues(clipPlayer), " "));
                 _debugSetTimeTo = UI::InputFloat("Set time to", _debugSetTimeTo, 0.25);
                 _debugSetTimeTo = Math::Clamp(_debugSetTimeTo, 0.0, ActiveClipDuration);
 
@@ -96,7 +96,7 @@ namespace GPSScrubbing {
                     RequestSetClipPlayerTime(_debugSetTimeTo);
                 }
 
-                UI::Text(string::Join(GetGhostClipPlayerDebugValues(clipPlayer), " "));
+                UI::Text(Text::Join(GetGhostClipPlayerDebugValues(clipPlayer), " "));
             }
         }
         UI::End();

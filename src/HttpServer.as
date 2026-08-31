@@ -104,7 +104,7 @@ string GetFolderPath(const string &in path) {
     auto parts = path.Split("/");
     if (parts.Length < 2) throw("Bad path for getting folder: " + path);
     parts.RemoveLast();
-    return string::Join(parts, "/");
+    return Text::Join(parts, "/");
 }
 
 
@@ -347,7 +347,7 @@ string FormatHeaders(dictionary@ headers) {
             keys[i] += ": " + string(headers[keys[i]]);
         }
     }
-    return string::Join(keys, "\r\n");
+    return Text::Join(keys, "\r\n");
 }
 
 
