@@ -186,7 +186,7 @@ MwId lastSpectatedGhostInstanceId = MwId(uint(-1));
 uint lastSpectatedGhostRaceTime = 0;
 
 bool _Spectator_SetForcedTarget_Ghost(CMwStack &in stack, CMwNod@ nod) {
-    bool blockAfterBlockedSetStartTime = lastBlockedSetStartTimeNow + 2 >= Time::Now
+    bool blockAfterBlockedSetStartTime = lastBlockedSetStartTimeNow + 25 >= Time::Now
         && IsSpectatingGhost();
 #if DEV
 #else
