@@ -1,5 +1,5 @@
 #if FALSE
-const uint16 O_CTN_GHOST_ENT_RECORD_DATA = GetOffset("CGameCtnGhost", "Validate_ExtraTool_Info") + (0x2E0 - 0x220);
+const uint16 O_CTN_GHOST_ENT_RECORD_DATA = GetOffset("CGameCtnGhost", "Validate_ExtraTool_Info") + 0xC8;
 
 CSceneVehicleVis::EntRecordDelta@[]@ GetSamplesFromGhost(CGameCtnGhost@ ghost) {
     auto entRecordData = cast<CPlugEntRecordData>(Dev::GetOffsetNod(ghost, O_CTN_GHOST_ENT_RECORD_DATA));
