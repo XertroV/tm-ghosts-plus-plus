@@ -140,13 +140,15 @@ class SaveGhostsTab : Tab {
             UI::TableSetupColumn("Save", UI::TableColumnFlags::WidthFixed, 32.);
             UI::TableSetupColumn("Unload", UI::TableColumnFlags::WidthFixed, 32.);
 
+            int launchedCpIx = Ghosts_PP::GetLaunchedCpGhostIx(mgr);
+
             UI::ListClipper clip(mgr.Ghosts.Length);
             while (clip.Step()) {
                 for (int i = clip.DisplayStart; i < Math::Min(clip.DisplayEnd, mgr.Ghosts.Length); i++) {
                     UI::PushID(i);
                     auto item = mgr.Ghosts[i];
                     auto id = GhostClipsMgr::GetInstanceIdAtIx(mgr, i);
-                    DrawSaveGhost(mgr.Ghosts[i], i, id);
+                    DrawSaveGhost(mgr.Ghosts[i], i, id, int(i) == launchedCpIx);
                     UI::PopID();
                 }
             }
@@ -176,7 +178,7 @@ class SaveGhostsTab : Tab {
 #endif
     }
 
-    void DrawSaveGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i, uint id) {
+    void DrawSaveGhost(NGameGhostClips_SClipPlayerGhost@ gc, uint i, uint id, bool isLaunchedCp) {
         CGameCtnGhost@ gm = gc.GhostModel;
         auto clip = gc.Clip;
         auto rt = Time::Format(gm.RaceTime);
@@ -191,7 +193,14 @@ class SaveGhostsTab : Tab {
 #endif
 
         UI::TableNextColumn();
-        UI::Text(Text::OpenplanetFormatCodes(gm.GhostNickname));
+        string name = Text::OpenplanetFormatCodes(gm.GhostNickname);
+        if (isLaunchedCp) {
+            name += " \\$z\\$888[CP-sync]";
+        }
+        UI::Text(name);
+        if (isLaunchedCp) {
+            AddSimpleTooltip("CP-synced flying respawn PB (special clip player)");
+        }
 
         // UI::TableNextColumn();
         // UI::Text(GhostLogoToStr(gm.m_GhostNameLogoType));
