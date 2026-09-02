@@ -2,6 +2,20 @@
 
 ## 0.4.8.2 (unreleased)
 
+- fix: "Script execution timeout exceeded" aborting the plugin when clicking
+  the "Inputs" button on a long ghost. The parse ran synchronously inside the
+  UI render callback; a ~440k-tick ghost needs more than the plugin's whole
+  4.4 s script budget, so execution was aborted mid-render. The parse now runs
+  as a coroutine in ~8 ms wall-time slices (`GhostInputsParser` /
+  `GhostInputsLoader` in `Ghosts/ReadCtnGhostInputs.as` + `Interface.as`), the
+  Ghost Inputs window shows a progress bar with ticks parsed and an ETA while
+  loading, renders input rows as they are parsed, and the parse cancels
+  cleanly when superseded, the window is closed, the map changes, or the ghost
+  is unloaded. The exported synchronous `GetGhostInputData` API is unchanged.
+  Verified on a 207,994-tick ghost: 65,721 input changes — identical count to
+  the synchronous parser — with no timeout; also on an 854,590-tick (2 h 22 m)
+  ghost in 16.6 s.
+
 - fix: game crash when clicking the "Inputs" button on a loaded ghost (issue #39).
   Root cause is a bug in the AngelScript bytecode optimizer bundled with
   Openplanet 1.29.5 (upstream 2.39.0 WIP): `started = EStart(states & 3)` with

@@ -365,22 +365,294 @@ class SaveGhostsTab : Tab {
         saving.RemoveRange(0, saving.Length);
     }
 
-    TmInputChange@[]@ currInputs;
+    GhostInputsLoader@ inputsLoader;
+    uint inputsGen = 0;
     bool showInputsWindow = false;
-    void ShowInputs(CGameCtnGhost@ g) {
-        @currInputs = GetProcessedGhostInputData(g);
+    void ShowInputs(CGameCtnGhost@ g, GhostInputsSource source = GhostInputsSource::ClipManager, ClearTask@ devTask = null) {
+        inputsGen++;
+        @inputsLoader = null;
         showInputsWindow = true;
+        try {
+            @inputsLoader = GhostInputsLoader(g, inputsGen, this, source);
+            if (devTask !is null) @inputsLoader.devTask = devTask;
+            startnew(CoroutineFunc(inputsLoader.Run));
+        } catch {
+            showInputsWindow = false;
+            if (devTask !is null) devTask.Release();
+            NotifyWarning("Failed to read ghost inputs: " + getExceptionInfo());
+        }
     }
 
     void DrawInputs() {
         if (!showInputsWindow) return;
-        if (UI::Begin("Ghost Inputs", showInputsWindow)) {
-            for (uint i = 0; i < currInputs.Length; i++) {
-                UI::Text(currInputs[i].ToString());
-            }
+        UI::SetNextWindowSize(640, 480, UI::Cond::FirstUseEver);
+        if (UI::Begin("Ghost Inputs###ghost-inputs", showInputsWindow)) {
+            DrawInputsWindowBody();
         }
         UI::End();
     }
+
+    void DrawInputsWindowBody() {
+        GhostInputsLoader@ loader = inputsLoader;
+        if (loader is null) {
+            UI::Text("No input data.");
+            return;
+        }
+
+        TmInputChange@[] inputs = loader.parser.inputs;
+
+        if (loader.Active) {
+            UI::ProgressBar(loader.Progress, vec2(-1, 0),
+                loader.parser.TicksParsed + " / " + loader.parser.TicksTotal + " ticks · " + loader.EtaText);
+            UI::Text(inputs.Length + " input changes (so far)");
+            UI::Dummy(vec2(0, 4));
+        } else if (loader.finished) {
+            UI::AlignTextToFramePadding();
+            UI::Text(inputs.Length + " input changes · parsed in " + Time::Format(loader.ElapsedMs));
+            UI::Dummy(vec2(0, 4));
+        } else if (loader.failed) {
+            UI::Text("Parsing failed at tick " + loader.parser.TicksParsed + " / " + loader.parser.TicksTotal
+                + " after " + inputs.Length + " changes: " + loader.error);
+            UI::Dummy(vec2(0, 4));
+        } else {
+            UI::Text("Parsing cancelled (" + loader.cancelReason + "); " + inputs.Length + " input changes (partial).");
+            UI::Dummy(vec2(0, 4));
+        }
+
+        if (inputs.Length == 0) return;
+
+        auto flags = UI::TableFlags::RowBg
+            | UI::TableFlags::SizingFixedFit
+            | UI::TableFlags::ScrollY
+            | UI::TableFlags::Resizable
+            | UI::TableFlags::Hideable
+            | UI::TableFlags::Reorderable
+            | UI::TableFlags::BordersInnerV;
+        UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
+        if (UI::BeginTable("ghost-inputs", 10, flags, UI::GetContentRegionAvail())) {
+            UI::TableSetupScrollFreeze(0, 1);
+            UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 84.);
+            UI::TableSetupColumn("Steer", UI::TableColumnFlags::WidthFixed, 56.);
+            UI::TableSetupColumn("Acc", UI::TableColumnFlags::WidthFixed, 42.);
+            UI::TableSetupColumn("Brk", UI::TableColumnFlags::WidthFixed, 42.);
+            UI::TableSetupColumn("Horn", UI::TableColumnFlags::WidthFixed, 46.);
+            UI::TableSetupColumn("Look", UI::TableColumnFlags::WidthFixed, 46.);
+            UI::TableSetupColumn("Respawn", UI::TableColumnFlags::WidthFixed, 68.);
+            UI::TableSetupColumn("Slots", UI::TableColumnFlags::WidthStretch);
+            UI::TableSetupColumn("Mouse", UI::TableColumnFlags::WidthFixed | UI::TableColumnFlags::DefaultHide, 80.);
+            UI::TableSetupColumn("Tick", UI::TableColumnFlags::WidthFixed, 50.);
+            UI::TableHeadersRow();
+
+            // inputs grows while parsing; re-clip against its current length each frame
+            UI::ListClipper clip(inputs.Length);
+            while (clip.Step()) {
+                for (int i = clip.DisplayStart; i < Math::Min(clip.DisplayEnd, int(inputs.Length)); i++) {
+                    DrawInputsRow(inputs[i]);
+                }
+            }
+            UI::EndTable();
+        }
+        UI::PopStyleColor();
+    }
+}
+
+// Who owns the ghost being parsed; decides how "still present" is checked
+// between parse slices.
+enum GhostInputsSource {
+    ClipManager,     // UI path: ghost is a GhostClipsMgr clip player's model
+    DevDataFileMgr,  // DEV test hook: ghost owned by the race's DataFileMgr
+}
+
+// Wall-clock budget per parse slice. Slices must stay well under the plugin's
+// 4444 ms script timeout, but also small enough not to eat the frame budget.
+const int GhostInputsParseSliceMs = 8;
+
+// Owns one coroutine-based parse of a ghost's recorded inputs. The Ghost
+// Inputs window reads `parser.inputs` live while this runs. The coroutine is
+// cancelled when superseded by a newer ShowInputs request (gen mismatch), the
+// window is closed, or the ghost's owning world is gone (map change / unload)
+// — reading a freed ghost's input buffer must not continue, so presence is
+// revalidated before every slice.
+class GhostInputsLoader {
+    SaveGhostsTab@ owner;
+    CGameCtnGhost@ ghost;
+    GhostInputsParser@ parser;
+    GhostInputsSource source;
+    CSmArenaRulesMode@ devPs;   // playground snapshot for DevDataFileMgr ghosts
+    ClearTask@ devTask;         // DEV source: unreleased Replay_Load task keeps the ghost alive
+    uint gen;
+    int64 startMs;
+    int64 endMs;   // 0 while running; freezes ElapsedMs at the terminal state
+    bool finished = false;
+    bool failed = false;
+    string cancelReason;
+    string error;
+
+    GhostInputsLoader(CGameCtnGhost@ g, uint generation, SaveGhostsTab@ tab,
+                      GhostInputsSource src = GhostInputsSource::ClipManager) {
+        @ghost = g;
+        @owner = tab;
+        source = src;
+        @devPs = src == GhostInputsSource::DevDataFileMgr
+            ? cast<CSmArenaRulesMode>(GetApp().PlaygroundScript) : null;
+        gen = generation;
+        startMs = Time::Now;
+        @parser = GhostInputsParser(g);
+    }
+
+    bool get_Active() { return !finished && !failed && cancelReason.Length == 0; }
+    int64 get_ElapsedMs() { return (endMs > 0 ? endMs : Time::Now) - startMs; }
+    int get_ChangesCount() { return parser is null ? 0 : parser.inputs.Length; }
+
+    float get_Progress() {
+        return parser is null || parser.TicksTotal <= 0 ? 0.0f : float(parser.TicksParsed) / float(parser.TicksTotal);
+    }
+
+    // Extrapolates remaining time from elapsed time per parsed tick; shows
+    // "estimating…" until enough ticks are parsed for a stable estimate.
+    string get_EtaText() {
+        if (parser is null || parser.TicksParsed < 256) return "estimating…";
+        int64 remaining = int64(parser.TicksTotal - parser.TicksParsed);
+        int64 etaMs = ElapsedMs * remaining / parser.TicksParsed;
+        return "ETA " + Time::Format(etaMs);
+    }
+
+    void Run() {
+        try {
+            // StillCurrent before each slice: never parse a chunk after the
+            // world changed during a yield (ghost may have been freed).
+            while (true) {
+                if (!StillCurrent()) { _ReleaseDevTask(); return; }
+                if (parser.ParseChunk(GhostInputsParseSliceMs)) break;
+                yield();
+            }
+            finished = true;
+            endMs = Time::Now;
+            _ReleaseDevTask();
+            trace("Ghost Inputs: parsed " + ChangesCount + " input changes from "
+                + parser.TicksTotal + " ticks in " + ElapsedMs + " ms");
+        } catch {
+            failed = true;
+            endMs = Time::Now;
+            _ReleaseDevTask();
+            error = getExceptionInfo();
+            warn("Ghost Inputs: parse failed at tick " + parser.TicksParsed + "/" + parser.TicksTotal
+                + " (" + ChangesCount + " changes parsed): " + error);
+        }
+    }
+
+    void _ReleaseDevTask() {
+        if (devTask is null) return;
+        ClearTask@ task = devTask;
+        @devTask = null; // detach first: never double-release if Release throws
+        try {
+            task.Release();
+        } catch {
+            warn("Ghost Inputs: dev task release threw (playground gone?): " + getExceptionInfo());
+        }
+    }
+
+    bool StillCurrent() {
+        if (owner is null || gen != owner.inputsGen) {
+            cancelReason = "superseded";
+        } else if (!owner.showInputsWindow) {
+            cancelReason = "window closed";
+        } else if (source == GhostInputsSource::DevDataFileMgr) {
+            // the dev ghost is kept alive by the unreleased Replay_Load task
+            // (devTask); a different PlaygroundScript nod means that world —
+            // and the ghost with it — is gone
+            if (devPs is null || GetApp().PlaygroundScript !is devPs) {
+                cancelReason = "playground changed";
+            } else {
+                return true;
+            }
+        } else {
+            auto mgr = GhostClipsMgr::Get(GetApp());
+            if (mgr is null) {
+                cancelReason = "no ghost manager";
+            } else {
+                for (uint i = 0; i < mgr.Ghosts.Length; i++) {
+                    if (mgr.Ghosts[i].GhostModel is ghost) return true;
+                }
+                cancelReason = "ghost unloaded";
+            }
+        }
+        endMs = Time::Now;
+        trace("Ghost Inputs: parse cancelled (" + cancelReason + ") at tick "
+            + parser.TicksParsed + "/" + parser.TicksTotal);
+        return false;
+    }
+}
+
+void DrawInputsRow(TmInputChange@ c) {
+    UI::TableNextRow();
+    UI::TableNextColumn();
+    if (c is null) {
+        UI::TextATFP("--");
+        return;
+    }
+
+    UI::TextATFP(Time::Format(c.Time));
+    UI::TableNextColumn();
+    UI::TextATFP((c.steer < 0 ? "L" : c.steer > 0 ? "R" : "") + Text::Format("%4d", c.Steer));
+    // UI::ProgressBar((c.steer + 127.) / 255., vec2(0, 16), c.steer < 0 ? "L" : c.steer > 0 ? "R" : "");
+    UI::TableNextColumn();
+    DrawInputFlag(c.Gas, "A");
+    UI::TableNextColumn();
+    DrawInputFlag(c.Brake, "B");
+    UI::TableNextColumn();
+    DrawInputFlag(c.Horn, "H");
+    UI::TableNextColumn();
+    DrawInputFlag(c.FreeLook, "L");
+    UI::TableNextColumn();
+    UI::TextATFP(FormatInputRespawn(c));
+    UI::TableNextColumn();
+    UI::TextATFP(FormatInputSlots(c));
+    UI::TableNextColumn();
+    UI::TextATFP(FormatInputMouse(c));
+    UI::TableNextColumn();
+    UI::TextATFP(tostring(c.Tick));
+}
+
+void DrawInputFlag(bool on, const string &in mark) {
+    UI::AlignTextToFramePadding();
+    if (on) {
+        UI::Text(mark);
+    } else {
+        UI::PushStyleColor(UI::Col::Text, UI::GetStyleColor(UI::Col::TextDisabled));
+        UI::Text("·");
+        UI::PopStyleColor();
+    }
+}
+
+string FormatInputRespawn(TmInputChange@ c) {
+    if (c is null) return "";
+    if (c.Respawn && c.SecondaryRespawn) return "R+S";
+    if (c.Respawn) return "R";
+    if (c.SecondaryRespawn) return "S";
+    return "";
+}
+
+string FormatInputSlots(TmInputChange@ c) {
+    if (c is null) return "";
+    string s = "";
+    if (c.ActionSlot1) s += "1";
+    if (c.ActionSlot2) s += "2";
+    if (c.ActionSlot3) s += "3";
+    if (c.ActionSlot4) s += "4";
+    if (c.ActionSlot5) s += "5";
+    if (c.ActionSlot6) s += "6";
+    if (c.ActionSlot7) s += "7";
+    if (c.ActionSlot8) s += "8";
+    if (c.ActionSlot9) s += "9";
+    if (c.ActionSlot0) s += "0";
+    return s;
+}
+
+string FormatInputMouse(TmInputChange@ c) {
+    if (c is null) return "";
+    if (c.MouseAccuX == 0 && c.MouseAccuY == 0) return "";
+    return "" + c.MouseAccuX + ", " + c.MouseAccuY;
 }
 
 int64 MostRecentGhostTimeMax() {

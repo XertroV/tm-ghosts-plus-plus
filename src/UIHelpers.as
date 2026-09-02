@@ -25,3 +25,10 @@ bool MDisabledButton(bool disabled, const string &in text, const vec2 &in size =
         return UI::Button(text, size);
     }
 }
+
+namespace UI {
+    void TextATFP(const string &in text) {
+        UI::AlignTextToFramePadding();
+        UI::Text(text);
+    }
+}

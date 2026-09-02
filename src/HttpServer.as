@@ -25,6 +25,9 @@ HttpResponse@ RouteRequests(const string &in type, const string &in route, dicti
     log_trace("Data length: " + body.GetSize());
     if (route.StartsWith('/save_ghost/')) return HandleGhostUpload(type, route, headers, body);
     if (route.StartsWith('/get_ghost/')) return HandleGetGhost(type, route, headers, body);
+#if DEV
+    if (route.StartsWith('/dev/parse_replay/')) return HandleDevParseReplay(type, route, headers, body);
+#endif
     log_trace("Did not find route.");
     return _404_Response;
 }

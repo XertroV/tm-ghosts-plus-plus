@@ -186,45 +186,65 @@ namespace Ghosts_PP {
     }
 }
 
-TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
-    // dev_trace("GetProcessedGhostInputData");
-    auto buf = GetRawGhostInputDataReader(ghost);
-    auto playerInput = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0);
-    auto ticks = playerInput.ticks;
-    if (ticks < 0 || uint(ticks) > 4 * 1024 * 1024) {
-        throw("ghost input tick count looks invalid (" + ticks + ")");
-    }
-    TmInputChange@[] res;
+// Incremental core of the ghost inputs parse. The per-tick loop runs in
+// time-budgeted chunks (ParseChunk) so a coroutine can parse without hitting
+// the script timeout: a ~208k-tick ghost takes >2s to parse, and parses run
+// from the UI thread (a >4.4s slice aborts the plugin). The loop-carried
+// locals of the original single-pass function (started/sameChar/sameVech)
+// are members so they survive chunk boundaries.
+class GhostInputsParser {
+    GhostBitReader@ buf;
+    int ticks;   // total ticks in the recording
+    int tickIx;  // next tick to parse
+    TmInputChange@[] inputs;
 
     EStart started = EStart::NotStarted;
-
-    bool different = false;
-    uint64 states;
-    uint16 mouseAccuX;
-    uint16 mouseAccuY;
-    int8 steer;
-    bool gas;
-    bool brake;
-    bool horn;
-    uint8 characterStates;
-
     bool sameChar = false;
     bool sameVech = false;
 
-    for (int i = 0; i < ticks; i++) {
-        // dev_trace("[GetProcessedGhostInputData] processing tick " + i);
-        different = false;
+    GhostInputsParser(CGameCtnGhost@ ghost) {
+        @buf = GetRawGhostInputDataReader(ghost);
+        ticks = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0).ticks;
+        if (ticks < 0 || uint(ticks) > 4 * 1024 * 1024) {
+            throw("ghost input tick count looks invalid (" + ticks + ")");
+        }
+    }
+
+    bool get_Done() { return tickIx >= ticks; }
+    int get_TicksParsed() { return tickIx; }
+    int get_TicksTotal() { return ticks; }
+
+    // Parses the whole recording without yielding (for the synchronous API).
+    void ParseAll() {
+        while (!Done) ParseTick();
+    }
+
+    // Parses for at most budgetMs of wall time (polled every 256 ticks) and
+    // returns true when the whole recording is parsed. Delta comparison is
+    // used so a Time::Now wrap can't disable the slice budget.
+    bool ParseChunk(int budgetMs) {
+        int sliceStart = Time::Now;
+        while (!Done) {
+            ParseTick();
+            if ((tickIx & 255) == 0 && Time::Now - sliceStart >= budgetMs) break;
+        }
+        return Done;
+    }
+
+    void ParseTick() {
+        int i = tickIx;
+        bool different = false;
         bool sameState = buf.ReadBit() == 1;
         bool onlyHorn = false;
 
-        states = 0;
-        mouseAccuX = 0;
-        mouseAccuY = 0;
-        steer = 0;
-        gas = false;
-        brake = false;
-        horn = false;
-        characterStates = 0;
+        uint64 states = 0;
+        uint16 mouseAccuX = 0;
+        uint16 mouseAccuY = 0;
+        int8 steer = 0;
+        bool gas = false;
+        bool brake = false;
+        bool horn = false;
+        uint8 characterStates = 0;
 
         if (!sameState) {
             onlyHorn = buf.ReadBit() > 0;
@@ -275,13 +295,17 @@ TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
         }
 
         if (different) {
-            auto change = TmInputChange(i, states, mouseAccuX, mouseAccuY, steer, gas, brake, horn, characterStates);
-            // dev_trace('Got input change: ' + change.ToString());
-            res.InsertLast(change);
+            inputs.InsertLast(TmInputChange(i, states, mouseAccuX, mouseAccuY, steer, gas, brake, horn, characterStates));
         }
+        tickIx = i + 1;
     }
+}
 
-    return res;
+TmInputChange@[]@ GetProcessedGhostInputData(CGameCtnGhost@ ghost) {
+    // dev_trace("GetProcessedGhostInputData");
+    GhostInputsParser parser(ghost);
+    parser.ParseAll();
+    return parser.inputs;
 }
 
 #if DEV
@@ -396,6 +420,16 @@ int _V4WorkaroundProbe() {
     return int(canary) * 1000 + int(t);
 }
 
+// InputsParseAutoTest last run 2026-09-01 (Openplanet.log 03:21:12, ghosts-pp DEV):
+//   V0 ok len=1
+//   V0b ok len=1
+//   V1 ok len=1
+//   V4a enum-fusion probe = 3 (VM BUG PRESENT)
+//   V4b workaround probe = 42003 (workaround safe)
+//   Replay_Load attempts 0-2 (3 path variants), then Index out of bounds at
+//   variants[toggles] — loop is `toggles <= 3` on a Length-3 array, so toggles==3
+//   indexes off the end. V2/V3 never ran.
+/*
 void InputsParseAutoTest() {
     trace("[INPUTS-DBG] auto-test coro started");
     yield();
@@ -494,6 +528,7 @@ void InputsParseAutoTest() {
     }
     trace("[INPUTS-DBG] auto-test done");
 }
+*/
 #endif
 
 const uint16 O_CTN_GHOST_CHECKPOINTS_BUF = GetOffset("CGameCtnGhost", "NbRespawns") + 0x8;

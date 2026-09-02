@@ -29,9 +29,7 @@ void Main() {
     startnew(InitGP);
     startnew(LoadFonts);
     startnew(OnUpdatedGpsScrubbingSetting);
-#if DEV
-    startnew(InputsParseAutoTest);
-#endif
+    // startnew(InputsParseAutoTest); // disabled 2026-09-01; last-run results in ReadCtnGhostInputs.as
     trace('started coros');
     trace('checking spec');
     if (GetApp().PlaygroundScript !is null) {
