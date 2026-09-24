@@ -46,7 +46,7 @@ class HookHelper {
             warn_every_60_s("Failed to apply hook for " + functionName + " (pattern ptr == 0)");
             return false;
         }
-        @hookInfo = Dev::Hook(patternPtr + offset, padding, functionName, pushReg);
+        @hookInfo = Dev::Hook(uint64(int64(patternPtr) + offset), padding, functionName, pushReg);
         if (hookInfo is null) {
             warn_every_60_s("Failed to apply hook for " + functionName + " (hookInfo == null)");
             return false;
