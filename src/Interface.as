@@ -352,6 +352,7 @@ class SaveGhostsTab : Tab {
         // startnew(CoroutineFuncUserdata(RunSaveGhost), ref(array<string> = {gm.GhostLogin, gm.Validate_ChallengeUid.GetName(), gm.GhostNickname, tostring(id)}));
     }
 
+    /*
     void RunSaveGhost(ref@ r) {
         auto args = cast<string[]>(r);
         auto login = args[0];
@@ -369,6 +370,7 @@ class SaveGhostsTab : Tab {
         // auto ix = saving.Find(id);
         // if (ix >= 0) saving.RemoveAt(ix);
     }
+    */
 
     void OnMapChange() override {
         saving.RemoveRange(0, saving.Length);

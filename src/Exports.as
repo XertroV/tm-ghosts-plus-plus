@@ -21,6 +21,7 @@ import void CSmArenaRules_SetGhostAlpha(CSmArenaRules@ arenaRules, float maxGhos
 // Ghost input/sample data
 namespace Ghosts_PP {
     import IInputChange@[]@ GetGhostInputData(CGameCtnGhost@ ghost) from "Ghosts_PP";
+    import IInputChange@[]@ GetGhostInputDataAsync(CGameCtnGhost@ ghost, int budgetMs) from "Ghosts_PP";
     // import IGhostSample@[]@ GetGhostSampleData(CGameCtnGhost@ ghost) from "Ghosts_PP";
     import CheckpointIxTime@[]@ GetGhostCheckpoints(CGameCtnGhost@ ghost) from "Ghosts_PP";
 }

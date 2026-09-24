@@ -166,8 +166,19 @@ class TmInputChange : Ghosts_PP::IInputChange {
 
 namespace Ghosts_PP {
     IInputChange@[]@ GetGhostInputData(CGameCtnGhost@ ghost) {
-        IInputChange@[] ret;
         auto data = GetProcessedGhostInputData(ghost);
+        IInputChange@[] ret = array<IInputChange@>(data.Length);
+        for (uint i = 0; i < data.Length; i++) {
+            ret.InsertLast(data[i]);
+        }
+        return ret;
+    }
+
+    IInputChange@[]@ GetGhostInputDataAsync(CGameCtnGhost@ ghost, int budgetMs) {
+        GhostInputsParser parser(ghost);
+        parser.ParseAllAsync(budgetMs);
+        IInputChange@[] ret = array<IInputChange@>(parser.inputs.Length);
+        auto @data = parser.inputs;
         for (uint i = 0; i < data.Length; i++) {
             ret.InsertLast(data[i]);
         }
@@ -186,13 +197,30 @@ namespace Ghosts_PP {
     }
 }
 
-// Incremental core of the ghost inputs parse. The per-tick loop runs in
-// time-budgeted chunks (ParseChunk) so a coroutine can parse without hitting
-// the script timeout: a ~208k-tick ghost takes >2s to parse, and parses run
-// from the UI thread (a >4.4s slice aborts the plugin). The loop-carried
-// locals of the original single-pass function (started/sameChar/sameVech)
-// are members so they survive chunk boundaries.
+class ReferencedGhost {
+    CGameCtnGhost@ ghost;
+    ReferencedGhost(CGameCtnGhost@ ghost_) {
+        if (Reflection::GetRefCount(ghost_) < 1) throw("ghost has no ref count");
+        ghost_.MwAddRef();
+        @this.ghost = ghost_;
+    }
+
+    ~ReferencedGhost() {
+        Release();
+    }
+
+    void Release() {
+        if (ghost !is null) {
+            ghost.MwRelease();
+            @ghost = null;
+        }
+    }
+}
+
+// Incremental parser. Runs in chunks so we can yield.
+// a ~208k-tick ghost takes >2s to parse.
 class GhostInputsParser {
+    ReferencedGhost@ rGhost;
     GhostBitReader@ buf;
     int ticks;   // total ticks in the recording
     int tickIx;  // next tick to parse
@@ -203,6 +231,7 @@ class GhostInputsParser {
     bool sameVech = false;
 
     GhostInputsParser(CGameCtnGhost@ ghost) {
+        @rGhost = ReferencedGhost(ghost);
         @buf = GetRawGhostInputDataReader(ghost);
         ticks = DGameCtnGhost(ghost).Inputs.GetPlayerInput(0).ticks;
         if (ticks < 0 || uint(ticks) > 4 * 1024 * 1024) {
@@ -210,18 +239,31 @@ class GhostInputsParser {
         }
     }
 
+    ~GhostInputsParser() {
+        if (rGhost !is null) {
+            rGhost.Release();
+            @rGhost = null;
+        }
+    }
+
     bool get_Done() { return tickIx >= ticks; }
     int get_TicksParsed() { return tickIx; }
     int get_TicksTotal() { return ticks; }
 
-    // Parses the whole recording without yielding (for the synchronous API).
+    // Synchronous: Parses without yielding
     void ParseAll() {
         while (!Done) ParseTick();
     }
 
-    // Parses for at most budgetMs of wall time (polled every 256 ticks) and
-    // returns true when the whole recording is parsed. Delta comparison is
-    // used so a Time::Now wrap can't disable the slice budget.
+    // Asynchronous: Parses all in chunks, yielding every budgetMs.
+    void ParseAllAsync(int budgetMs) {
+        while (!Done) {
+            if (ParseChunk(budgetMs)) break;
+            yield();
+        }
+    }
+
+    // Asynchronous: Parses for up to budgetMs. Returns true when done.
     bool ParseChunk(int budgetMs) {
         int sliceStart = Time::Now;
         while (!Done) {
