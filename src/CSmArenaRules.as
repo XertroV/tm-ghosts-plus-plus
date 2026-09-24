@@ -1,3 +1,5 @@
+const uint16 O_APP_CURR_PG = GetOffset("CTrackMania", "CurrentPlayground");
+
 const uint16 O_CSMARENARULES_MAXGHOSTALPHA = GetOffset("CSmArenaRules", "RulesStateEndTime") + 0x8;
 
 float CSmArenaRules_GetGhostAlpha(CSmArenaRules@ arenaRules) {

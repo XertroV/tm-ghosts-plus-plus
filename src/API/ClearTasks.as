@@ -1,6 +1,7 @@
 class ClearTask {
     CWebServicesTaskResult@ task;
     CMwNod@ nod;
+    bool released = false;
 
     CGameUserManagerScript@ userMgr { get { return cast<CGameUserManagerScript>(nod); } }
     CGameDataFileManagerScript@ dataFileMgr { get { return cast<CGameDataFileManagerScript>(nod); } }
@@ -12,6 +13,8 @@ class ClearTask {
     }
 
     void Release() {
+        if (released) return;
+        released = true;
         if (userMgr !is null) userMgr.TaskResult_Release(task.Id);
         else if (dataFileMgr !is null) dataFileMgr.TaskResult_Release(task.Id);
         else if (scoreMgr !is null) scoreMgr.TaskResult_Release(task.Id);

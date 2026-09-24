@@ -405,12 +405,12 @@ class SaveGhostsTab : Tab {
 
     void DrawInputsWindowBody() {
         GhostInputsLoader@ loader = inputsLoader;
-        if (loader is null) {
+        if (loader is null || loader.parser is null) {
             UI::Text("No input data.");
             return;
         }
 
-        TmInputChange@[] inputs = loader.parser.inputs;
+        TmInputChange@[]@ inputs = loader.parser.inputs;
 
         if (loader.Active) {
             UI::ProgressBar(loader.Progress, vec2(-1, 0),
@@ -437,8 +437,8 @@ class SaveGhostsTab : Tab {
             | UI::TableFlags::ScrollY
             | UI::TableFlags::Resizable
             | UI::TableFlags::Hideable
-            | UI::TableFlags::Reorderable
-            | UI::TableFlags::BordersInnerV;
+            // | UI::TableFlags::BordersInnerV
+            | UI::TableFlags::Reorderable;
         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
         if (UI::BeginTable("ghost-inputs", 10, flags, UI::GetContentRegionAvail())) {
             UI::TableSetupScrollFreeze(0, 1);
@@ -449,9 +449,9 @@ class SaveGhostsTab : Tab {
             UI::TableSetupColumn("Horn", UI::TableColumnFlags::WidthFixed, 46.);
             UI::TableSetupColumn("Look", UI::TableColumnFlags::WidthFixed, 46.);
             UI::TableSetupColumn("Respawn", UI::TableColumnFlags::WidthFixed, 68.);
-            UI::TableSetupColumn("Slots", UI::TableColumnFlags::WidthStretch);
             UI::TableSetupColumn("Mouse", UI::TableColumnFlags::WidthFixed | UI::TableColumnFlags::DefaultHide, 80.);
             UI::TableSetupColumn("Tick", UI::TableColumnFlags::WidthFixed, 50.);
+            UI::TableSetupColumn("Slots", UI::TableColumnFlags::WidthStretch);
             UI::TableHeadersRow();
 
             // inputs grows while parsing; re-clip against its current length each frame
@@ -467,45 +467,40 @@ class SaveGhostsTab : Tab {
     }
 }
 
-// Who owns the ghost being parsed; decides how "still present" is checked
-// between parse slices.
-enum GhostInputsSource {
-    ClipManager,     // UI path: ghost is a GhostClipsMgr clip player's model
-    DevDataFileMgr,  // DEV test hook: ghost owned by the race's DataFileMgr
+uint64 _GetPgPointer() {
+    return Dev::GetOffsetUint64(GetApp(), O_APP_CURR_PG);
 }
 
-// Wall-clock budget per parse slice. Slices must stay well under the plugin's
-// 4444 ms script timeout, but also small enough not to eat the frame budget.
+// Ghost source, decides how to check if ghost is possibly gone.
+enum GhostInputsSource {
+    ClipManager,     // Normal UI path: ghosts from GhostClipsMgr
+    DevDataFileMgr,  // DEV test hook: ghosts from the race's DataFileMgr
+}
+
+// parse budget, ms per frame.
 const int GhostInputsParseSliceMs = 8;
 
-// Owns one coroutine-based parse of a ghost's recorded inputs. The Ghost
-// Inputs window reads `parser.inputs` live while this runs. The coroutine is
-// cancelled when superseded by a newer ShowInputs request (gen mismatch), the
-// window is closed, or the ghost's owning world is gone (map change / unload)
-// — reading a freed ghost's input buffer must not continue, so presence is
-// revalidated before every slice.
+// Manages loading parsed ghost record inputs. Cancelled when replaced, window closed, leave playground, etc.
 class GhostInputsLoader {
     SaveGhostsTab@ owner;
     CGameCtnGhost@ ghost;
     GhostInputsParser@ parser;
     GhostInputsSource source;
-    CSmArenaRulesMode@ devPs;   // playground snapshot for DevDataFileMgr ghosts
-    ClearTask@ devTask;         // DEV source: unreleased Replay_Load task keeps the ghost alive
+    uint64 devCpPtr;    // curr pg ptr snapshot for DevDataFileMgr ghosts
+    ClearTask@ devTask; // DEV source: unreleased Replay_Load task keeps the ghost alive
     uint gen;
     int64 startMs;
-    int64 endMs;   // 0 while running; freezes ElapsedMs at the terminal state
+    int64 endMs;    // 0 while running; freezes ElapsedMs when parsed.
     bool finished = false;
     bool failed = false;
     string cancelReason;
     string error;
 
-    GhostInputsLoader(CGameCtnGhost@ g, uint generation, SaveGhostsTab@ tab,
-                      GhostInputsSource src = GhostInputsSource::ClipManager) {
+    GhostInputsLoader(CGameCtnGhost@ g, uint generation, SaveGhostsTab@ tab, GhostInputsSource src = GhostInputsSource::ClipManager) {
         @ghost = g;
         @owner = tab;
         source = src;
-        @devPs = src == GhostInputsSource::DevDataFileMgr
-            ? cast<CSmArenaRulesMode>(GetApp().PlaygroundScript) : null;
+        devCpPtr = src == GhostInputsSource::DevDataFileMgr ? _GetPgPointer() : 0;
         gen = generation;
         startMs = Time::Now;
         @parser = GhostInputsParser(g);
@@ -519,8 +514,7 @@ class GhostInputsLoader {
         return parser is null || parser.TicksTotal <= 0 ? 0.0f : float(parser.TicksParsed) / float(parser.TicksTotal);
     }
 
-    // Extrapolates remaining time from elapsed time per parsed tick; shows
-    // "estimating…" until enough ticks are parsed for a stable estimate.
+    // Extrapolates remaining time from elapsed time per parsed tick.
     string get_EtaText() {
         if (parser is null || parser.TicksParsed < 256) return "estimating…";
         int64 remaining = int64(parser.TicksTotal - parser.TicksParsed);
@@ -530,8 +524,7 @@ class GhostInputsLoader {
 
     void Run() {
         try {
-            // StillCurrent before each slice: never parse a chunk after the
-            // world changed during a yield (ghost may have been freed).
+            // check StillCurrent to bail if ghost might be gone
             while (true) {
                 if (!StillCurrent()) { _ReleaseDevTask(); return; }
                 if (parser.ParseChunk(GhostInputsParseSliceMs)) break;
@@ -555,12 +548,8 @@ class GhostInputsLoader {
     void _ReleaseDevTask() {
         if (devTask is null) return;
         ClearTask@ task = devTask;
-        @devTask = null; // detach first: never double-release if Release throws
-        try {
-            task.Release();
-        } catch {
-            warn("Ghost Inputs: dev task release threw (playground gone?): " + getExceptionInfo());
-        }
+        @devTask = null; // detach first
+        task.Release();
     }
 
     bool StillCurrent() {
@@ -569,10 +558,9 @@ class GhostInputsLoader {
         } else if (!owner.showInputsWindow) {
             cancelReason = "window closed";
         } else if (source == GhostInputsSource::DevDataFileMgr) {
-            // the dev ghost is kept alive by the unreleased Replay_Load task
-            // (devTask); a different PlaygroundScript nod means that world —
-            // and the ghost with it — is gone
-            if (devPs is null || GetApp().PlaygroundScript !is devPs) {
+            // ghost kept alive by unreleased Replay_Load task (and ReferencedGhost)
+            // pg change => (maybe) unsafe to access ghost.
+            if (_GetPgPointer() != devCpPtr) {
                 cancelReason = "playground changed";
             } else {
                 return true;
@@ -618,11 +606,11 @@ void DrawInputsRow(TmInputChange@ c) {
     UI::TableNextColumn();
     UI::TextATFP(FormatInputRespawn(c));
     UI::TableNextColumn();
-    UI::TextATFP(FormatInputSlots(c));
-    UI::TableNextColumn();
     UI::TextATFP(FormatInputMouse(c));
     UI::TableNextColumn();
     UI::TextATFP(tostring(c.Tick));
+    UI::TableNextColumn();
+    UI::TextATFP(FormatInputSlots(c));
 }
 
 void DrawInputFlag(bool on, const string &in mark) {
@@ -630,9 +618,7 @@ void DrawInputFlag(bool on, const string &in mark) {
     if (on) {
         UI::Text(mark);
     } else {
-        UI::PushStyleColor(UI::Col::Text, UI::GetStyleColor(UI::Col::TextDisabled));
-        UI::Text("·");
-        UI::PopStyleColor();
+        UI::TextDisabled("·");
     }
 }
 

@@ -29,9 +29,8 @@ void Main() {
     startnew(InitGP);
     startnew(LoadFonts);
     startnew(OnUpdatedGpsScrubbingSetting);
-    // startnew(InputsParseAutoTest); // disabled 2026-09-01; last-run results in ReadCtnGhostInputs.as
-    trace('started coros');
-    trace('checking spec');
+    dev_trace('started coros');
+    dev_trace('checking spec');
     if (GetApp().PlaygroundScript !is null) {
         trace('in playground! getting current values');
         // get current spec'd ghost id and update values

@@ -153,7 +153,6 @@ double maxTime = 0.;
 double maxTimePre = 0.;
 uint lastHover;
 bool showAdvanced = false;
-uint oneTimeLog = 0;
 uint lastDraw_StartTime = 0;
 
 void DrawScrubber() {
@@ -242,11 +241,6 @@ void DrawScrubber() {
 
     if (UI::Begin("scrubber", ScrubberWindow::WindowFlags)) {
         bool ghostsNotVisible = !GetGhostVisibility();
-
-        // if (oneTimeLog < 2) {
-        //     warn("OTL: scrubber pauseAt: " + scrubberMgr.pauseAt);
-        //     oneTimeLog++;
-        // }
 
         double startTime = Math::Max(playerStartTime, lastGhostsStartOrSpawnTime);
         lastDraw_StartTime = uint(startTime);
@@ -431,8 +425,6 @@ bool DrawResetButton(float btnWidth) {
 
 int m_NewGhostOffset = 0;
 uint lastSetGhostOffset = 0;
-bool m_UseAltCam = false;
-bool m_KeepGhostsWhenOffsetting = true;
 
 float DrawAdvancedScrubberExtras(CSmArenaRulesMode@ ps, float btnWidth, bool isSpectating, float setProg) {
     // 0: cinematic?, 1: normal, 2: freecam
