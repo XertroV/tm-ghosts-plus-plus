@@ -1,8 +1,5 @@
 // Bit reader that reads directly from the ghost's input buffer in game memory.
-// The old implementation copied the bytes into a MemoryBuffer, then into a uint8[]
-// script array; that allocation churn was associated with nondeterministic corruption
-// of a freshly created result array (crash in openplanet.dll at the first InsertLast),
-// so the parse now avoids bulk script allocations entirely.
+// Changed architecture due to https://github.com/anjo76/angelscript/issues/91.
 class GhostBitReader {
     uint64 basePtr;
     int Length;   // bits
