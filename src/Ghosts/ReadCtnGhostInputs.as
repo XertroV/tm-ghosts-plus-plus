@@ -130,26 +130,52 @@ class TmInputChange : Ghosts_PP::IInputChange {
     uint64 get_States() { return states; }
     uint16 get_MouseAccuX() { return mouseAccuX; }
     uint16 get_MouseAccuY() { return mouseAccuY; }
+    int16 get_MouseX() { return int16(mouseAccuX); }
+    int16 get_MouseY() { return int16(mouseAccuY); }
     int8 get_Steer() { return steer; }
     bool get_Gas() { return gas; }
     bool get_Brake() { return brake; }
     bool get_Horn() { return horn; }
     uint8 get_CharacterStates() { return characterStates; }
 
+    // InputQuant_* inverses. Steer is a signed byte; gas/brake are 0 or 1.
+    float get_SteerF() { return float(steer) / 127.0f; }
+    float get_GasF() { return gas ? 1.0f : 0.0f; }
+    float get_BrakeF() { return brake ? 1.0f : 0.0f; }
+    // Character / generic path: four InputQuant_Ternary codes packed in one byte.
+    float get_CharF0() { return _TernaryToFloat(characterStates & 3); }
+    float get_CharF1() { return _TernaryToFloat((characterStates >> 2) & 3); }
+    float get_CharF2() { return _TernaryToFloat((characterStates >> 4) & 3); }
+    float get_CharF3() { return _TernaryToFloat((characterStates >> 6) & 3); }
+
     int64 get_Time() { return tick * 10; }
-    bool get_FreeLook() { return states & 8192 != 0; }
-    bool get_ActionSlot1() { return states & (1 << 14) != 0; }
-    bool get_ActionSlot2() { return states & (1 << 15) != 0; }
-    bool get_ActionSlot3() { return states & (1 << 16) != 0; }
-    bool get_ActionSlot4() { return states & (1 << 17) != 0; }
-    bool get_ActionSlot5() { return states & (1 << 18) != 0; }
-    bool get_ActionSlot6() { return states & (1 << 19) != 0; }
-    bool get_ActionSlot7() { return states & (1 << 20) != 0; }
-    bool get_ActionSlot8() { return states & (1 << 21) != 0; }
-    bool get_ActionSlot9() { return states & (1 << 22) != 0; }
-    bool get_ActionSlot0() { return states & (1 << 23) != 0; }
-    bool get_Respawn() { return states & (1 << 31) != 0; }
-    bool get_SecondaryRespawn() { return states & (1 << 33) != 0; }
+    uint get_InputType() { return uint(states) & 0xF; }
+    // Packed state word. See research/tm2020/2026-09-25-GhostInputEncoding.md.
+    bool get_FreeLook() { return (states & (1 << 4)) != 0; }
+    bool get_StrafeLeft() { return (states & (1 << 7)) != 0; }
+    bool get_Hop() { return (states & (1 << 10)) != 0; }
+    bool get_GiveUp() { return (states & (1 << 11)) != 0; }
+    // AK2 -> slot 6, AK4 -> slot 8.
+    bool get_ActionSlot1() { return (states & (1 << 12)) != 0; }
+    bool get_ActionSlot2() { return (states & (1 << 13)) != 0; }
+    bool get_ActionSlot3() { return (states & (1 << 14)) != 0; }
+    bool get_ActionSlot4() { return (states & (1 << 15)) != 0; }
+    bool get_ActionSlot5() { return (states & (1 << 16)) != 0; }
+    bool get_ActionSlot6() { return (states & (1 << 17)) != 0; }
+    bool get_ActionSlot7() { return (states & (1 << 18)) != 0; }
+    bool get_ActionSlot8() { return (states & (1 << 19)) != 0; }
+    bool get_ActionSlot9() { return (states & (1 << 20)) != 0; }
+    bool get_ActionSlot0() { return (states & (1 << 21)) != 0; }
+    bool get_RearView() { return (states & (1 << 24)) != 0; }
+    bool get_Respawn() { return (states & (uint64(1) << 31)) != 0; }
+    bool get_SecondaryRespawn() { return (states & (uint64(1) << 33)) != 0; }
+    bool get_ActionLatch() { return SecondaryRespawn; }
+
+    float _TernaryToFloat(uint code) {
+        if (code == 1) return 1.0f;
+        if (code == 3) return -1.0f;
+        return 0.0f;
+    }
 
     string _repr;
     string ToString() {
@@ -197,6 +223,12 @@ namespace Ghosts_PP {
     }
 }
 
+// Bits 27–33 are one tick. The encoder compares the next sample with them clear,
+// so a respawn pulse must not stay set on later rows.
+uint64 GhostInputWithoutPulse(uint64 states) {
+    return states & ~(uint64(0x7F) << 27);
+}
+
 class ReferencedGhost {
     CGameCtnGhost@ ghost;
     ReferencedGhost(CGameCtnGhost@ ghost_) {
@@ -229,6 +261,15 @@ class GhostInputsParser {
     EStart started = EStart::NotStarted;
     bool sameChar = false;
     bool sameVech = false;
+    // Carried sample. Each tick is a diff against this (the encoder's previous sample).
+    uint64 curStates = 0;
+    uint16 curMouseX = 0;
+    uint16 curMouseY = 0;
+    int8 curSteer = 0;
+    bool curGas = false;
+    bool curBrake = false;
+    bool curHorn = false;
+    uint8 curChar = 0;
 
     GhostInputsParser(CGameCtnGhost@ ghost) {
         @rGhost = ReferencedGhost(ghost);
@@ -277,41 +318,37 @@ class GhostInputsParser {
         int i = tickIx;
         bool different = false;
         bool sameState = buf.ReadBit() == 1;
-        bool onlyHorn = false;
-
-        uint64 states = 0;
-        uint16 mouseAccuX = 0;
-        uint16 mouseAccuY = 0;
-        int8 steer = 0;
-        bool gas = false;
-        bool brake = false;
-        bool horn = false;
-        uint8 characterStates = 0;
 
         if (!sameState) {
-            onlyHorn = buf.ReadBit() > 0;
-            states = onlyHorn ? buf.ReadNumber(2) : buf.ReadNumber(34);
+            bool onlyHorn = buf.ReadBit() > 0;
+            // Ghost samples use a 34-bit state word. 33 bits desyncs the analog
+            // block so the gas bit lands in the steer sign (always left).
+            uint64 states = onlyHorn ? buf.ReadNumber(2) : buf.ReadNumber(34);
 
             if (started == EStart::NotStarted) {
                 // uint() first: the AngelScript bytecode optimizer fuses Enum(u64expr)
                 // into an 8-byte write that corrupts the adjacent local (the Inputs crash)
                 started = EStart(uint(states) & 3);
-                if (started == EStart::VehicleMix) {
-                    started = EStart::Vehicle;
-                    horn = states & 64 != 0;
-                }
-            } else if (started == EStart::Vehicle) {
-                horn = onlyHorn ? (states & 2 != 0) : (states & 64 != 0);
+                if (started == EStart::VehicleMix) started = EStart::Vehicle;
             }
 
+            if (onlyHorn) {
+                // dwButtons bit 0 then bit 1 → packed bits 5 and 6. Drop the previous pulse.
+                curStates = (GhostInputWithoutPulse(curStates) & ~uint64(0x60)) | (states << 5);
+            } else {
+                curStates = states;
+            }
+            // Horn is dwButtons bits 0 and 1 (packed 5 and 6). The onlyHorn shortcut writes both.
+            curHorn = (curStates & (0x3 << 5)) != 0;
             different = true;
+        } else {
+            curStates = GhostInputWithoutPulse(curStates);
         }
 
         bool sameMouse = buf.ReadBit() > 0;
-
         if (!sameMouse) {
-            mouseAccuX = buf.ReadUInt16();
-            mouseAccuY = buf.ReadUInt16();
+            curMouseX = buf.ReadUInt16();
+            curMouseY = buf.ReadUInt16();
             different = true;
         }
 
@@ -319,7 +356,7 @@ class GhostInputsParser {
             case EStart::Character: {
                 sameChar = buf.ReadBit() > 0;
                 if (!sameChar) {
-                    characterStates = buf.ReadByte();
+                    curChar = buf.ReadByte();
                     different = true;
                 }
                 break;
@@ -327,9 +364,9 @@ class GhostInputsParser {
             case EStart::Vehicle: {
                 sameVech = buf.ReadBit() > 0;
                 if (!sameVech) {
-                    steer = buf.ReadSByte();
-                    gas = buf.ReadBit() > 0;
-                    brake = buf.ReadBit() > 0;
+                    curSteer = buf.ReadSByte();
+                    curGas = buf.ReadBit() > 0;
+                    curBrake = buf.ReadBit() > 0;
                     different = true;
                 }
                 break;
@@ -337,7 +374,7 @@ class GhostInputsParser {
         }
 
         if (different) {
-            inputs.InsertLast(TmInputChange(i, states, mouseAccuX, mouseAccuY, steer, gas, brake, horn, characterStates));
+            inputs.InsertLast(TmInputChange(i, curStates, curMouseX, curMouseY, curSteer, curGas, curBrake, curHorn, curChar));
         }
         tickIx = i + 1;
     }

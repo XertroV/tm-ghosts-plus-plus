@@ -411,15 +411,17 @@ class SaveGhostsTab : Tab {
         }
 
         TmInputChange@[]@ inputs = loader.parser.inputs;
+        loader.EnsureRows();
+        GhostInputRow@[]@ rows = loader.rows;
 
         if (loader.Active) {
             UI::ProgressBar(loader.Progress, vec2(-1, 0),
                 loader.parser.TicksParsed + " / " + loader.parser.TicksTotal + " ticks · " + loader.EtaText);
-            UI::Text(inputs.Length + " input changes (so far)");
+            UI::Text(inputs.Length + " input changes (so far) · " + loader.cps.Length + " CPs");
             UI::Dummy(vec2(0, 4));
         } else if (loader.finished) {
             UI::AlignTextToFramePadding();
-            UI::Text(inputs.Length + " input changes · parsed in " + Time::Format(loader.ElapsedMs));
+            UI::Text(inputs.Length + " input changes · " + loader.cps.Length + " CPs · parsed in " + Time::Format(loader.ElapsedMs) + " \\$<\\$ab4 | \\$i Decode of inputs may have errors. Please report issues. \\$>");
             UI::Dummy(vec2(0, 4));
         } else if (loader.failed) {
             UI::Text("Parsing failed at tick " + loader.parser.TicksParsed + " / " + loader.parser.TicksTotal
@@ -430,7 +432,7 @@ class SaveGhostsTab : Tab {
             UI::Dummy(vec2(0, 4));
         }
 
-        if (inputs.Length == 0) return;
+        if (rows.Length == 0) return;
 
         auto flags = UI::TableFlags::RowBg
             | UI::TableFlags::SizingFixedFit
@@ -440,25 +442,33 @@ class SaveGhostsTab : Tab {
             // | UI::TableFlags::BordersInnerV
             | UI::TableFlags::Reorderable;
         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(.3, .3, .3, .3));
-        if (UI::BeginTable("ghost-inputs", 10, flags, UI::GetContentRegionAvail())) {
+
+        int numCols = 9;
+#if DEV
+        numCols += 1;
+#endif
+
+        if (UI::BeginTable("ghost-inputs", numCols, flags, UI::GetContentRegionAvail())) {
             UI::TableSetupScrollFreeze(0, 1);
             UI::TableSetupColumn("Time", UI::TableColumnFlags::WidthFixed, 84.);
-            UI::TableSetupColumn("Steer", UI::TableColumnFlags::WidthFixed, 56.);
+            UI::TableSetupColumn("Steer", UI::TableColumnFlags::WidthFixed, 64.);
             UI::TableSetupColumn("Acc", UI::TableColumnFlags::WidthFixed, 42.);
             UI::TableSetupColumn("Brk", UI::TableColumnFlags::WidthFixed, 42.);
             UI::TableSetupColumn("Horn", UI::TableColumnFlags::WidthFixed, 46.);
+#if DEV
             UI::TableSetupColumn("Look", UI::TableColumnFlags::WidthFixed, 46.);
-            UI::TableSetupColumn("Respawn", UI::TableColumnFlags::WidthFixed, 68.);
+#endif
+            UI::TableSetupColumn("Respawn", UI::TableColumnFlags::WidthFixed, 84.);
             UI::TableSetupColumn("Mouse", UI::TableColumnFlags::WidthFixed | UI::TableColumnFlags::DefaultHide, 80.);
             UI::TableSetupColumn("Tick", UI::TableColumnFlags::WidthFixed, 50.);
             UI::TableSetupColumn("Slots", UI::TableColumnFlags::WidthStretch);
             UI::TableHeadersRow();
 
             // inputs grows while parsing; re-clip against its current length each frame
-            UI::ListClipper clip(inputs.Length);
+            UI::ListClipper clip(rows.Length);
             while (clip.Step()) {
-                for (int i = clip.DisplayStart; i < Math::Min(clip.DisplayEnd, int(inputs.Length)); i++) {
-                    DrawInputsRow(inputs[i]);
+                for (int i = clip.DisplayStart; i < Math::Min(clip.DisplayEnd, int(rows.Length)); i++) {
+                    DrawInputsRow(rows[i]);
                 }
             }
             UI::EndTable();
@@ -488,6 +498,9 @@ class GhostInputsLoader {
     GhostInputsSource source;
     uint64 devCpPtr;    // curr pg ptr snapshot for DevDataFileMgr ghosts
     ClearTask@ devTask; // DEV source: unreleased Replay_Load task keeps the ghost alive
+    Ghosts_PP::CheckpointIxTime@[] cps;
+    GhostInputRow@[] rows;
+    int rowsFromChanges = -1;
     uint gen;
     int64 startMs;
     int64 endMs;    // 0 while running; freezes ElapsedMs when parsed.
@@ -504,6 +517,33 @@ class GhostInputsLoader {
         gen = generation;
         startMs = Time::Now;
         @parser = GhostInputsParser(g);
+        try {
+            cps = Ghosts_PP::GetGhostCheckpoints(g);
+        } catch {
+            warn("Ghost Inputs: checkpoints unavailable: " + getExceptionInfo());
+        }
+    }
+
+    void EnsureRows() {
+        int n = parser is null ? 0 : parser.inputs.Length;
+        if (rowsFromChanges == n) return;
+        GhostInputRow@[] merged;
+        uint ii = 0;
+        uint ci = 0;
+        while (ii < uint(n) || ci < cps.Length) {
+            bool takeCp = ii >= uint(n);
+            if (!takeCp && ci < cps.Length && cps[ci].Time < parser.inputs[ii].Time) takeCp = true;
+            if (takeCp) {
+                bool finish = ci + 1 == cps.Length;
+                merged.InsertLast(GhostInputRow(int(ci) + 1, cps[ci].Time, finish));
+                ci++;
+            } else {
+                merged.InsertLast(GhostInputRow(parser.inputs[ii]));
+                ii++;
+            }
+        }
+        rows = merged;
+        rowsFromChanges = n;
     }
 
     bool get_Active() { return !finished && !failed && cancelReason.Length == 0; }
@@ -583,9 +623,44 @@ class GhostInputsLoader {
     }
 }
 
-void DrawInputsRow(TmInputChange@ c) {
+class GhostInputRow {
+    TmInputChange@ input;
+    int cpNumber = 0;
+    bool isFinish = false;
+    int64 time;
+
+    GhostInputRow(TmInputChange@ c) {
+        @input = c;
+        time = c is null ? 0 : c.Time;
+    }
+
+    GhostInputRow(int number, int64 t, bool finish) {
+        cpNumber = number;
+        isFinish = finish;
+        time = t;
+    }
+
+    bool get_IsCheckpoint() { return input is null && (cpNumber > 0 || isFinish); }
+}
+
+void DrawInputsRow(GhostInputRow@ row) {
     UI::TableNextRow();
+    if (row !is null && row.IsCheckpoint) {
+        vec4 bg = row.isFinish ? vec4(0.75f, 0.28f, 0.28f, 0.45f) : vec4(0.25f, 0.48f, 0.85f, 0.40f);
+        UI::TableSetBgColor(UI::TableBgTarget::RowBg0, bg);
+    }
     UI::TableNextColumn();
+    if (row is null) {
+        UI::TextATFP("--");
+        return;
+    }
+    if (row.IsCheckpoint) {
+        UI::TextATFP(Time::Format(row.time));
+        UI::TableNextColumn();
+        UI::Text(row.isFinish ? "Finish" : "CP " + row.cpNumber);
+        return;
+    }
+    TmInputChange@ c = row.input;
     if (c is null) {
         UI::TextATFP("--");
         return;
@@ -593,7 +668,7 @@ void DrawInputsRow(TmInputChange@ c) {
 
     UI::TextATFP(Time::Format(c.Time));
     UI::TableNextColumn();
-    UI::TextATFP((c.steer < 0 ? "L" : c.steer > 0 ? "R" : "") + Text::Format("%4d", c.Steer));
+    UI::TextATFP((c.SteerF < 0.0f ? "L" : c.SteerF > 0.0f ? "R" : "") + Text::Format("%+.2f", c.SteerF));
     // UI::ProgressBar((c.steer + 127.) / 255., vec2(0, 16), c.steer < 0 ? "L" : c.steer > 0 ? "R" : "");
     UI::TableNextColumn();
     DrawInputFlag(c.Gas, "A");
@@ -601,8 +676,10 @@ void DrawInputsRow(TmInputChange@ c) {
     DrawInputFlag(c.Brake, "B");
     UI::TableNextColumn();
     DrawInputFlag(c.Horn, "H");
+#if DEV
     UI::TableNextColumn();
-    DrawInputFlag(c.FreeLook, "L");
+    DrawInputFlag(c.RearView, "L");
+#endif
     UI::TableNextColumn();
     UI::TextATFP(FormatInputRespawn(c));
     UI::TableNextColumn();
@@ -624,32 +701,33 @@ void DrawInputFlag(bool on, const string &in mark) {
 
 string FormatInputRespawn(TmInputChange@ c) {
     if (c is null) return "";
-    if (c.Respawn && c.SecondaryRespawn) return "R+S";
-    if (c.Respawn) return "R";
-    if (c.SecondaryRespawn) return "S";
-    return "";
+    string s = "";
+    if (c.Respawn) s += "R";
+    if (c.SecondaryRespawn) s += (s.Length == 0 ? "S" : "+S");
+    return s;
 }
 
 string FormatInputSlots(TmInputChange@ c) {
     if (c is null) return "";
     string s = "";
-    if (c.ActionSlot1) s += "1";
-    if (c.ActionSlot2) s += "2";
-    if (c.ActionSlot3) s += "3";
-    if (c.ActionSlot4) s += "4";
-    if (c.ActionSlot5) s += "5";
-    if (c.ActionSlot6) s += "6";
-    if (c.ActionSlot7) s += "7";
-    if (c.ActionSlot8) s += "8";
-    if (c.ActionSlot9) s += "9";
-    if (c.ActionSlot0) s += "0";
+    // Note slots 1–4 stay marked. AK n is about slot n+4: slot 6 shows 2, slot 8 shows 4.
+    if (c.ActionSlot1) s += "s1";
+    if (c.ActionSlot2) s += "s2";
+    if (c.ActionSlot3) s += "s3";
+    if (c.ActionSlot4) s += "s4";
+    if (c.ActionSlot5) s += "ak1";
+    if (c.ActionSlot6) s += "ak2";
+    if (c.ActionSlot7) s += "ak3";
+    if (c.ActionSlot8) s += "ak4";
+    if (c.ActionSlot9) s += "ak5";
+    if (c.ActionSlot0) s += "s0";
     return s;
 }
 
 string FormatInputMouse(TmInputChange@ c) {
     if (c is null) return "";
-    if (c.MouseAccuX == 0 && c.MouseAccuY == 0) return "";
-    return "" + c.MouseAccuX + ", " + c.MouseAccuY;
+    if (c.MouseX == 0 && c.MouseY == 0) return "";
+    return "" + c.MouseX + ", " + c.MouseY;
 }
 
 int64 MostRecentGhostTimeMax() {

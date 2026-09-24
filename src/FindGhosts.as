@@ -169,9 +169,22 @@ class GhostFinder {
         return ret;
     }
 
+    bool LbRespLooksGood(Json::Value@ resp) {
+        if (resp.GetType() != Json::Type::Object) return false;
+        if (resp['tops'].GetType() != Json::Type::Array) return false;
+        if (resp['tops'].Length == 0) return false;
+        if (resp['tops'][0].GetType() != Json::Type::Object) return false;
+        if (resp['tops'][0]['top'].GetType() != Json::Type::Array) return false;
+        return true;
+    }
+
     // ignores nb param
     Json::Value@[]@ SearchForRanks(uint time, uint nb) {
         auto resp = MapMonitor::GetMapLbSurround(uid, time);
+        if (!LbRespLooksGood(resp)) {
+            NotifyWarning('Failed to find ghosts around ' + Time::Format(time));
+            return {};
+        }
         auto recs = resp['tops'][0]['top'];
         log_debug('SearchForRanks found: ' + Json::Write(recs));
         Json::Value@[] ret;

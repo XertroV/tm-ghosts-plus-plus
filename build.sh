@@ -7,7 +7,7 @@ set -e
 # - Set SKIP_LSP=1 to skip the openplanet-lsp check
 # ./build.sh [dev|release]
 # Defaults to `dev` build mode.
-# *_Dev.as files are only copied/packaged in `dev` builds (not prerelease/unittest/release).
+# *_Dev.as and *_Test.as files are only copied/packaged in `dev` builds (not prerelease/unittest/release).
 
 # https://greengumdrops.net/index.php/colorize-your-bash-scripts-bash-color-library/
 source ./vendor/_colors.bash
@@ -88,8 +88,8 @@ for pluginSrc in ${pluginSources[@]}; do
   PLUGIN_RELEASE_LOC=$PLUGINS_DIR/$RELEASE_NAME
 
   function buildPlugin {
-    # Keep *_Dev.as out of the .op; they are only for `dev` folder builds.
-    7z a ./$BUILD_NAME ./$pluginSrc/* ./LICENSE ./README.md '-xr!*_Dev.as'
+    # Keep *_Dev.as and *_Test.as out of the .op; they are only for `dev` folder builds.
+    7z a ./$BUILD_NAME ./$pluginSrc/* ./LICENSE ./README.md '-xr!*_Dev.as' '-xr!*_Test.as'
 
     cp -v $BUILD_NAME $RELEASE_NAME
 
@@ -110,7 +110,7 @@ for pluginSrc in ${pluginSources[@]}; do
       cp -LR -v ./info.toml $_build_dest/
       _copy_exit_code="$?"
       if [[ "$_build_mode" != "dev" ]]; then
-        find "$_build_dest" -name '*_Dev.as' -print -delete
+        find "$_build_dest" \( -name '*_Dev.as' -o -name '*_Test.as' \) -print -delete
       fi
       ;;
   esac
