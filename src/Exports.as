@@ -28,7 +28,7 @@ namespace Ghosts_PP {
 
 // Dev exports
 namespace Ghosts_PP {
-    namespace Dev {
+    namespace DevX {
         // Dev export, will return null if not in plugin dev build
         import Json::Value@ GetWatchDebugState() from "Ghosts_PP";
     }
